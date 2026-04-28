@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Casting Factory — 시스템 위치 & 용어 가이드</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-light: #334155;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --border: #334155;
+    --accent: #3b82f6;
+    --mes: #10b981;
+    --control: #f59e0b;
+    --robot: #a855f7;
+    --rmf: #6b7280;
+    --field: #06b6d4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  h1 {
+    font-size: 28px;
+    color: #f1f5f9;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  /* Section */
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  h2 {
+    font-size: 18px;
+    color: #f1f5f9;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Concept Comparison */
+  .concept-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .concept-card {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    position: relative;
+  }
+
+  .concept-card.mes { border-top: 3px solid var(--mes); }
+  .concept-card.rmf { border-top: 3px solid var(--rmf); }
+  .concept-card.control { border-top: 3px solid var(--control); }
+
+  .concept-card h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+  .concept-card .full-name {
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  .concept-card .meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .concept-card .meta strong {
+    color: var(--text);
+  }
+
+  /* Architecture */
+  .architecture {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .layer {
+    background: var(--panel-light);
+    border-radius: 12px;
+    padding: 18px 22px;
+    border-left: 4px solid var(--accent);
+  }
+  .layer.user { border-left-color: #3b82f6; }
+  .layer.mes { border-left-color: var(--mes); }
+  .layer.control { border-left-color: var(--control); }
+  .layer.middleware { border-left-color: var(--accent); }
+  .layer.robot { border-left-color: var(--robot); }
+  .layer.field { border-left-color: var(--field); }
+  .layer.rmf { border-left-color: var(--rmf); border-style: dashed; opacity: 0.6; }
+
+  .layer-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #f1f5f9;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-title .badge {
+    font-size: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: var(--text-dim);
+  }
+
+  .nodes {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .node {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    flex: 1 1 0;
+    min-width: 180px;
+  }
+  .node .name {
+    font-weight: bold;
+    color: #f1f5f9;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .node .desc {
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  /* Arrow */
+  .arrow {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 0;
+  }
+  .arrow.up { transform: rotate(180deg); }
+  .arrow.bidir::before { content: '⇅'; }
+
+  /* Process flow */
+  .flow-chart {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 0;
+  }
+  .flow-step {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 130px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .flow-step .num {
+    background: var(--accent);
+    color: white;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    margin-right: 6px;
+  }
+  .flow-step .title {
+    font-weight: bold;
+    color: #f1f5f9;
+  }
+  .flow-step .sub {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-top: 4px;
+  }
+  .flow-arrow {
+    align-self: center;
+    color: var(--text-dim);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Terminology Table */
+  .term-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .term-table th {
+    background: var(--panel-light);
+    color: #f1f5f9;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--accent);
+  }
+  .term-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .term-table tr:hover td {
+    background: rgba(59, 130, 246, 0.05);
+  }
+  .term-table .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+  }
+  .pill.mes { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+  .pill.control { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+  .pill.field { background: rgba(6, 182, 212, 0.2); color: #22d3ee; border: 1px solid #06b6d4; }
+  .pill.robot { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; }
+  .pill.middleware { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+
+  /* ISA-95 pyramid */
+  .pyramid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 20px 0;
+  }
+  .pyramid-level {
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 18px;
+    text-align: center;
+    color: #f1f5f9;
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+  .pyramid-level:hover { transform: scale(1.03); }
+  .pyramid-level.level0 { width: 720px; background: rgba(6, 182, 212, 0.15); border-color: #06b6d4; }
+  .pyramid-level.level1 { width: 600px; background: rgba(168, 85, 247, 0.15); border-color: #a855f7; }
+  .pyramid-level.level2 { width: 480px; background: rgba(245, 158, 11, 0.15); border-color: #f59e0b; }
+  .pyramid-level.level3 { width: 360px; background: rgba(16, 185, 129, 0.15); border-color: #10b981; }
+  .pyramid-level.level4 { width: 240px; background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; }
+  .pyramid-level .num {
+    font-weight: bold;
+    margin-right: 8px;
+    color: var(--accent);
+  }
+  .pyramid-level .ours {
+    margin-left: 10px;
+    color: #34d399;
+    font-size: 10px;
+    font-weight: bold;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 14px;
+    background: var(--panel-light);
+    border-radius: 8px;
+    margin-top: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text);
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 24px;
+    padding: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <h1>Casting Factory — 시스템 위치 & 용어 가이드</h1>
+  <div class="subtitle">MES vs Open-RMF vs 관제 시스템 — 우리 프로젝트가 어디에 있는가</div>
+  <div class="subtitle" style="margin-top:6px; font-size:11px; color:#64748b;">
+    📚 Confluence (addinedute space) 의 System Architecture / Detailed Design / System Requirements / User Requirements / Terminology 페이지를 참고하여 보강
+  </div>
+</header>
+
+<!-- ============ SECTION 1: 3개념 비교 ============ -->
+<section>
+  <h2>① 3가지 개념 비교</h2>
+  <div class="concept-grid">
+
+    <div class="concept-card mes">
+      <h3>MES</h3>
+      <div class="full-name">Manufacturing Execution System</div>
+      <div class="meta">
+        <strong>분류</strong>: ISA-95 Level 3 표준<br>
+        <strong>역할</strong>: 생산 계획~실행~품질~재고 통합<br>
+        <strong>시간</strong>: 분/시간/일<br>
+        <strong>사용자</strong>: 관리자/오퍼레이터<br>
+        <strong>표준</strong>: ISA-95, MESA 11<br>
+        <strong>우리 위치</strong>: README "Casting Factory MES"
+      </div>
+    </div>
+
+    <div class="concept-card rmf">
+      <h3>Open-RMF</h3>
+      <div class="full-name">Open Robotics Middleware Framework</div>
+      <div class="meta">
+        <strong>분류</strong>: 오픈소스 ROS 2 미들웨어<br>
+        <strong>역할</strong>: 다중 로봇/AGV 통합 조율<br>
+        <strong>시간</strong>: 초/분<br>
+        <strong>사용자</strong>: 시스템 통합자<br>
+        <strong>제공</strong>: rmf_traffic, rmf_task, fleet_adapter<br>
+        <strong>우리 위치</strong>: 미사용 (Phase 3 검토)
+      </div>
+    </div>
+
+    <div class="concept-card control">
+      <h3>관제 시스템</h3>
+      <div class="full-name">Control / Monitoring System (HMI/SCADA)</div>
+      <div class="meta">
+        <strong>분류</strong>: 일반 용어 (ISA Level 2 SCADA)<br>
+        <strong>역할</strong>: 실시간 감시 + 제어<br>
+        <strong>시간</strong>: ms/초<br>
+        <strong>사용자</strong>: 관제실 운영자<br>
+        <strong>특징</strong>: 텔레메트리, 알람, E-Stop<br>
+        <strong>우리 위치</strong>: PyQt5 monitoring/ 앱
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 2: ISA-95 자동화 피라미드 ============ -->
+<section>
+  <h2>② ISA-95 자동화 피라미드 — 우리 시스템의 위치</h2>
+  <div class="pyramid">
+    <div class="pyramid-level level4">
+      <span class="num">L4</span> ERP — 전사 자원 관리
+      <span class="ours">(우리: 외부 연동 예정)</span>
+    </div>
+    <div class="pyramid-level level3">
+      <span class="num">L3</span> MES — 생산 실행
+      <span class="ours">★ Casting Factory MES</span>
+    </div>
+    <div class="pyramid-level level2">
+      <span class="num">L2</span> SCADA / HMI — 감시 제어
+      <span class="ours">★ PyQt5 관제 앱</span>
+    </div>
+    <div class="pyramid-level level1">
+      <span class="num">L1</span> PLC / 컨트롤러
+      <span class="ours">★ ESP32, RPi, Jetson</span>
+    </div>
+    <div class="pyramid-level level0">
+      <span class="num">L0</span> 센서 / 액추에이터
+      <span class="ours">★ TOF250, 카메라, DC 모터</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>L4 ERP</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div>L3 MES</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>L2 SCADA/HMI</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div>L1 PLC</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4;"></div>L0 Sensors</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: 우리 시스템 아키텍처 ============ -->
+<section>
+  <h2>③ 우리 프로젝트 전체 아키텍처</h2>
+  <div class="architecture">
+
+    <!-- USER LAYER -->
+    <div class="layer user">
+      <div class="layer-title">사용자 계층 <span class="badge">L4 사용자</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">관리자 (사무실)</span>
+          <span class="desc">생산 계획 / 주문 / 품질 / 입출고 관리</span>
+        </div>
+        <div class="node">
+          <span class="name">관제실 운영자 (현장)</span>
+          <span class="desc">실시간 모니터링 / 비상 대응</span>
+        </div>
+        <div class="node">
+          <span class="name">고객 (외부)</span>
+          <span class="desc">주문 등록 / 배송 조회</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣</div>
+
+    <!-- MES LAYER -->
+    <div class="layer mes">
+      <div class="layer-title">MES 영역 <span class="badge">L3 — ISA-95</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Next.js 16 웹</span>
+          <span class="desc">React 19 + Tailwind + Three.js · 관리자/고객 UI</span>
+        </div>
+        <div class="node">
+          <span class="name">FastAPI Backend</span>
+          <span class="desc">REST + WebSocket + 스케줄러 · MES 비즈니스 로직</span>
+        </div>
+        <div class="node">
+          <span class="name">PostgreSQL + TimescaleDB</span>
+          <span class="desc">트랜잭션 + 시계열 · 주문/생산/품질/이력</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <!-- CONTROL LAYER -->
+    <div class="layer control">
+      <div class="layer-title">관제 시스템 영역 <span class="badge">L2 — SCADA/HMI</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">PyQt5 데스크톱 앱</span>
+          <span class="desc">monitoring/ · 5개 페이지 + 공장맵 + 실시간 차트</span>
+        </div>
+        <div class="node">
+          <span class="name">알람 + 토스트</span>
+          <span class="desc">Critical 자동 팝업 + 사운드 + E-Stop</span>
+        </div>
+        <div class="node">
+          <span class="name">텔레메트리 시각화</span>
+          <span class="desc">컨베이어/AMR/Cobot/Vision 실시간</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <!-- MIDDLEWARE LAYER -->
+    <div class="layer middleware">
+      <div class="layer-title">통신 미들웨어 <span class="badge">전송 계층</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">MQTT (Mosquitto)</span>
+          <span class="desc">ESP32 ↔ 서버 · WiFi · pub/sub · QoS 0-2</span>
+        </div>
+        <div class="node">
+          <span class="name">WebSocket</span>
+          <span class="desc">FastAPI ↔ UI · 실시간 broadcast</span>
+        </div>
+        <div class="node">
+          <span class="name">REST HTTP</span>
+          <span class="desc">UI ↔ FastAPI · CRUD + 조회</span>
+        </div>
+        <div class="node">
+          <span class="name">ROS 2 DDS</span>
+          <span class="desc">Cobot/AMR ↔ rosbridge · 토픽/서비스</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <!-- ROBOT LAYER -->
+    <div class="layer robot">
+      <div class="layer-title">로봇 / 엣지 컴퓨팅 계층 <span class="badge">L1 — Edge / Controllers</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Jetson Orin NX 16GB</span>
+          <span class="desc">Vision 검사 (YOLO) · Phase 2</span>
+        </div>
+        <div class="node">
+          <span class="name">RPi5 × 2 (Cobot)</span>
+          <span class="desc">ROS 2 Jazzy + MoveIt2 · 협동로봇 2대</span>
+        </div>
+        <div class="node">
+          <span class="name">RPi4 × 3 (AMR)</span>
+          <span class="desc">ROS 2 Jazzy + Nav2 + SLAM · AMR 3대</span>
+        </div>
+        <div class="node">
+          <span class="name">ESP32 × N (Conveyor)</span>
+          <span class="desc">v4.0 펌웨어 + L298N + TOF250</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <!-- FIELD LAYER -->
+    <div class="layer field">
+      <div class="layer-title">필드 디바이스 <span class="badge">L0 — 센서 / 액추에이터</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">TOF250 ToF 센서</span>
+          <span class="desc">UART 9600 baud · 거리 측정 5-80mm</span>
+        </div>
+        <div class="node">
+          <span class="name">JGB37-555 DC 모터</span>
+          <span class="desc">12V 167RPM · 컨베이어 구동</span>
+        </div>
+        <div class="node">
+          <span class="name">카메라</span>
+          <span class="desc">검사 비전 입력 · USB / CSI</span>
+        </div>
+        <div class="node">
+          <span class="name">기타 센서</span>
+          <span class="desc">온도 / 압력 / LIDAR / 인코더</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣</div>
+
+    <!-- RMF LAYER (dashed, optional) -->
+    <div class="layer rmf">
+      <div class="layer-title">Open-RMF 영역 <span class="badge">미사용 · Phase 3 검토</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">rmf_traffic</span>
+          <span class="desc">로봇 충돌 회피 + 경로 예약</span>
+        </div>
+        <div class="node">
+          <span class="name">rmf_task</span>
+          <span class="desc">작업 큐 + 우선순위 할당</span>
+        </div>
+        <div class="node">
+          <span class="name">rmf_fleet_adapter</span>
+          <span class="desc">제조사별 로봇 통합 어댑터</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ SECTION 4: 데이터 흐름 시퀀스 ============ -->
+<section>
+  <h2>④ 주조 1사이클 데이터 흐름 (End-to-End)</h2>
+  <div class="flow-chart">
+    <div class="flow-step">
+      <div><span class="num">1</span><span class="title">주문 접수</span></div>
+      <div class="sub">고객 웹 → POST /api/orders</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">2</span><span class="title">생산 계획</span></div>
+      <div class="sub">MES 스케줄러 → 작업 지시</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">3</span><span class="title">용해</span></div>
+      <div class="sub">FRN-001 1450°C</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">4</span><span class="title">주조</span></div>
+      <div class="sub">Cobot pour</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">5</span><span class="title">컨베이어 이송</span></div>
+      <div class="sub">ESP32 → MQTT pub</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">6</span><span class="title">비전 검사</span></div>
+      <div class="sub">Jetson YOLO → ok/ng</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">7</span><span class="title">분류</span></div>
+      <div class="sub">SRT-001 sorter</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">8</span><span class="title">AMR 운반</span></div>
+      <div class="sub">ROS 2 Nav2 + SLAM</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">9</span><span class="title">출고</span></div>
+      <div class="sub">order.status = shipped</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 14px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 12px; color: var(--text);">
+    <strong>관제 시스템(PyQt5)</strong>은 위 사이클의 <strong>5~8단계 텔레메트리</strong>를 실시간으로 시각화합니다.<br>
+    <strong>MES(Next.js + FastAPI)</strong>는 <strong>1, 2, 9단계 트랜잭션</strong>을 관리하고 전체 이력을 PostgreSQL에 저장합니다.
+  </div>
+</section>
+
+<!-- ============ SECTION 5: 용어 매핑 ============ -->
+<section>
+  <h2>⑤ 컴포넌트별 정확한 용어 매핑</h2>
+  <table class="term-table">
+    <thead>
+      <tr>
+        <th>우리 시스템 컴포넌트</th>
+        <th>분류</th>
+        <th>권장 용어</th>
+        <th>표준 분류</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>전체 프로젝트</strong></td>
+        <td><span class="pill mes">MES</span></td>
+        <td>Casting Factory MES</td>
+        <td>ISA-95 Level 3</td>
+      </tr>
+      <tr>
+        <td>Next.js 16 웹 (port 3000)</td>
+        <td><span class="pill mes">MES</span></td>
+        <td>MES Web UI</td>
+        <td>L3 사용자 인터페이스</td>
+      </tr>
+      <tr>
+        <td>FastAPI 백엔드 (port 8000)</td>
+        <td><span class="pill mes">MES</span></td>
+        <td>MES Application Server</td>
+        <td>L3 비즈니스 로직</td>
+      </tr>
+      <tr>
+        <td>PostgreSQL + TimescaleDB</td>
+        <td><span class="pill mes">MES</span></td>
+        <td>MES Historian / Operational DB</td>
+        <td>L3 데이터 저장소</td>
+      </tr>
+      <tr>
+        <td><strong>PyQt5 monitoring/ 앱</strong></td>
+        <td><span class="pill control">Control</span></td>
+        <td>관제 시스템 / HMI / SCADA Client</td>
+        <td>ISA-95 Level 2</td>
+      </tr>
+      <tr>
+        <td>MQTT Broker (Mosquitto)</td>
+        <td><span class="pill middleware">Middleware</span></td>
+        <td>Message Bus / Pub-Sub Broker</td>
+        <td>전송 계층</td>
+      </tr>
+      <tr>
+        <td>WebSocket (/ws/dashboard)</td>
+        <td><span class="pill middleware">Middleware</span></td>
+        <td>Realtime Data Stream</td>
+        <td>전송 계층</td>
+      </tr>
+      <tr>
+        <td><strong>ESP32 컨베이어 컨트롤러</strong></td>
+        <td><span class="pill field">Edge</span></td>
+        <td>Edge Controller / Field Device</td>
+        <td>ISA-95 Level 1</td>
+      </tr>
+      <tr>
+        <td>RPi5 + ROS 2 (Cobot 2대)</td>
+        <td><span class="pill robot">Robot</span></td>
+        <td>Cobot Controller</td>
+        <td>L1 로봇 제어기</td>
+      </tr>
+      <tr>
+        <td>RPi4 + ROS 2 (AMR 3대)</td>
+        <td><span class="pill robot">Robot</span></td>
+        <td>AMR Fleet</td>
+        <td>L1 자율주행 플릿</td>
+      </tr>
+      <tr>
+        <td>Jetson Orin NX (Vision)</td>
+        <td><span class="pill robot">Edge AI</span></td>
+        <td>Vision Inspection Server</td>
+        <td>L1 AI 추론기</td>
+      </tr>
+      <tr>
+        <td>TOF250 / 카메라 / DC 모터</td>
+        <td><span class="pill field">Field</span></td>
+        <td>Sensors / Actuators</td>
+        <td>ISA-95 Level 0</td>
+      </tr>
+      <tr>
+        <td><em>Open-RMF (미래)</em></td>
+        <td><span class="pill robot">Optional</span></td>
+        <td>Multi-Robot Orchestration Framework</td>
+        <td>L1.5 미들웨어 (Phase 3)</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ SECTION 6: 4-Layer 모델 (Confluence System Architecture v3) ============ -->
+<section>
+  <h2>⑥ 4-Layer 시스템 모델 (Confluence SA v3 기준)</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    📚 Confluence "System Architecture v3" 에서 정의한 인터페이스 계층 분리 모델
+  </div>
+
+  <div class="architecture">
+
+    <div class="layer user">
+      <div class="layer-title">Interface Layer <span class="badge">UI 분리 + API 표준화</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Interface Service</span>
+          <span class="desc">UI(Admin/Customer) 와 시스템 사이 입출력 창구. 표준 JSON API 변환</span>
+        </div>
+        <div class="node">
+          <span class="name">왜 분리하는가</span>
+          <span class="desc">UI ↔ 백엔드 Decoupling: 웹/앱/태블릿 UI 바뀌어도 backend 그대로 사용 가능</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <div class="layer mes">
+      <div class="layer-title">Control Layer (Decision) <span class="badge">중앙 두뇌</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Control Service</span>
+          <span class="desc">요청 검증 / 비즈니스 로직 / DB 저장 / AI 호출 / HW 명령 생성</span>
+        </div>
+        <div class="node">
+          <span class="name">우리 매핑</span>
+          <span class="desc">FastAPI Backend (port 8000) — 우리 시스템의 Control Service</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <div class="layer middleware">
+      <div class="layer-title">Execution Layer (FMS) <span class="badge">실행 매니저</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Fleet Management System</span>
+          <span class="desc">"무엇을 할지"가 아니라 "어느 로봇이, 어느 경로로, 언제" 결정</span>
+        </div>
+        <div class="node">
+          <span class="name">Robot Allocator</span>
+          <span class="desc">로봇 작업 분배 + 충돌 방지 + 경로 계획</span>
+        </div>
+        <div class="node">
+          <span class="name">우리 매핑</span>
+          <span class="desc">현재 FastAPI scheduler.py + task_allocator (자체 구현, Open-RMF 미사용)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">⇣ ⇡</div>
+
+    <div class="layer field">
+      <div class="layer-title">Equipment Layer <span class="badge">실제 장비</span></div>
+      <div class="nodes">
+        <div class="node">
+          <span class="name">Conveyor Belt</span>
+          <span class="desc">ESP32 Controller · 시작/정지/상태 보고</span>
+        </div>
+        <div class="node">
+          <span class="name">Laser (TOF)</span>
+          <span class="desc">제품 유무/높이 감지</span>
+        </div>
+        <div class="node">
+          <span class="name">Camera</span>
+          <span class="desc">이미지 획득 → AI Server</span>
+        </div>
+        <div class="node">
+          <span class="name">Robot Arm</span>
+          <span class="desc">MyCobot280 · pick/place</span>
+        </div>
+        <div class="node">
+          <span class="name">AMR</span>
+          <span class="desc">Pinkypro · Nav2 자율주행</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; padding:12px; background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:4px; font-size:12px; color:var(--text);">
+    <strong>핵심 설계 원칙</strong> (Confluence v3 피드백 반영):<br>
+    • Interface Layer 도입으로 UI 변경 시 backend 무영향 → 유지보수 비용↓<br>
+    • DB와 AI는 Control Service를 반드시 거침 → 시스템 일관성 유지<br>
+    • UI는 DB에 직접 저장 금지 → DB 구조 변경 시 UI 영향 차단
+  </div>
+</section>
+
+<!-- ============ SECTION 7: System Requirements 통계 ============ -->
+<section>
+  <h2>⑦ System Requirements (SR) 카테고리 통계</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    📚 Confluence "System_Requirements_v3" — 약 85개 SR ID 가 11개 카테고리로 분류됨
+    <span style="color:#fbbf24;">(※ 카운트는 페이지 파싱 결과 추정치, 실시간 SR 추가/삭제로 ±2 오차 가능)</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+    <div class="concept-card mes">
+      <h3>SR-CTL (16)</h3>
+      <div class="full-name">Control / 관제</div>
+      <div class="meta">최대 카테고리 · 작업 우선순위, 로봇 할당, 에러 대응, 상태 모니터링</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #3b82f6;">
+      <h3>SR-TR (12)</h3>
+      <div class="full-name">Transport / 이송</div>
+      <div class="meta">AMR 작업 할당 + 경로 + 충전</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #f59e0b;">
+      <h3>SR-CAST (9)</h3>
+      <div class="full-name">Casting / 주조</div>
+      <div class="meta">용해, 주형, 주탕, 냉각, 탈형</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #06b6d4;">
+      <h3>SR-CONV (9)</h3>
+      <div class="full-name">Conveyor / 컨베이어</div>
+      <div class="meta">ESP32 컨베이어 제어 + TOF 센서</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #a855f7;">
+      <h3>SR-INS / SR-INSP (~10)</h3>
+      <div class="full-name">Inspection / 검사</div>
+      <div class="meta">비전 카메라 + AI 불량 판정 (두 prefix 합산)</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #ec4899;">
+      <h3>SR-ORD (9)</h3>
+      <div class="full-name">Order / 주문</div>
+      <div class="meta">고객 발주 + 표준 제품 카탈로그</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #10b981;">
+      <h3>SR-STO (8)</h3>
+      <div class="full-name">Storage / 적재</div>
+      <div class="meta">창고 랙 + 재고 동기화</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #f97316;">
+      <h3>SR-POST (6)</h3>
+      <div class="full-name">Post-Processing / 후처리</div>
+      <div class="meta">버르 제거 + 표면 정리</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #6b7280;">
+      <h3>SR-OUT (4)</h3>
+      <div class="full-name">Outbound / 출고</div>
+      <div class="meta">배송 처리 + LIFO/FIFO</div>
+    </div>
+    <div class="concept-card" style="border-top:3px solid #94a3b8;">
+      <h3>SR-CLN (2)</h3>
+      <div class="full-name">Cleaning / 청소</div>
+      <div class="meta">후처리 구역 정리</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 8: 도메인 용어 사전 ============ -->
+<section>
+  <h2>⑧ 주조 / 물류 도메인 용어 사전</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    📚 Confluence "Terminology" 페이지 — 통일된 언어 사용을 위한 핵심 용어
+  </div>
+
+  <h3 style="color:#fbbf24; font-size:14px; margin-top:8px; margin-bottom:8px;">🔥 주조 (Casting)</h3>
+  <table class="term-table">
+    <thead>
+      <tr><th>한글 (영문)</th><th>정의</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>주조 (Casting)</strong></td><td>금속을 녹여 주형에 부어 형상을 만드는 공정</td></tr>
+      <tr><td>용해 (Melting)</td><td>금속을 고온에서 녹여 액체 상태로 만드는 과정</td></tr>
+      <tr><td>용탕 (Molten Metal)</td><td>녹은 금속 상태</td></tr>
+      <tr><td>주괴 (Ingot)</td><td>용해로에 투입하여 용탕으로 만들어지는 것</td></tr>
+      <tr><td>용해로 (Melting Furnace)</td><td>금속 등을 녹이는 설비. 우리 시스템: <code>FRN-001</code></td></tr>
+      <tr><td>도가니 (Crucible)</td><td>용해로 내부에서 금속을 녹이는 용기 (고정 형태)</td></tr>
+      <tr><td>래들 (Ladle)</td><td>용해로 외부에서 용탕을 옮기고 붓는 용기 (이동 형태)</td></tr>
+      <tr><td>주형 (Mold)</td><td>금속을 붓는 틀. 사형(모래) / 금형(영구) 구분</td></tr>
+      <tr><td>주형사 (Molding Sand)</td><td>모래 + 결합제(벤토나이트) + 수분으로 구성</td></tr>
+      <tr><td>패턴 (Pattern)</td><td>주형을 만들기 위한 원형 모델</td></tr>
+      <tr><td>조형 (Molding)</td><td>틀을 만드는 행위 (Process)</td></tr>
+      <tr><td><strong>주탕 (Pouring)</strong></td><td>용탕을 주형에 붓는 과정 (자동화 핵심 구간)</td></tr>
+      <tr><td>탕구 / 러너 / 게이트</td><td>Sprue / Runner / Gate — 용탕 흐름 통로 시스템</td></tr>
+      <tr><td>압탕 (Riser)</td><td>응고 시 수축 보정용 용탕 저장부</td></tr>
+      <tr><td>냉각 / 응고</td><td>Cooling / Solidification — 용탕이 식어 고체로 변환</td></tr>
+      <tr><td>탈형 (Shakeout)</td><td>냉각된 주물에서 주형을 제거하는 과정</td></tr>
+      <tr><td>주물 (Casting Product)</td><td>최종 결과물 (우리: 맨홀뚜껑, 그레이팅 등)</td></tr>
+      <tr><td>후처리 (Finishing)</td><td>표면 다듬기 — Fettling, Deburring, Shot Blasting</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#34d399; font-size:14px; margin-top:18px; margin-bottom:8px;">🏷 결함 유형 (Defect)</h3>
+  <table class="term-table">
+    <tbody>
+      <tr><td><strong>기공 (Porosity)</strong></td><td>내부에 기포/구멍 발생</td></tr>
+      <tr><td>수축 결함 (Shrinkage)</td><td>응고 시 부피 감소로 발생</td></tr>
+      <tr><td>콜드 셧 (Cold Shut)</td><td>두 용탕 흐름이 만났을 때 융합 실패 — 선 모양 이음새</td></tr>
+      <tr><td>미스런 (Misrun)</td><td>용탕이 주형을 끝까지 채우지 못함</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#60a5fa; font-size:14px; margin-top:18px; margin-bottom:8px;">📦 물류 (Logistics)</h3>
+  <table class="term-table">
+    <tbody>
+      <tr><td><strong>물류 (Logistics)</strong></td><td>제품/자원 흐름 (이동·보관·처리) 효율 관리</td></tr>
+      <tr><td>입고 (Receiving / Inbound)</td><td>외부에서 창고로 자재를 들여오는 과정</td></tr>
+      <tr><td>출고 (Shipping / Outbound)</td><td>창고에서 고객/다음 공정으로 보내는 과정</td></tr>
+      <tr><td>이송 (Transport)</td><td>물류 거점 간 / 공정 간 제품 이동</td></tr>
+      <tr><td>적치 (Storage / Put-away)</td><td>제품을 지정 위치에 보관</td></tr>
+      <tr><td>피킹 (Picking)</td><td>주문에 맞게 필요 제품 선택/수집</td></tr>
+      <tr><td>패킹 (Packing)</td><td>출하 위해 포장</td></tr>
+      <tr><td>재고 동기화 (Inventory Sync)</td><td>실제 재고와 WMS 데이터 일치</td></tr>
+      <tr><td>슬로팅 (Slotting)</td><td>창고 내 상품 배치 최적화 전략</td></tr>
+      <tr><td>Cross Docking</td><td>입고 후 보관 없이 바로 출고로 연결</td></tr>
+      <tr><td>Golden Zone</td><td>작업 효율 가장 높은 적치 위치 (허리~가슴 높이)</td></tr>
+      <tr><td>Scan Lane</td><td>이동 중 바코드/RFID 재고 인식 구간</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#c084fc; font-size:14px; margin-top:18px; margin-bottom:8px;">🤖 자동화 시스템</h3>
+  <table class="term-table">
+    <tbody>
+      <tr><td><strong>WMS</strong> (Warehouse Management System)</td><td>창고 내 재고 및 작업 흐름 관리 시스템</td></tr>
+      <tr><td><strong>FMS</strong> (Fleet Management System)</td><td>다수 로봇/AGV/AMR 작업 할당 및 경로 제어</td></tr>
+      <tr><td><strong>AMR</strong> (Autonomous Mobile Robot)</td><td>자율 경로 판단으로 이동하는 물류 로봇 · 우리: <code>Pinkypro</code></td></tr>
+      <tr><td>AGV (Automated Guided Vehicle)</td><td>정해진 경로를 따라 이동하는 자동 운반 장치</td></tr>
+      <tr><td>로봇 셀 (Robot Cell)</td><td>로봇 중심 작업 단위 시스템</td></tr>
+      <tr><td>비전 시스템 (Vision System)</td><td>카메라 기반 인식/검사 — 우리: Jetson Orin NX + YOLO</td></tr>
+      <tr><td>택트 타임 (Takt Time)</td><td>생산 목표 달성을 위한 제품 1개당 필요 시간</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ SECTION 9: 확정된 HW Spec & SW Stack ============ -->
+<section>
+  <h2>⑨ 확정된 하드웨어 / 소프트웨어 스택</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    📚 Confluence "Detailed Design" 페이지 — 팀이 합의한 최종 기술 선택
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+
+    <div style="background:var(--panel-light); padding:18px; border-radius:10px; border-top:3px solid #06b6d4;">
+      <h3 style="color:#22d3ee; font-size:14px; margin-bottom:10px;">🔧 HW Spec</h3>
+      <table class="term-table">
+        <tbody>
+          <tr><td>RaspberryPi 4</td><td>AMR 컨트롤러</td></tr>
+          <tr><td>RaspberryPi 5</td><td>Cobot 컨트롤러 + Vision Edge</td></tr>
+          <tr><td>ESP32</td><td>컨베이어 컨트롤러 + TOF 센서</td></tr>
+          <tr><td>Jetson Orin NX (16GB)</td><td>AI Server (YOLO 추론)</td></tr>
+          <tr><td>Conveyor Belt</td><td>주조품 이송</td></tr>
+          <tr><td>Web Camera</td><td>비전 검사 입력</td></tr>
+          <tr><td><strong>MyCobot280</strong></td><td>협동로봇 (주탕/탈형/후처리) — Elephant Robotics</td></tr>
+          <tr><td><strong>Pinkypro</strong></td><td>AMR 자율주행 로봇</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="background:var(--panel-light); padding:18px; border-radius:10px; border-top:3px solid #a855f7;">
+      <h3 style="color:#c084fc; font-size:14px; margin-bottom:10px;">💻 SW Stack</h3>
+      <table class="term-table">
+        <tbody>
+          <tr><td>Frontend</td><td><strong>Next.js 16.2.1 + React 19.2.4</strong></td></tr>
+          <tr><td>Backend</td><td><strong>FastAPI</strong></td></tr>
+          <tr><td>DB</td><td><strong>PostgreSQL</strong> (+TimescaleDB)</td></tr>
+          <tr><td>OS / IDE</td><td>Ubuntu / VS Code / Jupyter</td></tr>
+          <tr><td>Languages</td><td>Python / C++</td></tr>
+          <tr><td><strong>AI Models</strong></td><td>YOLO, PatchCore</td></tr>
+          <tr><td><strong>Robotics</strong></td><td>ROS 2 Jazzy / Nav2</td></tr>
+          <tr><td><strong>Communication</strong></td><td>Mosquitto (MQTT)</td></tr>
+          <tr><td><strong>Desktop UI</strong></td><td>PyQt5 (관제 모니터링)</td></tr>
+          <tr><td>Vision Lib</td><td>NumPy / OpenCV</td></tr>
+          <tr><td>Collaboration</td><td>Confluence / Jira / Slack / GitHub</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SECTION 10: User Requirements 공정 흐름 ============ -->
+<section>
+  <h2>⑩ 사용자 요구사항(UR) 기반 공정 흐름</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    📚 Confluence "User_Requirements" — 자동화 Level 4 목표로 R(Required)/O(Optional) 선정
+  </div>
+
+  <div class="flow-chart">
+    <div class="flow-step">
+      <div><span class="num">①</span><span class="title">주문/계획</span></div>
+      <div class="sub">UR_01 R · Order ID · BOM</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">②</span><span class="title">원자재 처리</span></div>
+      <div class="sub">Material · Weight, Temp</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">③</span><span class="title">주형/주조</span></div>
+      <div class="sub">R · Mold ID, Job ID</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">④</span><span class="title">냉각/탈형</span></div>
+      <div class="sub">R · Casting · Robot Arm</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">⑤</span><span class="title">팔레트 이송</span></div>
+      <div class="sub">R · AMR · Pallet ID</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">⑥</span><span class="title">후처리</span></div>
+      <div class="sub">청소 O · Robot Arm</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">⑦</span><span class="title">검사</span></div>
+      <div class="sub">R · Camera · Image ID</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">⑧</span><span class="title">분류</span></div>
+      <div class="sub">불량 O / 양품 R</div>
+    </div>
+    <div class="flow-arrow">→</div>
+
+    <div class="flow-step">
+      <div><span class="num">⑨</span><span class="title">출하</span></div>
+      <div class="sub">R · Tray · Order Info</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; padding:12px; background:rgba(168,85,247,0.1); border-left:3px solid #a855f7; border-radius:4px; font-size:12px; color:var(--text);">
+    <strong>UR Remarks 패턴</strong>:
+    각 요구사항은 <code>Entity (Robot Arm/Mold/AMR/Camera)</code> +
+    <code>State (Idle/Running/Completed)</code> +
+    <code>Parameter (온도/속도/위치)</code> +
+    <code>Tracking (Order ID/Job ID/Task ID)</code> 로 정의됩니다.
+    FMS가 도입되면 <strong>Job ID를 자동화 시스템 모든 부분에서 tracking</strong>해야 합니다.
+  </div>
+</section>
+
+<!-- ============ SECTION 11: Confluence 출처 ============ -->
+<section>
+  <h2>⑪ Confluence 출처 (읽기 전용)</h2>
+  <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+    addinedute space — 문서 작성에 참고한 페이지 (수정 권한 없음)
+  </div>
+  <table class="term-table">
+    <thead>
+      <tr><th>Page</th><th>역할</th><th>이 문서에 반영된 내용</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>System Architecture</td>
+        <td>SA 설계 원칙 + V1/V2/V3 진화</td>
+        <td>4-Layer 모델 (Interface/Control/Execution/Equipment)</td>
+      </tr>
+      <tr>
+        <td>Detailed Design</td>
+        <td>HW Spec + SW Stack 확정</td>
+        <td>섹션 ⑨ HW/SW 스택 표</td>
+      </tr>
+      <tr>
+        <td>System_Requirements_v3</td>
+        <td>85개 SR ID, 11개 카테고리</td>
+        <td>섹션 ⑦ SR 통계 카드</td>
+      </tr>
+      <tr>
+        <td>User_Requirements</td>
+        <td>UR 표 + Required/Optional</td>
+        <td>섹션 ⑩ 공정 흐름 + Entity/State/Tracking</td>
+      </tr>
+      <tr>
+        <td>Terminology</td>
+        <td>주조/물류/자동화 용어</td>
+        <td>섹션 ⑧ 도메인 용어 사전</td>
+      </tr>
+      <tr>
+        <td>Casting / Logistics / intro</td>
+        <td>도메인 배경 지식</td>
+        <td>전반적 컨텍스트</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top:12px; padding:10px; background:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:4px; font-size:11px; color:#fca5a5;">
+    ⚠ <strong>Read-Only 정책</strong>: 이 문서는 Confluence 페이지를 참고만 하며 절대 수정하지 않습니다.
+    Confluence 페이지의 모든 변경은 사용자 권한으로만 수행됩니다.
+  </div>
+  <div style="margin-top:10px; padding:10px; background:rgba(251,191,36,0.1); border-left:3px solid #fbbf24; border-radius:4px; font-size:11px; color:#fde68a;">
+    📝 <strong>Confluence 참고 시 검증된 차이점</strong> (코드베이스 우선 원칙):
+    <ul style="margin:6px 0 0 18px; padding:0;">
+      <li>Confluence 일부 페이지의 <code>JetCobot280</code> → 실제: <strong>MyCobot280</strong> (Elephant Robotics, blender/MyCobot280.step)</li>
+      <li>Confluence "Frontend: React" → 실제: <strong>Next.js 16.2.1 + React 19.2.4</strong> (App Router)</li>
+      <li>Open-RMF는 <strong>현재 시스템에서 사용하지 않음</strong> (자체 scheduler.py + task_allocator로 구현, Phase 3 도입 계획 없음)</li>
+      <li>SR 카운트는 페이지 파싱 결과 추정치 — 실제 SR 추가/삭제로 ±2 오차 가능</li>
+      <li>Vision 파이프라인: <strong>Camera → RPi5 (전처리) → Jetson Orin NX (YOLO/PatchCore 추론)</strong> 2단 구성</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SECTION 12: 핵심 결론 ============ -->
+<section>
+  <h2>⑫ 핵심 결론</h2>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+
+    <div style="background: var(--panel-light); padding: 16px; border-radius: 8px; border-left: 3px solid var(--mes);">
+      <div style="font-weight: bold; color: #34d399; margin-bottom: 6px;">MES = O</div>
+      <div style="font-size: 12px; color: var(--text);">
+        우리 프로젝트 전체를 부르는 정확한 산업 표준 용어.
+        ISA-95 Level 3에 위치하며 README에 표기된 명칭입니다.
+      </div>
+    </div>
+
+    <div style="background: var(--panel-light); padding: 16px; border-radius: 8px; border-left: 3px solid var(--rmf); opacity: 0.7;">
+      <div style="font-weight: bold; color: #9ca3af; margin-bottom: 6px;">Open-RMF = X (현재)</div>
+      <div style="font-size: 12px; color: var(--text);">
+        OSRF의 특정 오픈소스 프로젝트.
+        우리는 사용하지 않으며 Phase 3 (AMR 3대 통합) 시 도입 검토 가능합니다.
+      </div>
+    </div>
+
+    <div style="background: var(--panel-light); padding: 16px; border-radius: 8px; border-left: 3px solid var(--control);">
+      <div style="font-weight: bold; color: #fbbf24; margin-bottom: 6px;">관제 시스템 = O (부분)</div>
+      <div style="font-size: 12px; color: var(--text);">
+        일반 용어 (HMI/SCADA에 가까움).
+        PyQt5 monitoring/ 앱이 이 역할이며 ISA-95 Level 2에 위치합니다.
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top: 18px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--mes); border-radius: 8px;">
+    <strong style="color: #34d399;">최종 표기 권장:</strong>
+    <span style="color: var(--text);">전체 시스템은 <strong>"Casting Factory MES"</strong> (또는 "MES + 관제 시스템")로 부르고,
+    PyQt5 데스크톱은 <strong>"관제 모니터링 앱"</strong> 또는 <strong>"HMI Client"</strong>로 구분합니다.
+    Open-RMF는 우리 시스템이 아니므로 동의어로 사용하면 오해를 일으킵니다.</span>
+  </div>
+</section>
+
+<footer>
+  Generated 2026-04-07 · Casting Factory v3.4.0 + Monitoring v1.0.0
+</footer>
+
+</div>
+
+</body>
+</html>

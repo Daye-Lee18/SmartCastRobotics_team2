@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Traffic Management — Casting Factory</title>
+  <style>
+    :root {
+      --bg:        #0b1020;
+      --panel:     #121933;
+      --panel-lt:  #1a2344;
+      --border:    #2a365c;
+      --text:      #e6ecff;
+      --text-dim:  #9aa6c7;
+      --accent:    #60a5fa;
+      --accent-2:  #a855f7;
+      --good:      #34d399;
+      --warn:      #fbbf24;
+      --danger:    #f87171;
+      --code-bg:   #0d1429;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "SF Pro Text", "Helvetica Neue",
+                   "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 14px; line-height: 1.65;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 28px 80px; }
+
+    header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 22px; margin-bottom: 30px;
+    }
+    header h1 {
+      font-size: 26px; margin: 0 0 6px;
+      background: linear-gradient(135deg, #60a5fa, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    header .subtitle {
+      font-size: 13px; color: var(--text-dim);
+    }
+    header .meta {
+      font-size: 11px; color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* TOC */
+    nav.toc {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin-bottom: 36px;
+    }
+    nav.toc h2 {
+      font-size: 13px; margin: 0 0 10px;
+      color: var(--text-dim); letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    nav.toc ol {
+      columns: 2; margin: 0; padding-left: 20px;
+      font-size: 13px;
+    }
+    nav.toc li { margin: 4px 0; break-inside: avoid; }
+    nav.toc a { color: var(--accent); text-decoration: none; }
+    nav.toc a:hover { color: var(--accent-2); }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 26px 28px;
+      margin-bottom: 24px;
+    }
+    section h2 {
+      font-size: 19px;
+      margin: 0 0 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+    section h3 {
+      font-size: 15px;
+      margin: 22px 0 10px;
+      color: var(--accent-2);
+    }
+    section h4 {
+      font-size: 13px;
+      margin: 16px 0 6px;
+      color: var(--good);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    section p { margin: 8px 0 12px; }
+
+    code {
+      font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+      background: var(--code-bg);
+      color: #a3e4ff;
+      padding: 1.5px 6px;
+      border-radius: 4px;
+      font-size: 12.5px;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: "SF Mono", "JetBrains Mono", Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: #d6e4ff;
+    }
+    pre code { background: none; padding: 0; color: inherit; }
+    .comment { color: #6b7699; font-style: italic; }
+    .kw      { color: #f472b6; }
+    .str     { color: #a3e4ff; }
+    .num     { color: #fbbf24; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 12.5px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--panel-lt);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+
+    .ascii {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 18px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: pre;
+      overflow-x: auto;
+      line-height: 1.4;
+    }
+
+    .note {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 14px 0;
+      font-size: 12.5px;
+    }
+    .note.info {
+      background: rgba(96,165,250,0.08);
+      border-left: 3px solid var(--accent);
+    }
+    .note.warn {
+      background: rgba(251,191,36,0.08);
+      border-left: 3px solid var(--warn);
+    }
+    .note.danger {
+      background: rgba(248,113,113,0.08);
+      border-left: 3px solid var(--danger);
+    }
+    .note.good {
+      background: rgba(52,211,153,0.08);
+      border-left: 3px solid var(--good);
+    }
+
+    ul, ol { padding-left: 22px; }
+    li { margin: 4px 0; }
+    li::marker { color: var(--text-dim); }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 12px 0;
+    }
+    .card {
+      background: var(--panel-lt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .card h4 {
+      margin-top: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge.core   { background: #1e3a8a; color: #bfdbfe; }
+    .badge.final  { background: #14532d; color: #bbf7d0; }
+    .badge.warn   { background: #713f12; color: #fde68a; }
+    .badge.deprecated { background: #4b1d1d; color: #fca5a5; text-decoration: line-through; }
+
+    footer {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 11.5px;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>Fleet Traffic Management — Zone Reservation 종합 설계</h1>
+      <div class="subtitle">
+        Sliding Window + Backtrack Yield · Waypoint/Edge 추상화 · nav2_route 통합
+      </div>
+      <div class="meta">
+        대상: Casting Factory Fleet (AMR 3대 · MyCobot280 2대) ·
+        맵 1m×2m · 로봇 0.12m×0.12m differential drive ·
+        최종 업데이트 2026-04-08 (v1.1 — compute_path 한계 + Waypoint 재설계 + nav2_route)
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">서론 — 왜 Traffic Manager인가</a></li>
+        <li><a href="#s2">Zone 개념 및 설계</a></li>
+        <li><a href="#s3">5가지 예약 전략 스펙트럼</a></li>
+        <li><a href="#s4">전략 B: Sliding Window Lock</a></li>
+        <li><a href="#s5">Deadlock 감지 알고리즘</a></li>
+        <li><a href="#s6">전략 C: Priority Yield</a></li>
+        <li><a href="#s7">Pocket 방식 vs Backtrack 방식</a></li>
+        <li><a href="#s8">Backtrack 상세 알고리즘</a></li>
+        <li><a href="#s9">Nav2 통합 — 올바른 API 선택</a></li>
+        <li><a href="#s10">Robot 상태 머신</a></li>
+        <li><a href="#s11">최종 구현 코드</a></li>
+        <li><a href="#s12">소규모 맵 최적화</a></li>
+        <li><a href="#s13">대안 — Nav2 Costmap-only</a></li>
+        <li><a href="#s14">전략 선택 가이드</a></li>
+        <li><a href="#s15">파라미터 튜닝 치트시트</a></li>
+        <li><a href="#s16">결론 및 Phase 로드맵</a></li>
+        <li><a href="#s17">[v1.1] compute_path의 한계와 그래프 기반 대안</a></li>
+        <li><a href="#s18">[v1.1] Polygon Zone → Waypoint/Edge 추상화 재정립</a></li>
+        <li><a href="#s19">[v1.1] nav2_route Route Server 통합</a></li>
+        <li><a href="#s20">[v1.1] 업데이트된 로드맵 & 결론 개정</a></li>
+      </ol>
+      <div style="margin-top:12px; padding:10px; background:rgba(168,85,247,0.08); border-left:3px solid #a855f7; border-radius:4px; font-size:11.5px; color:#c4b5fd;">
+        <strong>v1.1 추가 (2026-04-08)</strong> — 섹션 ⑰~⑳이 기존 설계의 개선안입니다.
+        섹션 ①~⑯은 <em>설계 진화 과정을 보여주기 위해 보존</em>합니다. 최종 채택안은 섹션 ⑱~⑳을 참조하세요.
+      </div>
+    </nav>
+
+    <!-- ============================================================ -->
+    <section id="s1">
+      <h2>① 서론 — 왜 Traffic Manager인가</h2>
+
+      <p>공장에 AMR이 2대 이상 동시 운용될 때, Nav2만으로는 다음과 같은 충돌 시나리오를 해결할 수 없습니다:</p>
+
+      <div class="ascii">       ┌────────────────┐
+       │   용해로 영역   │
+       └───────┬────────┘
+               │
+    ┌──────────┼──────────┐
+    │          │          │   ← 좁은 복도 (1대 통과 가능)
+    │   AMR-1  ↓  AMR-2   │
+    │   ←──    │   ──→    │
+    │          │          │
+    └──────────┼──────────┘
+               │
+       ┌───────┴────────┐
+       │    검사 영역    │
+       └────────────────┘</div>
+
+      <p>Nav2는 <strong>각 로봇의 경로만 알 뿐 다른 로봇의 의도를 모릅니다.</strong> 그 결과:</p>
+      <ul>
+        <li>복도 중앙 정면 충돌 후 양쪽 모두 교착 (local planner끼리 회피하려다 둘 다 멈춤)</li>
+        <li>교차점에서 우선순위 없는 deadlock</li>
+        <li>WORKCELL 작업 중인 로봇을 다른 로봇이 밀고 들어옴</li>
+      </ul>
+
+      <p><strong>Traffic Manager</strong>는 이 문제를 <em>"공간에 대한 배타적 접근권(mutex)"</em> 개념으로 해결합니다. 공장을 <strong>Zone</strong>으로 추상화하고, 로봇은 진입 전 반드시 해당 Zone의 <strong>예약(reservation)</strong>을 받아야 합니다.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s2">
+      <h2>② Zone 개념 및 설계</h2>
+
+      <h3>2.1 Zone의 5가지 타입</h3>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>용도</th><th>capacity</th><th>예시</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>FREE</code></td><td>여러 로봇 자유 통과</td><td>∞</td><td>넓은 오픈 공간</td></tr>
+          <tr><td><code>CORRIDOR</code></td><td>단방향/양방향 통로</td><td>1~2</td><td>복도, 문</td></tr>
+          <tr><td><code>INTERSECTION</code></td><td>교차점 (mutex, 통과용)</td><td>1</td><td>T/십자 교차</td></tr>
+          <tr><td><code>WORKCELL</code></td><td>작업 공간 (mutex, 장시간)</td><td>1</td><td>용해로 앞, 검사대</td></tr>
+          <tr><td><code>POCKET</code></td><td>회피 전용 (옵션)</td><td>1</td><td>벽감, 알코브</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>핵심 규칙</strong>: <code>CORRIDOR</code> · <code>INTERSECTION</code> · <code>WORKCELL</code>에 진입하려면 반드시 Traffic Manager의 승인이 필요합니다. <code>FREE</code>는 항상 허용됩니다.
+      </div>
+
+      <h3>2.2 traffic_zones.yaml 예시</h3>
+      <pre>zones:
+  <span class="comment"># ── 작업 공간 (mutex) ──</span>
+  - id: WC_MELTING
+    type: workcell
+    polygon: [[0.3, 0.2], [0.5, 0.2], [0.5, 0.4], [0.3, 0.4]]
+    capacity: 1
+    max_hold_sec: 30
+
+  - id: WC_INSPECT
+    type: workcell
+    polygon: [[1.5, 0.2], [1.7, 0.2], [1.7, 0.4], [1.5, 0.4]]
+    capacity: 1
+    max_hold_sec: 30
+
+  <span class="comment"># ── 교차점 (mutex, 즉시 해제) ──</span>
+  - id: INT_CENTER
+    type: intersection
+    polygon: [[0.9, 0.4], [1.1, 0.4], [1.1, 0.6], [0.9, 0.6]]
+    capacity: 1
+    max_hold_sec: 10
+
+  <span class="comment"># ── 복도 ──</span>
+  - id: COR_MAIN
+    type: corridor
+    polygon: [[0.3, 0.4], [1.7, 0.4], [1.7, 0.6], [0.3, 0.6]]
+    capacity: 1
+    direction: bidirectional
+    max_hold_sec: 15</pre>
+
+      <h3>2.3 1m×2m 맵 기준 Zone 설계 감각</h3>
+      <ul>
+        <li>Zone 한 변은 로봇 대각선(~17cm)의 약 2배 → <strong>30~40cm</strong> 권장</li>
+        <li>맵 전체에 <strong>5~15개</strong> Zone이 적정</li>
+        <li>Zone이 너무 작으면(&lt;20cm) 로봇이 동시에 여러 Zone에 걸쳐 상태 혼란</li>
+        <li>Zone이 너무 크면(&gt;60cm) 병렬성 저하</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s3">
+      <h2>③ 5가지 예약 전략 스펙트럼</h2>
+
+      <p>Traffic Manager는 단일 전략이 아닌 여러 전략의 조합입니다. 보수적일수록 안전하지만 공간 활용률이 낮고, 공격적일수록 효율은 높지만 구현 복잡도가 증가합니다.</p>
+
+      <table>
+        <thead>
+          <tr><th>전략</th><th>정책</th><th>장점</th><th>단점</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A. Full Path Lock</strong></td>
+            <td>경로 전체 예약 후 출발</td>
+            <td>100% deadlock-free, 단순</td>
+            <td>공간 활용률 낮음, 긴 대기</td>
+          </tr>
+          <tr>
+            <td><strong>B. Sliding Window</strong> <span class="badge core">권장</span></td>
+            <td>앞쪽 N개 Zone만 미리 예약, sliding</td>
+            <td>활용률 높음, 여전히 안전</td>
+            <td>중간에 막히면 후퇴 처리 필요</td>
+          </tr>
+          <tr>
+            <td><strong>C. Priority Yield</strong> <span class="badge core">권장</span></td>
+            <td>우선순위 낮은 쪽이 회피</td>
+            <td>교착 해결, 현장 효과↑</td>
+            <td>회피 공간 또는 backtrack 필요</td>
+          </tr>
+          <tr>
+            <td><strong>D. Negotiation</strong></td>
+            <td>실시간 협상 프로토콜</td>
+            <td>최대한 유연</td>
+            <td>통신 복잡, 검증 어려움</td>
+          </tr>
+          <tr>
+            <td><strong>E. Continuous Replanning</strong></td>
+            <td>시공간 trajectory 예측 (RMF)</td>
+            <td>이론적 최적</td>
+            <td>수천 줄, 우리 규모에 과잉</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>우리 프로젝트 선택</strong>: <strong>B + C 하이브리드</strong>. 기본은 Sliding Window로 sliding 진행, deadlock 감지 시 Priority Yield 발동. E(RMF)는 3대 규모에 과잉, D는 검증 비용이 커서 제외.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s4">
+      <h2>④ 전략 B: Sliding Window Lock</h2>
+
+      <h3>4.1 핵심 아이디어</h3>
+      <p>로봇 앞쪽 <code>WINDOW_SIZE</code>개 Zone만 예약하고, 진행하면서 지나온 Zone은 즉시 해제, 앞쪽 Zone은 새로 예약.</p>
+
+      <div class="ascii">초기 상태:
+[z1][z2][z3][z4][z5][z6][z7][z8] → 목적지
+ ↑
+AMR-1
+
+Window size = 3 → [z1, z2, z3] 예약, 출발
+
+1 tick 후:
+[✓][z2][z3][z4][z5][z6][z7][z8]
+    ↑
+현재 점유: [z2, z3, z4]  ← z1 해제, z4 새로 예약
+
+2 tick 후:
+[✓][✓][z3][z4][z5][z6][z7][z8]
+        ↑
+현재 점유: [z3, z4, z5]</div>
+
+      <h3>4.2 동작 순서 (매 tick)</h3>
+      <ol>
+        <li>현재 위치 기준 <code>target_window = path[current_idx : current_idx + WINDOW_SIZE]</code></li>
+        <li><code>to_release = holdings - target_window</code> → 지나간 Zone 즉시 해제</li>
+        <li><code>to_acquire = target_window - holdings</code> → 앞쪽 Zone 획득 시도</li>
+        <li><strong>Release-first 순서</strong>: 해제 먼저, 그다음 획득 (자기 자신이 원인이 되어 막히는 현상 방지)</li>
+        <li>첫 번째 to_acquire Zone을 못 잡으면 <code>WAITING</code> 전환, 그 외 실패는 window 축소로 허용</li>
+      </ol>
+
+      <h3>4.3 왜 deadlock-free인가</h3>
+      <p>경로 전체가 아니어도 <strong>"다음 바로 앞 Zone"</strong>만 확보하면 전진 가능합니다. 획득 실패 시 즉시 WAITING으로 빠져서 다른 로봇이 먼저 지나가도록 양보합니다. 획득을 원자적으로 하므로 "부분 점유 → circular wait" 상황이 발생하지 않습니다.</p>
+
+      <div class="note warn">
+        <strong>단점</strong>: B 단독으로는 <em>정면 대치(head-on)</em> 상황을 해결할 수 없습니다. 두 로봇이 서로 다음 Zone을 기다리며 영원히 대기합니다. → 전략 C가 필요한 이유.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s5">
+      <h2>⑤ Deadlock 감지 알고리즘</h2>
+
+      <h3>5.1 감지 조건 (2-robot cycle)</h3>
+      <p>다음 세 조건이 모두 만족되면 두 로봇은 deadlock 상태입니다:</p>
+      <ol>
+        <li>두 로봇 모두 <code>WAITING</code> 상태</li>
+        <li>두 로봇 모두 <code>DEADLOCK_WAIT_THRESHOLD</code> 이상 대기 중</li>
+        <li>서로의 next_desired_zone이 상대방의 holdings에 포함됨 (cyclic wait)</li>
+      </ol>
+
+      <pre><span class="kw">def</span> find_deadlock_partner(waiting_robot, all_robots):
+    <span class="comment"># 너무 짧게 기다렸으면 아직 deadlock 아님</span>
+    <span class="kw">if</span> datetime.now() - waiting_robot.waiting_since &lt; DEADLOCK_WAIT_THRESHOLD:
+        <span class="kw">return</span> <span class="kw">None</span>
+
+    next_zone = next_desired_zone(waiting_robot)
+    blockers = tm.holder_of(next_zone) - {waiting_robot.id}
+
+    <span class="kw">for</span> blocker_id <span class="kw">in</span> blockers:
+        blocker = all_robots[blocker_id]
+        <span class="kw">if</span> blocker.state != WAITING:
+            <span class="kw">continue</span>
+        blocker_next = next_desired_zone(blocker)
+        <span class="kw">if</span> blocker_next <span class="kw">and</span> waiting_robot.id <span class="kw">in</span> tm.holder_of(blocker_next):
+            <span class="kw">return</span> blocker  <span class="comment"># deadlock 확정</span>
+    <span class="kw">return</span> <span class="kw">None</span></pre>
+
+      <h3>5.2 임계값 설정</h3>
+      <table>
+        <thead><tr><th>맵 규모</th><th>DEADLOCK_WAIT_THRESHOLD</th><th>근거</th></tr></thead>
+        <tbody>
+          <tr><td>대형 공장 (10m+)</td><td>8초</td><td>일시 교차와 구분</td></tr>
+          <tr><td>중형 공장 (3~10m)</td><td>5초</td><td>표준값</td></tr>
+          <tr><td><strong>소형(1~2m)</strong></td><td><strong>2~3초</strong></td><td>전체 주행 5~10초라 빨리 판정</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.3 3-robot cycle 미지원 (의도적 선택)</h3>
+      <p>A→B→C→A의 3각 deadlock은 이론상 가능하지만 3대 AMR 규모에서 실측 빈도가 낮습니다. 2-robot 해결을 먼저 시도하고, 그래도 남은 경우 <code>ERROR</code> 상태로 전환하여 관리자 개입을 요청합니다. 미래 확장 시 <em>waits-for graph</em>의 cycle detection으로 확장 가능.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s6">
+      <h2>⑥ 전략 C: Priority Yield</h2>
+
+      <h3>6.1 개념</h3>
+      <p>Deadlock이 감지되면 두 로봇 중 우선순위가 낮은 쪽이 <strong>"loser"</strong>, 높은 쪽이 <strong>"winner"</strong>가 되어 loser가 회피 동작을 수행합니다.</p>
+
+      <h3>6.2 우선순위 비교 규칙</h3>
+      <ol>
+        <li><strong>1순위: priority 값</strong> — <code>schedule.py</code>의 7요소 가중 점수</li>
+        <li><strong>2순위: FIFO (waiting_since)</strong> — 동점이면 먼저 대기 시작한 쪽이 winner</li>
+        <li><strong>3순위: ID 사전순</strong> — 완전 동시 진입도 결정론적으로 처리</li>
+      </ol>
+
+      <pre><span class="kw">def</span> pick_loser(a, b):
+    <span class="comment"># 1순위: priority 비교</span>
+    <span class="kw">if</span> a.priority != b.priority:
+        <span class="kw">return</span> (a, b) <span class="kw">if</span> a.priority &lt; b.priority <span class="kw">else</span> (b, a)
+
+    <span class="comment"># 2순위: FIFO — 더 오래 기다린 쪽이 winner</span>
+    a_wait = a.waiting_since <span class="kw">or</span> datetime.max
+    b_wait = b.waiting_since <span class="kw">or</span> datetime.max
+    <span class="kw">if</span> a_wait != b_wait:
+        <span class="kw">return</span> (a, b) <span class="kw">if</span> a_wait &gt; b_wait <span class="kw">else</span> (b, a)
+
+    <span class="comment"># 3순위: ID 사전순 (tiebreak)</span>
+    <span class="kw">return</span> (a, b) <span class="kw">if</span> a.id &lt; b.id <span class="kw">else</span> (b, a)</pre>
+
+      <h3>6.3 배터리 우선순위 부스트</h3>
+      <p>배터리가 임계값(예: 20%) 이하인 로봇은 충전 스테이션 복귀가 급하므로 <code>priority += 1000</code> 부스트를 적용합니다. 이 부스트된 값은 일반 작업 우선순위(최대 100)를 압도하여 항상 winner가 되도록 합니다.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s7">
+      <h2>⑦ Pocket 방식 vs Backtrack 방식</h2>
+
+      <p>loser가 <strong>어디로</strong> 회피할지 결정하는 두 가지 접근법이 있습니다.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Pocket 방식</h4>
+          <p>공장 맵에 <strong>전용 회피 공간(pocket)</strong>을 미리 배치. loser는 가장 가까운 pocket으로 이동.</p>
+          <ul>
+            <li>✅ 양방향 정면 대치 해결 가능</li>
+            <li>✅ 짧은 회피 거리</li>
+            <li>❌ 공장 설계 시 공간 별도 확보 필요</li>
+            <li>❌ <strong>1m×2m 맵에서는 공간 부족으로 불가</strong></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Backtrack 방식 <span class="badge final">채택</span></h4>
+          <p>loser가 자신의 <strong>traversal history</strong>(지나온 Zone들)를 역순으로 이동하여 winner 경로에서 벗어남.</p>
+          <ul>
+            <li>✅ 추가 공간 불필요</li>
+            <li>✅ 맵 설계 자유도</li>
+            <li>✅ <strong>우리 소형 맵에 최적</strong></li>
+            <li>⚠️ 완전 대치 시 reroute fallback 필요</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>7.1 상세 비교표</h3>
+      <table>
+        <thead>
+          <tr><th>측면</th><th>Pocket</th><th>Backtrack</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>추가 공간 필요</td><td>O</td><td><strong>X</strong></td></tr>
+          <tr><td>Nav2 경로 재계산</td><td>pocket까지 새로 계산</td><td>history 역순 또는 Nav2 replan</td></tr>
+          <tr><td>이동 속도</td><td>정상</td><td>감속 권장 (안전)</td></tr>
+          <tr><td>완전 대치 처리</td><td>가능 (pocket 있으면)</td><td>reroute fallback 필요</td></tr>
+          <tr><td>구현 복잡도</td><td>중간</td><td>중간 (path_history 관리)</td></tr>
+          <tr><td>1m×2m 맵 적합성</td><td>❌ 불가</td><td>✅ <strong>적합</strong></td></tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>본 프로젝트 결정</strong>: 맵이 1m×2m로 pocket 설계 공간이 없으므로 <strong>Backtrack 방식</strong>을 채택합니다.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s8">
+      <h2>⑧ Backtrack 상세 알고리즘</h2>
+
+      <h3>8.1 핵심 관찰</h3>
+      <p>로봇이 현재 위치에 있다는 것은 <strong>방금 지나온 Zone들이 이미 통행 가능함이 검증되었다</strong>는 뜻입니다. 이 이력(traversal history)을 역순으로 탐색하면 별도 pocket 설계 없이 회피 지점을 찾을 수 있습니다.</p>
+
+      <h3>8.2 traversal_history 데이터 구조</h3>
+      <pre><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+@dataclass
+<span class="kw">class</span> Robot:
+    <span class="comment"># ... 기타 필드 ...</span>
+    <span class="comment"># 최근 통과한 Zone 이력 (최신이 앞, 자동 capacity 제한)</span>
+    traversal_history: deque[str] = field(
+        default_factory=<span class="kw">lambda</span>: deque(maxlen=<span class="num">8</span>)
+    )</pre>
+
+      <p><code>SlidingWindowPlanner.update()</code>에서 Zone을 해제할 때 history에 기록합니다:</p>
+
+      <pre><span class="kw">def</span> update(self, robot):
+    <span class="comment"># ... target_window 계산 ...</span>
+    passed_zones = current_holdings - set(target_window)
+    <span class="kw">for</span> zid <span class="kw">in</span> passed_zones:
+        self.tm.release(robot.id, zid)
+        robot.holdings.discard(zid)
+        robot.traversal_history.appendleft(zid)  <span class="comment"># ← 이력 기록</span>
+    <span class="comment"># ...</span></pre>
+
+      <h3>8.3 Backtrack 탐색 알고리즘</h3>
+      <pre><span class="kw">def</span> find_backtrack_target(loser, winner):
+    <span class="str">"""
+    조건:
+      1) loser의 traversal_history에 포함
+      2) winner의 남은 경로에 포함되지 않음
+      3) 현재 capacity 여유 있음
+      4) MAX_RETREAT_DISTANCE 이내
+    """</span>
+    winner_future = set(winner.path)
+
+    retreated = <span class="num">0</span>
+    <span class="kw">for</span> past_zone_id <span class="kw">in</span> loser.traversal_history:
+        retreated += <span class="num">1</span>
+        <span class="kw">if</span> retreated &gt; MAX_RETREAT_DISTANCE_ZONES:
+            <span class="kw">return</span> <span class="kw">None</span>
+
+        <span class="comment"># 조건 1: winner도 이 Zone을 지나가야 함 → skip</span>
+        <span class="kw">if</span> past_zone_id <span class="kw">in</span> winner_future:
+            <span class="kw">continue</span>
+
+        <span class="comment"># 조건 2: capacity 체크</span>
+        past_zone = tm.zones[past_zone_id]
+        <span class="kw">if</span> <span class="kw">not</span> past_zone.can_accept(loser.id):
+            <span class="kw">continue</span>
+
+        <span class="kw">return</span> past_zone_id  <span class="comment"># 찾았다</span>
+
+    <span class="kw">return</span> <span class="kw">None</span>  <span class="comment"># 안전한 retreat 지점 없음</span></pre>
+
+      <h3>8.4 Fallback 전략 4단계</h3>
+      <ol>
+        <li><strong>Backtrack 시도</strong> — 가장 가까운 안전 history zone</li>
+        <li><strong>Reverse Yield</strong> — loser/winner 역할을 바꿔 상대방에게 backtrack 시도</li>
+        <li><strong>Reroute</strong> — Nav2 <code>plan_path_avoiding(blocked_zones)</code>로 대안 경로 재계산</li>
+        <li><strong>Scheduler 재스케줄링</strong> — 작업 자체를 나중으로 미루고 winner 완료 대기</li>
+        <li><strong>ERROR</strong> — 모두 실패 시 알람 + 수동 개입</li>
+      </ol>
+
+      <div class="note warn">
+        <strong>실패 케이스</strong>: 순수 1D 복도(분기 없음)에서 양방향으로 진입한 경우 Backtrack만으로는 해결 불가. <strong>출발 전 예약 검사</strong>(dispatch 단계에서 winner 경로가 미점유인지 확인)로 사전 예방하는 것이 근본 대책입니다.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s9">
+      <h2>⑨ Nav2 통합 — 올바른 API 선택</h2>
+
+      <h3>9.1 잘못된 접근 <span class="badge deprecated">deprecated</span></h3>
+      <div class="note danger">
+        초기 설계에서는 <code>BackwardMotionController</code> / <code>DriveOnHeading</code> recovery behavior를 사용하려 했으나, 이는 <strong>잘못된 선택</strong>입니다.
+      </div>
+
+      <table>
+        <thead><tr><th>특성</th><th>BackwardMotionController 실제 동작</th></tr></thead>
+        <tbody>
+          <tr><td>입력</td><td><code>backup_dist</code>, <code>backup_speed</code> 상수만</td></tr>
+          <tr><td>동작</td><td>현재 heading 반대로 고정 속도 · 고정 거리 직선 후진</td></tr>
+          <tr><td>경로 계획</td><td>❌ 없음</td></tr>
+          <tr><td>목표 지점</td><td>❌ 없음 ("얼마나"만 있음)</td></tr>
+          <tr><td>장애물 회피</td><td>❌ 없음 (reactive 정지만)</td></tr>
+          <tr><td>본래 용도</td><td>로봇이 걸렸을 때의 <strong>recovery behavior</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p>즉, "특정 Zone의 중심 좌표로 정확히 이동" 같은 goal-based navigation은 <strong>처리 불가능</strong>합니다.</p>
+
+      <h3>9.2 올바른 접근: navigate_to_pose <span class="badge final">채택</span></h3>
+
+      <p>차동 구동 로봇은 <strong>제자리 회전(pivot-in-place)</strong>이 가능하므로, 회피 시에도 <strong>평범한 forward navigation</strong>을 쓰면 충분합니다.</p>
+
+      <pre><span class="comment"># Yield 발동 시 단순히 이것 하나면 됨</span>
+self.nav2_client.send_goal(
+    loser.id,
+    goal_pose=retreat_zone_center
+)
+<span class="comment">#
+# Nav2가 내부적으로 처리:
+#   1) Global planner (NavFn/SmacPlanner) → 경로 계산
+#   2) Controller (DWB/RPP) → 현재 heading과 목표 각도 차 감지
+#   3) rotate_to_heading behavior → 제자리 회전 (150~300 deg/s)
+#   4) 전방 주행 → 도착
+#   5) (선택) 도착 시 목표 orientation 회전
+#</span></pre>
+
+      <h3>9.3 1m×2m + 0.12m 로봇에서의 예상 성능</h3>
+      <table>
+        <thead><tr><th>동작</th><th>소요 시간</th></tr></thead>
+        <tbody>
+          <tr><td>180° 제자리 회전</td><td>0.5~1초</td></tr>
+          <tr><td>Zone 간 이동 (10~30cm)</td><td>0.5~1.5초</td></tr>
+          <tr><td>전체 yield 동작</td><td><strong>2~4초</strong> (매우 빠름)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>결론</strong>: 후진 주행(backward motion) 자체가 불필요합니다. Nav2 표준 <code>navigate_to_pose</code> 하나로 모든 회피 상황을 처리할 수 있습니다.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s10">
+      <h2>⑩ Robot 상태 머신</h2>
+
+      <h3>10.1 상태 정의</h3>
+      <table>
+        <thead><tr><th>State</th><th>의미</th><th>진입 조건</th></tr></thead>
+        <tbody>
+          <tr><td><code>IDLE</code></td><td>작업 대기</td><td>dispatch 미수신</td></tr>
+          <tr><td><code>NAVIGATING</code></td><td>정상 주행 중</td><td>dispatch 수신 & sliding window 성공</td></tr>
+          <tr><td><code>WAITING</code></td><td>Zone 획득 실패 대기</td><td>다음 앞 Zone 획득 실패</td></tr>
+          <tr><td><code>YIELDING</code></td><td>회피 이동 중</td><td>deadlock 감지 & 낮은 priority</td></tr>
+          <tr><td><code>YIELDED</code></td><td>회피 완료, winner 통과 대기</td><td>retreat zone 도착</td></tr>
+          <tr><td><code>RESUMING</code></td><td>원 목적지 재출발 준비</td><td>winner 통과 완료 감지</td></tr>
+          <tr><td><code>ERROR</code></td><td>복구 불가</td><td>모든 fallback 실패</td></tr>
+        </tbody>
+      </table>
+
+      <h3>10.2 상태 천이도</h3>
+      <div class="ascii">       IDLE
+         │
+    (dispatch)
+         │
+         ▼
+  NAVIGATING ◄────────────── RESUMING
+         │                        ▲
+   (Zone 획득 실패)           (winner 통과 감지)
+         │                        │
+         ▼                        │
+    WAITING ──(deadlock)──► YIELDING
+         │                        │
+         │                   (pocket/retreat 도착)
+         │                        │
+         │                        ▼
+         │                   YIELDED
+         │
+      (모든 fallback 실패)
+         │
+         ▼
+       ERROR</div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s11">
+      <h2>⑪ 최종 구현 코드 <span class="badge final">확정</span></h2>
+
+      <p>B(Sliding Window) + C(Backtrack Yield) 하이브리드, Nav2 <code>navigate_to_pose</code> 기반의 최종 코드입니다.</p>
+
+      <h3>11.1 타입 정의</h3>
+      <pre><span class="kw">from</span> __future__ <span class="kw">import</span> annotations
+<span class="kw">from</span> collections <span class="kw">import</span> deque
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+<span class="kw">from</span> typing <span class="kw">import</span> Optional
+<span class="kw">from</span> shapely.geometry <span class="kw">import</span> Point, Polygon
+
+<span class="kw">class</span> ZoneType(Enum):
+    FREE = <span class="str">"free"</span>
+    CORRIDOR = <span class="str">"corridor"</span>
+    INTERSECTION = <span class="str">"intersection"</span>
+    WORKCELL = <span class="str">"workcell"</span>
+    POCKET = <span class="str">"pocket"</span>
+
+<span class="kw">class</span> RobotNavState(Enum):
+    IDLE = <span class="str">"idle"</span>
+    NAVIGATING = <span class="str">"navigating"</span>
+    WAITING = <span class="str">"waiting"</span>
+    YIELDING = <span class="str">"yielding"</span>
+    YIELDED = <span class="str">"yielded"</span>
+    RESUMING = <span class="str">"resuming"</span>
+    ERROR = <span class="str">"error"</span>
+
+@dataclass
+<span class="kw">class</span> Zone:
+    id: str
+    type: ZoneType
+    polygon: Polygon
+    capacity: int = <span class="num">1</span>
+    max_hold_sec: int = <span class="num">30</span>
+    current_holders: set[str] = field(default_factory=set)
+    reserved_at: dict[str, datetime] = field(default_factory=dict)
+
+    <span class="kw">def</span> can_accept(self, robot_id: str) -&gt; bool:
+        <span class="kw">if</span> self.type == ZoneType.FREE:
+            <span class="kw">return</span> <span class="kw">True</span>
+        <span class="kw">if</span> robot_id <span class="kw">in</span> self.current_holders:
+            <span class="kw">return</span> <span class="kw">True</span>
+        <span class="kw">return</span> len(self.current_holders) &lt; self.capacity
+
+@dataclass
+<span class="kw">class</span> Robot:
+    id: str
+    position: tuple[float, float]
+    state: RobotNavState = RobotNavState.IDLE
+    priority: int = <span class="num">0</span>
+    path: list[str] = field(default_factory=list)
+    holdings: set[str] = field(default_factory=set)
+    traversal_history: deque[str] = field(
+        default_factory=<span class="kw">lambda</span>: deque(maxlen=<span class="num">8</span>)
+    )
+    waiting_since: Optional[datetime] = <span class="kw">None</span>
+    original_goal: Optional[tuple[float, float]] = <span class="kw">None</span>
+    yield_target_zone: Optional[str] = <span class="kw">None</span>
+    yield_for_robot: Optional[str] = <span class="kw">None</span></pre>
+
+      <h3>11.2 TrafficManager</h3>
+      <pre><span class="kw">class</span> TrafficManager:
+    <span class="str">"""Zone 점유 상태의 atomic 관리. 단일 스레드 호출 전제."""</span>
+
+    <span class="kw">def</span> __init__(self, zones: dict[str, Zone]):
+        self.zones = zones
+
+    <span class="kw">def</span> try_acquire(self, robot_id: str, zone_id: str) -&gt; bool:
+        zone = self.zones[zone_id]
+        <span class="kw">if</span> <span class="kw">not</span> zone.can_accept(robot_id):
+            <span class="kw">return</span> <span class="kw">False</span>
+        zone.current_holders.add(robot_id)
+        zone.reserved_at[robot_id] = datetime.now()
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> release(self, robot_id: str, zone_id: str) -&gt; <span class="kw">None</span>:
+        zone = self.zones.get(zone_id)
+        <span class="kw">if</span> zone <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">return</span>
+        zone.current_holders.discard(robot_id)
+        zone.reserved_at.pop(robot_id, <span class="kw">None</span>)
+
+    <span class="kw">def</span> release_all(self, robot_id: str) -&gt; <span class="kw">None</span>:
+        <span class="kw">for</span> zone <span class="kw">in</span> self.zones.values():
+            <span class="kw">if</span> robot_id <span class="kw">in</span> zone.current_holders:
+                self.release(robot_id, zone.id)
+
+    <span class="kw">def</span> holder_of(self, zone_id: str) -&gt; set[str]:
+        <span class="kw">return</span> set(self.zones[zone_id].current_holders)
+
+    <span class="kw">def</span> cleanup_stale(self) -&gt; int:
+        <span class="str">"""max_hold_sec 초과한 holder 강제 해제."""</span>
+        now = datetime.now()
+        removed = <span class="num">0</span>
+        <span class="kw">for</span> zone <span class="kw">in</span> self.zones.values():
+            <span class="kw">for</span> rid, started <span class="kw">in</span> list(zone.reserved_at.items()):
+                <span class="kw">if</span> now - started &gt; timedelta(seconds=zone.max_hold_sec):
+                    self.release(rid, zone.id)
+                    removed += <span class="num">1</span>
+        <span class="kw">return</span> removed</pre>
+
+      <h3>11.3 SlidingWindowPlanner</h3>
+      <pre><span class="kw">class</span> SlidingWindowPlanner:
+    WINDOW_SIZE = <span class="num">2</span>  <span class="comment"># 1m×2m 소형 맵 기준</span>
+
+    <span class="kw">def</span> __init__(self, traffic_manager: TrafficManager):
+        self.tm = traffic_manager
+
+    <span class="kw">def</span> update(self, robot: Robot) -&gt; bool:
+        <span class="str">"""
+        Returns:
+            True  → 전진 가능
+            False → WAITING 전환 필요
+        """</span>
+        <span class="kw">if</span> <span class="kw">not</span> robot.path:
+            <span class="kw">return</span> <span class="kw">True</span>
+
+        current_idx = self._current_index(robot)
+        target_window = robot.path[current_idx : current_idx + self.WINDOW_SIZE]
+        current_holdings = robot.holdings.copy()
+
+        <span class="comment"># Step 1: 지나간 Zone 해제 + history 기록</span>
+        passed_zones = current_holdings - set(target_window)
+        <span class="kw">for</span> zid <span class="kw">in</span> passed_zones:
+            self.tm.release(robot.id, zid)
+            robot.holdings.discard(zid)
+            robot.traversal_history.appendleft(zid)
+
+        <span class="comment"># Step 2: 앞쪽 Zone 새로 획득</span>
+        to_acquire = [z <span class="kw">for</span> z <span class="kw">in</span> target_window <span class="kw">if</span> z <span class="kw">not in</span> robot.holdings]
+        <span class="kw">for</span> idx, zid <span class="kw">in</span> enumerate(to_acquire):
+            <span class="kw">if</span> self.tm.try_acquire(robot.id, zid):
+                robot.holdings.add(zid)
+            <span class="kw">else</span>:
+                <span class="comment"># 첫 앞 Zone조차 못 잡음 → 전진 불가</span>
+                <span class="kw">if</span> idx == <span class="num">0</span>:
+                    <span class="kw">return</span> <span class="kw">False</span>
+                <span class="kw">break</span>  <span class="comment"># 나머지는 다음 tick에 재시도 (window 축소)</span>
+
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> _current_index(self, robot: Robot) -&gt; int:
+        <span class="kw">for</span> i, zid <span class="kw">in</span> enumerate(robot.path):
+            zone = self.tm.zones[zid]
+            <span class="kw">if</span> zone.polygon.contains(Point(*robot.position)):
+                <span class="kw">return</span> i
+        <span class="kw">return</span> <span class="num">0</span></pre>
+
+      <h3>11.4 DeadlockDetector</h3>
+      <pre><span class="kw">class</span> DeadlockDetector:
+    DEADLOCK_WAIT_THRESHOLD = timedelta(seconds=<span class="num">3</span>)  <span class="comment"># 소형 맵 기준</span>
+
+    <span class="kw">def</span> __init__(self, tm: TrafficManager):
+        self.tm = tm
+
+    <span class="kw">def</span> find_deadlock_partner(
+        self, waiting_robot: Robot, all_robots: dict[str, Robot]
+    ) -&gt; Optional[Robot]:
+        <span class="kw">if</span> waiting_robot.waiting_since <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">return</span> <span class="kw">None</span>
+        <span class="kw">if</span> datetime.now() - waiting_robot.waiting_since &lt; self.DEADLOCK_WAIT_THRESHOLD:
+            <span class="kw">return</span> <span class="kw">None</span>
+
+        next_zone = self._next_desired_zone(waiting_robot)
+        <span class="kw">if</span> next_zone <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">return</span> <span class="kw">None</span>
+
+        blockers = self.tm.holder_of(next_zone) - {waiting_robot.id}
+        <span class="kw">for</span> blocker_id <span class="kw">in</span> blockers:
+            blocker = all_robots.get(blocker_id)
+            <span class="kw">if</span> blocker <span class="kw">is</span> <span class="kw">None</span> <span class="kw">or</span> blocker.state != RobotNavState.WAITING:
+                <span class="kw">continue</span>
+            blocker_next = self._next_desired_zone(blocker)
+            <span class="kw">if</span> blocker_next <span class="kw">and</span> waiting_robot.id <span class="kw">in</span> self.tm.holder_of(blocker_next):
+                <span class="kw">return</span> blocker
+        <span class="kw">return</span> <span class="kw">None</span>
+
+    <span class="kw">def</span> _next_desired_zone(self, robot: Robot) -&gt; Optional[str]:
+        <span class="kw">for</span> zid <span class="kw">in</span> robot.path:
+            <span class="kw">if</span> zid <span class="kw">not in</span> robot.holdings:
+                <span class="kw">return</span> zid
+        <span class="kw">return</span> <span class="kw">None</span></pre>
+
+      <h3>11.5 YieldResolver (Backtrack 방식)</h3>
+      <pre><span class="kw">class</span> YieldResolver:
+    MAX_RETREAT_DISTANCE_ZONES = <span class="num">3</span>  <span class="comment"># 소형 맵 기준</span>
+
+    <span class="kw">def</span> __init__(self, tm: TrafficManager, nav2_client, zones):
+        self.tm = tm
+        self.nav2 = nav2_client
+        self.zones = zones
+
+    <span class="kw">def</span> resolve(self, robot_a: Robot, robot_b: Robot) -&gt; <span class="kw">None</span>:
+        loser, winner = self._pick_loser(robot_a, robot_b)
+
+        <span class="comment"># Step 1: backtrack target 탐색</span>
+        retreat_zone_id = self._find_backtrack_target(loser, winner)
+        <span class="kw">if</span> retreat_zone_id <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="comment"># Fallback: reverse yield</span>
+            retreat_zone_id = self._find_backtrack_target(winner, loser)
+            <span class="kw">if</span> retreat_zone_id <span class="kw">is</span> <span class="kw">None</span>:
+                loser.state = RobotNavState.ERROR
+                winner.state = RobotNavState.ERROR
+                <span class="kw">return</span>
+            loser, winner = winner, loser
+
+        <span class="comment"># Step 2: 기존 holdings 해제</span>
+        self.tm.release_all(loser.id)
+        loser.holdings.clear()
+
+        <span class="comment"># Step 3: retreat 경로 예약 (history 역순)</span>
+        retreat_path: list[str] = []
+        <span class="kw">for</span> zid <span class="kw">in</span> loser.traversal_history:
+            retreat_path.append(zid)
+            <span class="kw">if</span> zid == retreat_zone_id:
+                <span class="kw">break</span>
+        <span class="kw">for</span> zid <span class="kw">in</span> retreat_path:
+            <span class="kw">if</span> <span class="kw">not</span> self.tm.try_acquire(loser.id, zid):
+                loser.state = RobotNavState.ERROR
+                <span class="kw">return</span>
+            loser.holdings.add(zid)
+
+        <span class="comment"># Step 4: 원 목적지 기억</span>
+        <span class="kw">if</span> loser.original_goal <span class="kw">is</span> <span class="kw">None</span>:
+            last_zone = self.zones[loser.path[-<span class="num">1</span>]]
+            loser.original_goal = (
+                last_zone.polygon.centroid.x,
+                last_zone.polygon.centroid.y,
+            )
+
+        <span class="comment"># Step 5: 상태 전환</span>
+        loser.state = RobotNavState.YIELDING
+        loser.yield_target_zone = retreat_zone_id
+        loser.yield_for_robot = winner.id
+
+        <span class="comment"># Step 6: Nav2 navigate_to_pose (표준 forward navigation)</span>
+        retreat_zone = self.zones[retreat_zone_id]
+        self.nav2.send_goal(
+            loser.id,
+            goal_x=retreat_zone.polygon.centroid.x,
+            goal_y=retreat_zone.polygon.centroid.y,
+        )
+        <span class="comment"># Nav2가 자동 처리: 제자리 회전 → 전진 → 도착</span>
+
+    <span class="kw">def</span> _pick_loser(self, a: Robot, b: Robot) -&gt; tuple[Robot, Robot]:
+        <span class="comment"># 1순위: priority</span>
+        <span class="kw">if</span> a.priority != b.priority:
+            <span class="kw">return</span> (a, b) <span class="kw">if</span> a.priority &lt; b.priority <span class="kw">else</span> (b, a)
+        <span class="comment"># 2순위: FIFO</span>
+        a_wait = a.waiting_since <span class="kw">or</span> datetime.max
+        b_wait = b.waiting_since <span class="kw">or</span> datetime.max
+        <span class="kw">if</span> a_wait != b_wait:
+            <span class="kw">return</span> (a, b) <span class="kw">if</span> a_wait &gt; b_wait <span class="kw">else</span> (b, a)
+        <span class="comment"># 3순위: ID 사전순</span>
+        <span class="kw">return</span> (a, b) <span class="kw">if</span> a.id &lt; b.id <span class="kw">else</span> (b, a)
+
+    <span class="kw">def</span> _find_backtrack_target(self, loser: Robot, winner: Robot) -&gt; Optional[str]:
+        winner_future = set(winner.path)
+        retreated = <span class="num">0</span>
+        <span class="kw">for</span> past_zone_id <span class="kw">in</span> loser.traversal_history:
+            retreated += <span class="num">1</span>
+            <span class="kw">if</span> retreated &gt; self.MAX_RETREAT_DISTANCE_ZONES:
+                <span class="kw">return</span> <span class="kw">None</span>
+            <span class="kw">if</span> past_zone_id <span class="kw">in</span> winner_future:
+                <span class="kw">continue</span>
+            past_zone = self.tm.zones[past_zone_id]
+            <span class="kw">if</span> <span class="kw">not</span> past_zone.can_accept(loser.id):
+                <span class="kw">continue</span>
+            <span class="kw">return</span> past_zone_id
+        <span class="kw">return</span> <span class="kw">None</span></pre>
+
+      <h3>11.6 RobotController (상태 머신)</h3>
+      <pre><span class="kw">class</span> RobotController:
+    <span class="kw">def</span> __init__(self, sliding, detector, yielder, nav2_client, zones):
+        self.sliding = sliding
+        self.detector = detector
+        self.yielder = yielder
+        self.nav2 = nav2_client
+        self.zones = zones
+
+    <span class="kw">def</span> tick(self, robot: Robot, all_robots: dict[str, Robot]) -&gt; <span class="kw">None</span>:
+        handlers = {
+            RobotNavState.IDLE:       self._on_idle,
+            RobotNavState.NAVIGATING: self._on_navigating,
+            RobotNavState.WAITING:    self._on_waiting,
+            RobotNavState.YIELDING:   self._on_yielding,
+            RobotNavState.YIELDED:    self._on_yielded,
+            RobotNavState.RESUMING:   self._on_resuming,
+            RobotNavState.ERROR:      self._on_error,
+        }
+        handlers[robot.state](robot, all_robots)
+
+    <span class="kw">def</span> _on_idle(self, robot, _): <span class="kw">pass</span>
+
+    <span class="kw">def</span> _on_navigating(self, robot, _):
+        <span class="kw">if</span> self.sliding.update(robot):
+            robot.waiting_since = <span class="kw">None</span>
+        <span class="kw">else</span>:
+            robot.state = RobotNavState.WAITING
+            robot.waiting_since = datetime.now()
+            self.nav2.pause(robot.id)
+
+    <span class="kw">def</span> _on_waiting(self, robot, all_robots):
+        <span class="kw">if</span> self.sliding.update(robot):
+            robot.state = RobotNavState.NAVIGATING
+            robot.waiting_since = <span class="kw">None</span>
+            self.nav2.resume(robot.id)
+            <span class="kw">return</span>
+        partner = self.detector.find_deadlock_partner(robot, all_robots)
+        <span class="kw">if</span> partner <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
+            self.yielder.resolve(robot, partner)
+
+    <span class="kw">def</span> _on_yielding(self, robot, _):
+        target = self.zones[robot.yield_target_zone]
+        <span class="kw">if</span> target.polygon.contains(Point(*robot.position)):
+            robot.state = RobotNavState.YIELDED
+
+    <span class="kw">def</span> _on_yielded(self, robot, all_robots):
+        winner = all_robots.get(robot.yield_for_robot)
+        <span class="kw">if</span> winner <span class="kw">is</span> <span class="kw">None</span> <span class="kw">or</span> winner.state <span class="kw">in</span> (
+            RobotNavState.IDLE, RobotNavState.NAVIGATING
+        ):
+            robot.state = RobotNavState.RESUMING
+
+    <span class="kw">def</span> _on_resuming(self, robot, _):
+        new_path = self.nav2.plan_path(robot.position, robot.original_goal)
+        robot.path = self.nav2.path_to_zones(new_path)
+        robot.holdings.clear()
+        robot.yield_target_zone = <span class="kw">None</span>
+        robot.yield_for_robot = <span class="kw">None</span>
+        robot.state = RobotNavState.NAVIGATING
+        self.nav2.send_goal(robot.id, *robot.original_goal)
+
+    <span class="kw">def</span> _on_error(self, robot, _):
+        <span class="comment"># 알람 발송 + 수동 개입 대기</span>
+        <span class="kw">pass</span></pre>
+
+      <h3>11.7 FleetCoordinator (메인 루프)</h3>
+      <pre><span class="kw">class</span> FleetCoordinator:
+    TICK_HZ = <span class="num">20</span>  <span class="comment"># 소형 맵 빠른 반응</span>
+
+    <span class="kw">def</span> __init__(self, zones: dict[str, Zone], nav2_client):
+        self.tm = TrafficManager(zones)
+        self.sliding = SlidingWindowPlanner(self.tm)
+        self.detector = DeadlockDetector(self.tm)
+        self.yielder = YieldResolver(self.tm, nav2_client, zones)
+        self.controller = RobotController(
+            self.sliding, self.detector, self.yielder, nav2_client, zones
+        )
+        self.robots: dict[str, Robot] = {}
+
+    <span class="kw">def</span> register_robot(self, robot: Robot) -&gt; <span class="kw">None</span>:
+        self.robots[robot.id] = robot
+
+    <span class="kw">def</span> dispatch(self, robot_id, goal, priority) -&gt; <span class="kw">None</span>:
+        robot = self.robots[robot_id]
+        path = self.yielder.nav2.plan_path(robot.position, goal)
+        robot.path = self.yielder.nav2.path_to_zones(path)
+        robot.priority = priority
+        robot.original_goal = goal
+        robot.state = RobotNavState.NAVIGATING
+        robot.holdings.clear()
+        robot.traversal_history.clear()
+
+    <span class="kw">def</span> tick(self) -&gt; <span class="kw">None</span>:
+        <span class="kw">for</span> robot <span class="kw">in</span> self.robots.values():
+            self.controller.tick(robot, self.robots)
+        self.tm.cleanup_stale()</pre>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s12">
+      <h2>⑫ 소규모 맵(1m × 2m) 최적화</h2>
+
+      <h3>12.1 하드웨어 스펙</h3>
+      <table>
+        <tbody>
+          <tr><td>맵 크기</td><td><strong>1m × 2m</strong> (2 m²)</td></tr>
+          <tr><td>로봇 크기</td><td><strong>0.12 × 0.12m</strong></td></tr>
+          <tr><td>로봇 차지 면적</td><td>0.0144 m² (맵의 0.72%)</td></tr>
+          <tr><td>회전 반경</td><td>약 8.5cm (거의 제자리 회전)</td></tr>
+          <tr><td>구동 방식</td><td>Differential drive</td></tr>
+          <tr><td>최대 대각선 이동</td><td>약 2.24m → 주행 5~10초</td></tr>
+        </tbody>
+      </table>
+
+      <h3>12.2 파라미터 재조정</h3>
+      <table>
+        <thead>
+          <tr><th>파라미터</th><th>대형 공장 기준</th><th>1m×2m 기준</th><th>이유</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>WINDOW_SIZE</code></td><td>3</td><td><strong>2</strong></td><td>전체 Zone 수가 5~10개</td></tr>
+          <tr><td><code>DEADLOCK_WAIT_THRESHOLD</code></td><td>8초</td><td><strong>3초</strong></td><td>전체 주행 자체가 짧음</td></tr>
+          <tr><td><code>max_hold_sec</code></td><td>120초</td><td><strong>30초</strong></td><td>작업 단위 작음</td></tr>
+          <tr><td><code>MAX_RETREAT_DISTANCE_ZONES</code></td><td>5</td><td><strong>3</strong></td><td>맵 자체가 작음</td></tr>
+          <tr><td><code>traversal_history maxlen</code></td><td>20</td><td><strong>8</strong></td><td>전체 Zone 수 기준</td></tr>
+          <tr><td><code>TICK_HZ</code></td><td>10 Hz</td><td><strong>20 Hz</strong></td><td>빠른 반응성</td></tr>
+          <tr><td>로봇 최대 속도</td><td>0.8 m/s</td><td><strong>0.1~0.15 m/s</strong></td><td>작은 로봇 안전 속도</td></tr>
+        </tbody>
+      </table>
+
+      <h3>12.3 규모 감각</h3>
+      <div class="ascii">전체 맵 (1m × 2m, 0.4m × 0.4m Zone으로 분할):
+
+┌──────┬──────┬──────┬──────┬──────┐
+│  z1  │  z2  │  z3  │  z4  │  z5  │  y=0.4~0.8
+├──────┼──────┼──────┼──────┼──────┤
+│  z6  │  z7  │  z8  │  z9  │ z10  │  y=0~0.4
+└──────┴──────┴──────┴──────┴──────┘
+x=0   0.4   0.8   1.2   1.6   2.0
+
+→ Zone 총 10개 (micro-factory 수준)
+→ 로봇 한 Zone 내에 2~3대 물리적 공존 불가능</div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s13">
+      <h2>⑬ 대안 — Nav2 Costmap-only 방식</h2>
+
+      <p>솔직히 말해, <strong>1m × 2m 맵 + 0.12m 로봇 3대</strong> 규모에서는 Zone 예약 없이도 Nav2 costmap만으로 충돌 회피가 가능할 수 있습니다.</p>
+
+      <h3>13.1 Costmap-only 접근</h3>
+      <ul>
+        <li>각 로봇이 <strong>자신의 위치를 dynamic obstacle로 publish</strong></li>
+        <li><code>nav2_costmap_2d::ObstacleLayer</code>가 자동 반영</li>
+        <li>경로 재계획은 Nav2가 100ms마다 자동 수행</li>
+        <li>로봇이 작아서(12cm) 복도에서 <strong>옆으로 비켜가기 쉬움</strong> → deadlock 거의 미발생</li>
+      </ul>
+
+      <h3>13.2 두 방식 비교</h3>
+      <table>
+        <thead>
+          <tr><th>측면</th><th>Zone 예약 방식 (우리 설계)</th><th>Costmap-only 방식</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>구현 복잡도</td><td>중~상</td><td>하</td></tr>
+          <tr><td>Deadlock 처리</td><td>명시적 해결</td><td>암묵적 (local planner 의존)</td></tr>
+          <tr><td>우선순위 기반 차등</td><td>지원</td><td>어려움</td></tr>
+          <tr><td>좁은 병목 구간</td><td>잘 처리</td><td>교착 가능</td></tr>
+          <tr><td>관찰 가능성</td><td>높음 (예약 상태 로그)</td><td>낮음</td></tr>
+          <tr><td>1m×2m 적합성</td><td>다소 과함</td><td>적합</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>선택 기준</strong>: 맵에 <strong>좁은 복도·병목 구간</strong>이 있거나 <strong>작업 우선순위 차등</strong>이 필요하면 Zone 예약 방식. 오픈 공간 위주면 Costmap-only. 확실하지 않으면 <strong>Zone 예약부터 시작해서 복잡도가 과하다 싶으면 Costmap-only로 downgrade</strong>.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s14">
+      <h2>⑭ 전략 선택 가이드</h2>
+
+      <h3>14.1 Decision Tree</h3>
+      <div class="ascii">맵에 병목 구간이 있는가?
+  │
+  ├─ NO ──→ Costmap-only 방식 (Nav2만)
+  │
+  └─ YES ─→ 우선순위 차등이 필요한가?
+              │
+              ├─ NO ──→ Sliding Window만 (전략 B 단독)
+              │
+              └─ YES ─→ Pocket 공간 확보 가능한가?
+                          │
+                          ├─ YES ──→ Sliding Window + Pocket Yield (B + C)
+                          │
+                          └─ NO ───→ Sliding Window + Backtrack Yield (B + C')
+                                     ← 본 프로젝트 채택</div>
+
+      <h3>14.2 본 프로젝트 결정</h3>
+      <ol>
+        <li>맵에 복도/교차점 구조 존재 → Zone 예약 필요</li>
+        <li><code>schedule.py</code>의 7요소 우선순위 점수 활용 → Priority Yield 필요</li>
+        <li>1m×2m로 pocket 공간 없음 → <strong>Backtrack 방식</strong> 채택</li>
+        <li>3대 AMR, 단순 구조 → 2-robot deadlock만 처리 (3+ cycle 미지원)</li>
+      </ol>
+
+      <p><strong>최종 스택</strong>:</p>
+      <pre>기본:   Sliding Window (전략 B, WINDOW_SIZE=2)
+1차:    Backtrack Yield (전략 C', MAX_RETREAT=3)
+2차:    Reverse Yield (winner에게 역할 교체)
+3차:    Reroute (Nav2 plan_path_avoiding)
+4차:    Scheduler 재스케줄링 요청
+최후:   ERROR + 관리자 알람</pre>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s15">
+      <h2>⑮ 파라미터 튜닝 치트시트</h2>
+
+      <table>
+        <thead>
+          <tr><th>파라미터</th><th>기본값</th><th>조정 시점</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>WINDOW_SIZE</code></td>
+            <td>2</td>
+            <td>경로가 5 Zone 이상이면 3으로 증가</td>
+          </tr>
+          <tr>
+            <td><code>DEADLOCK_WAIT_THRESHOLD</code></td>
+            <td>3초</td>
+            <td>일시 교차를 deadlock으로 오판 시 5초로, 답답하면 2초로</td>
+          </tr>
+          <tr>
+            <td><code>MAX_RETREAT_DISTANCE_ZONES</code></td>
+            <td>3</td>
+            <td>맵 확장 시 5까지</td>
+          </tr>
+          <tr>
+            <td><code>max_hold_sec</code> (WORKCELL)</td>
+            <td>30초</td>
+            <td>실제 작업 시간 측정 후 1.5배로 조정</td>
+          </tr>
+          <tr>
+            <td><code>max_hold_sec</code> (INTERSECTION)</td>
+            <td>10초</td>
+            <td>5초로 줄여 회전율 향상 가능</td>
+          </tr>
+          <tr>
+            <td><code>TICK_HZ</code></td>
+            <td>20 Hz</td>
+            <td>CPU 부하 보면서 10~30 Hz 조정</td>
+          </tr>
+          <tr>
+            <td><code>YIELD_PRIORITY_BOOST</code></td>
+            <td>999</td>
+            <td>고정 (다른 로봇에 절대 안 뺏기기 위함)</td>
+          </tr>
+          <tr>
+            <td>배터리 부스트 임계값</td>
+            <td>20%</td>
+            <td>배터리 특성에 따라 15~30%</td>
+          </tr>
+          <tr>
+            <td>Zone 한 변 길이</td>
+            <td>30~40cm</td>
+            <td>로봇 직경 × 2.5 기준</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s16">
+      <h2>⑯ 결론 및 Phase 로드맵</h2>
+
+      <h3>16.1 핵심 설계 요약</h3>
+      <ol>
+        <li><strong>Nav2 Global Planner</strong>로 continuous path를 뽑고, 이를 <strong>Zone 시퀀스로 변환</strong>하여 관리</li>
+        <li><strong>Sliding Window</strong>로 앞쪽 2개 Zone만 예약하며 sliding 진행</li>
+        <li>막히면 <strong>3초 대기</strong> 후 <strong>deadlock 감지</strong></li>
+        <li>교착 확정 시 <strong>priority 비교</strong> (동점은 FIFO) → <strong>loser의 traversal history 역탐색</strong>으로 backtrack target 결정</li>
+        <li>Nav2 표준 <strong><code>navigate_to_pose</code></strong>로 retreat zone 이동 (제자리 회전 + 전진)</li>
+        <li>Winner 통과 감지 후 <strong>RESUMING</strong> → 원 목적지로 재경로 생성</li>
+      </ol>
+
+      <h3>16.2 Phase별 증분 개발</h3>
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>범위</th><th>산출물</th><th>검증</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Phase 1</strong></td>
+            <td>Full Path Lock (전략 A)</td>
+            <td>TrafficManager + 단순 dispatch · ~100줄</td>
+            <td>3대 AMR 충돌 없이 동작</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 2</strong></td>
+            <td>Sliding Window 추가 (전략 B)</td>
+            <td>SlidingWindowPlanner · ~50줄 증분</td>
+            <td>대기 시간 20~30% 감소 측정</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 3</strong></td>
+            <td>Backtrack Yield (전략 C')</td>
+            <td>DeadlockDetector + YieldResolver · ~150줄 증분</td>
+            <td>의도적 deadlock 생성 후 자동 복구 확인</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 4</strong></td>
+            <td>Reroute + Scheduler bridge</td>
+            <td>Nav2 plan_path_avoiding 통합</td>
+            <td>완전 대치 시 대안 경로 생성 확인</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 5</strong></td>
+            <td>Dynamic Priority Boost</td>
+            <td>배터리/긴급도 반영</td>
+            <td>저배터리 로봇 우선 귀환 확인</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>16.3 다음 단계</h3>
+      <p>본 설계를 기반으로 별도 GitHub 레포 <code>casting_factory_fleet</code>을 생성하여 Phase 1부터 실제 ROS 2 Jazzy 노드로 구현합니다. 레포는 <strong>Open-RMF와 독립적인 자체 구현</strong>이며, <code>backend/app/routes/schedule.py</code>의 우선순위 계산 엔진(Control Layer)과 HTTP 브릿지로 연동됩니다.</p>
+
+      <div class="note good">
+        <strong>기억할 것</strong>:
+        <ul style="margin:6px 0 0 18px;">
+          <li>RMF는 우리 규모(3대 AMR)에 과잉 → 자체 경량 구현</li>
+          <li><code>BackwardMotionController</code>는 recovery behavior용, navigation용 아님 → <code>navigate_to_pose</code> 사용</li>
+          <li>Pocket 방식은 공간 없으면 불가 → Backtrack으로 대체</li>
+          <li>동점 우선순위는 FIFO로 공정성 보장</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- ==================  v1.1 추가 섹션들  ====================== -->
+    <!-- ============================================================ -->
+
+    <section id="s17">
+      <h2>⑰ [v1.1] compute_path의 한계와 그래프 기반 대안 <span class="badge warn">중요</span></h2>
+
+      <h3>17.1 발견된 허점</h3>
+      <p>섹션 ①~⑯의 설계에는 간과한 문제가 있습니다. <strong>Nav2의 <code>compute_path_to_pose</code>는 우리 TrafficManager의 Zone 예약 상태를 전혀 모릅니다.</strong></p>
+
+      <p>Nav2의 global planner(NavFn/SmacPlanner)가 참조하는 것은 <strong>static costmap</strong>(벽, 기둥 같은 물리 장애물)뿐입니다. 다른 로봇이 Zone을 예약 중이더라도 costmap에는 반영되지 않으므로, Nav2는 그 Zone을 지나는 최단 경로를 아무 문제 없이 반환합니다.</p>
+
+      <div class="note danger">
+        <strong>결과</strong>: AMR-B가 receive한 "최단 경로"는 AMR-A가 이미 예약한 Zone을 통과할 가능성이 높습니다. 출발 후 WAITING에 빠지거나 deadlock으로 이어집니다. <strong>우회 경로가 맵에 존재하더라도 Nav2는 그것을 알 수 없습니다.</strong>
+      </div>
+
+      <h3>17.2 구체적 시나리오</h3>
+      <div class="ascii">맵: A ─ z1 ─ z2 ─ z3 ─ z4 ─ z5 ─ B
+             │              │
+             └── z6 ─ z7 ────┘   ← 우회 경로 (조금 더 길지만 존재)
+
+상황:
+  AMR-1: 현재 A → 목표 B
+    Nav2 compute_path → [z1, z2, z3, z4, z5]  (최단)
+    예약: [z1, z2, z3]
+
+  AMR-2: 현재 B → 목표 A
+    Nav2 compute_path → [z5, z4, z3, z2, z1]  (최단, AMR-1 예약 무시!)
+    ↓
+    출발 후 z3에서 WAITING → deadlock → yield
+
+→ 우회로 [z5, z7, z6, z1]가 있는데 사용되지 않음. 비효율.</div>
+
+      <h3>17.3 세 가지 해결 방식</h3>
+
+      <table>
+        <thead>
+          <tr><th>방식</th><th>접근</th><th>장점</th><th>단점</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>A. Costmap Injection</strong></td>
+            <td>예약된 Zone을 Nav2 costmap에 dynamic obstacle로 주입</td>
+            <td>Nav2 표준 기능 그대로 사용</td>
+            <td>로봇별 개별 costmap 필요, 동기화 복잡</td>
+          </tr>
+          <tr>
+            <td><strong>B. Replan on WAITING</strong></td>
+            <td>막힌 후 예약 회피하여 재계산</td>
+            <td>평시 오버헤드 없음</td>
+            <td>이미 출발한 후 되돌아감, 비효율</td>
+          </tr>
+          <tr>
+            <td><strong>C. Graph-Based Planning</strong> <span class="badge final">채택</span></td>
+            <td>Waypoint 그래프 위에서 직접 Dijkstra, 예약 회피 포함</td>
+            <td>완벽한 회피, 재계획 저비용</td>
+            <td>Nav2 기본 planner 우회</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>채택</strong>: 방식 C — 그래프 기반 계획. Dijkstra 실행 시 다른 로봇이 예약한 Zone/Edge를 <code>cost = ∞</code>로 처리하여 자동 우회.
+        이 선택은 섹션 ⑱의 Waypoint/Edge 추상화 재정립, 섹션 ⑲의 nav2_route Route Server 채택으로 이어집니다.
+      </div>
+
+      <h3>17.4 개선 효과 예시</h3>
+      <div class="ascii">방식 C 적용 후 동일 시나리오:
+
+AMR-1 dispatch: blocked={} → 경로 [z1, z2, z3, z4, z5]
+AMR-2 dispatch: blocked={z1, z2, z3} ← AMR-1 예약
+              → Dijkstra가 [z5, z7, z6, z1] 자동 선택
+              → 우회로로 바로 출발
+
+결과: 충돌 없음, WAITING 없음, yield 없음, deadlock 사전 예방</div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s18">
+      <h2>⑱ [v1.1] Polygon Zone → Waypoint/Edge 추상화 재정립 <span class="badge final">채택</span></h2>
+
+      <h3>18.1 두 추상화의 차이</h3>
+      <p>섹션 ①~⑯에서 사용한 <strong>Polygon Zone</strong>은 맵을 타일처럼 분할하는 방식이지만, 1m×2m 소형 맵에는 과도한 복잡도입니다. 화이트보드 논의를 통해 <strong>Waypoint + Edge</strong> 방식이 더 적합함이 확인되었습니다.</p>
+
+      <table>
+        <thead>
+          <tr><th>측면</th><th>Polygon Zone</th><th>Waypoint + Edge</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>추상화 단위</td><td>면적(polygon)</td><td>점(waypoint) + 선(edge)</td></tr>
+          <tr><td>맵 커버리지</td><td>전체 (합치면 맵 전체)</td><td>주요 지점만 (나머지는 명명 없음)</td></tr>
+          <tr><td>개수 (1m×2m)</td><td>10~20개</td><td><strong>5~10개</strong></td></tr>
+          <tr><td>예약 단위</td><td>Zone 면적 점유</td><td><strong>Edge 점유 (이동 구간)</strong></td></tr>
+          <tr><td>YAML 정의</td><td>polygon 꼭짓점 배열</td><td>(x, y) + 연결 관계</td></tr>
+          <tr><td>위치 판정</td><td><code>polygon.contains(point)</code></td><td><code>nearest_waypoint(position)</code></td></tr>
+          <tr><td>외부 의존성</td><td>shapely 필요</td><td><strong>순수 Python만</strong></td></tr>
+          <tr><td>적합한 규모</td><td>대형 공장</td><td><strong>소형/구조적 맵</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h3>18.2 핵심 개념: 예약은 "Edge"에 건다</h3>
+
+      <p>Waypoint 방식에서 예약의 단위가 달라집니다:</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h4>Edge 점유</h4>
+          <p>로봇이 waypoint A에서 waypoint B로 <strong>이동 중</strong>일 때 해당 edge를 점유. 도착하면 즉시 해제.</p>
+          <p><strong>충돌 유형</strong>: 같은 edge를 반대 방향으로 점유 시도 → 정면 충돌(deadlock)</p>
+        </div>
+        <div class="card">
+          <h4>Waypoint 점유</h4>
+          <p>로봇이 waypoint에서 <strong>작업 수행 또는 대기</strong> 중일 때 해당 waypoint를 점유. 어떤 edge도 점유하지 않음.</p>
+          <p><strong>충돌 유형</strong>: 같은 waypoint에 capacity 초과 진입 시도</p>
+        </div>
+      </div>
+
+      <h3>18.3 데이터 구조</h3>
+
+      <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+<span class="kw">from</span> typing <span class="kw">import</span> Optional
+
+<span class="kw">class</span> WaypointType(Enum):
+    STATION = <span class="str">"station"</span>           <span class="comment"># 작업 지점 (용해로, 검사대 등)</span>
+    INTERSECTION = <span class="str">"intersection"</span> <span class="comment"># 분기점</span>
+    CHARGING = <span class="str">"charging"</span>         <span class="comment"># 충전소</span>
+    PARKING = <span class="str">"parking"</span>           <span class="comment"># 유휴 대기 위치</span>
+
+@dataclass
+<span class="kw">class</span> Waypoint:
+    id: str
+    position: tuple[float, float]   <span class="comment"># (x, y) in map frame</span>
+    type: WaypointType
+    capacity: int = <span class="num">1</span>             <span class="comment"># 동시 작업/대기 가능 로봇 수</span>
+    max_hold_sec: int = <span class="num">30</span>
+    <span class="comment"># 런타임 상태</span>
+    occupants: set[str] = field(default_factory=set)
+
+@dataclass
+<span class="kw">class</span> Edge:
+    id: str
+    from_wp: str                     <span class="comment"># 출발 waypoint ID</span>
+    to_wp: str                       <span class="comment"># 도착 waypoint ID</span>
+    length: float                    <span class="comment"># 실제 거리 (미터)</span>
+    bidirectional: bool = <span class="kw">True</span>
+    capacity: int = <span class="num">1</span>              <span class="comment"># 동시 통행 가능 로봇 수</span>
+    speed_limit: float = <span class="num">0.15</span>      <span class="comment"># 해당 edge 최대 속도 (m/s)</span>
+    <span class="comment"># 런타임 상태</span>
+    current_users: set[str] = field(default_factory=set)</pre>
+
+      <h3>18.4 YAML 예시 — 1m × 2m 맵</h3>
+
+      <pre>waypoints:
+  - id: WP_MELT       <span class="comment"># 용해로 앞</span>
+    position: [<span class="num">0.2</span>, <span class="num">0.5</span>]
+    type: station
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">60</span>
+
+  - id: WP_INT_L      <span class="comment"># 좌측 교차점</span>
+    position: [<span class="num">0.5</span>, <span class="num">0.5</span>]
+    type: intersection
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">5</span>
+
+  - id: WP_INT_R      <span class="comment"># 우측 교차점</span>
+    position: [<span class="num">1.5</span>, <span class="num">0.5</span>]
+    type: intersection
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">5</span>
+
+  - id: WP_INSP       <span class="comment"># 검사대 앞</span>
+    position: [<span class="num">1.8</span>, <span class="num">0.5</span>]
+    type: station
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">30</span>
+
+  - id: WP_CHARGE     <span class="comment"># 충전소</span>
+    position: [<span class="num">1.0</span>, <span class="num">0.1</span>]
+    type: charging
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">600</span>
+
+edges:
+  - id: E_MELT_INTL
+    from: WP_MELT
+    to: WP_INT_L
+    length: <span class="num">0.3</span>
+    speed_limit: <span class="num">0.15</span>
+
+  - id: E_INTL_INTR
+    from: WP_INT_L
+    to: WP_INT_R
+    length: <span class="num">1.0</span>
+    bidirectional: <span class="kw">true</span>
+    capacity: <span class="num">1</span>        <span class="comment"># 좁은 복도, 1대만 통과</span>
+    speed_limit: <span class="num">0.1</span>
+
+  - id: E_INTR_INSP
+    from: WP_INT_R
+    to: WP_INSP
+    length: <span class="num">0.3</span>
+
+  - id: E_INTL_CHARGE
+    from: WP_INT_L
+    to: WP_CHARGE
+    length: <span class="num">0.6</span>
+
+  - id: E_INTR_CHARGE
+    from: WP_INT_R
+    to: WP_CHARGE
+    length: <span class="num">0.6</span></pre>
+
+      <h3>18.5 그래프 시각화</h3>
+      <div class="ascii">  WP_MELT ─── WP_INT_L ══════ WP_INT_R ─── WP_INSP
+                  │              │
+                  └── WP_CHARGE ─┘
+
+   station       intersection   intersection     station
+   (용해로)       (좌측 분기)    (우측 분기)     (검사대)
+                     │              │
+                     └── charging ──┘
+                        (충전소)</div>
+
+      <h3>18.6 알고리즘은 그대로 재사용</h3>
+      <p>B + C 하이브리드의 핵심 로직은 데이터 구조만 교체하면 그대로 동작합니다:</p>
+      <ul>
+        <li><strong>Dijkstra</strong>: Zone polygon 대신 Waypoint 노드 사용, Edge cost로 길이</li>
+        <li><strong>Sliding Window</strong>: "앞쪽 N개 edge를 미리 예약"</li>
+        <li><strong>Deadlock 감지</strong>: 두 로봇이 서로 다른 방향으로 같은 edge를 원함</li>
+        <li><strong>Backtrack Yield</strong>: loser가 직전 waypoint로 1-edge 역방향 이동</li>
+        <li><strong>Nav2 통합</strong>: <code>navigate_to_pose(waypoint.position)</code> — 제자리 회전 + 전진</li>
+      </ul>
+
+      <div class="note info">
+        <strong>요약</strong>: 섹션 ①~⑯의 Polygon Zone 방식은 <em>개념 설계로서 유효</em>하지만, 1m×2m 소형 맵 실제 구현은 본 섹션의 Waypoint+Edge 방식으로 진행합니다.
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s19">
+      <h2>⑲ [v1.1] nav2_route Route Server 통합 <span class="badge final">채택</span></h2>
+
+      <h3>19.1 공식 Nav2 그래프 기반 planner 발견</h3>
+      <p>Nav2는 <strong>Jazzy(2024) 이후</strong> 공식 패키지 <code>nav2_route</code>를 제공합니다. 이는 우리가 섹션 ⑰~⑱에서 설계한 "Waypoint 그래프 기반 계획"을 <strong>Nav2 표준 기능으로 대체</strong>할 수 있게 해줍니다.</p>
+
+      <div class="note good">
+        <strong>핵심 함의</strong>: 우리가 직접 구현하려 했던 <code>ZoneGraphPlanner</code> + Dijkstra + 재계획 로직을 <strong>Route Server가 네이티브로 제공</strong>합니다. 우리는 그래프 정의와 예약 상태 연동만 담당하면 됩니다.
+      </div>
+
+      <h3>19.2 Nav2 Global Planner 전체 지도</h3>
+      <table>
+        <thead><tr><th>카테고리</th><th>Planner</th><th>기반</th><th>용도</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="4">Costmap/Grid</td><td>NavfnPlanner</td><td>Dijkstra on occupancy grid</td><td>저수준 경로</td></tr>
+          <tr><td>SmacPlanner2D</td><td>2D A*</td><td>저수준 경로</td></tr>
+          <tr><td>SmacPlannerHybrid</td><td>Hybrid-A* (Ackermann)</td><td>우리 차동구동엔 불필요</td></tr>
+          <tr><td>ThetaStarPlanner</td><td>Any-angle</td><td>저수준 경로</td></tr>
+          <tr><td><strong>Graph</strong></td><td><strong>nav2_route (Route Server)</strong></td><td><strong>사용자 정의 노드/엣지</strong></td><td><strong>우리 Fleet 계획</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h3>19.3 Route Server가 제공하는 기능</h3>
+      <table>
+        <thead><tr><th>우리가 필요했던 것</th><th>Route Server 제공 기능</th></tr></thead>
+        <tbody>
+          <tr><td>노드/엣지 기반 그래프 정의</td><td>GeoJSON 포맷 로더 (<code>GeoJsonGraphFileLoader</code>)</td></tr>
+          <tr><td>그래프 상 Dijkstra 경로 탐색</td><td>내장 route search 엔진</td></tr>
+          <tr><td>Edge 가중치 커스터마이징</td><td><code>edge_cost_functions</code> 플러그인 체인</td></tr>
+          <tr><td>예약 상태 기반 edge 차단</td><td><code>DynamicEdgesScorer</code> 플러그인</td></tr>
+          <tr><td>차단 발생 시 자동 재계산</td><td><code>ReroutingService</code> + <code>ComputeAndTrackRoute</code> action</td></tr>
+          <tr><td>표준 Nav2 controller 통합</td><td>출력이 <code>nav_msgs/Path</code> — 그대로 MPPI/DWB/RPP에 전달</td></tr>
+          <tr><td>Edge별 속도 제한</td><td><code>AdjustSpeedLimit</code> operation (보너스)</td></tr>
+          <tr><td>노드 도착 시 작업 트리거</td><td>Route Operation 프레임워크</td></tr>
+        </tbody>
+      </table>
+
+      <h3>19.4 새 아키텍처</h3>
+      <div class="ascii">┌────────────────────────────────────────────────────┐
+│  FleetCoordinator (우리 구현)                        │
+│                                                      │
+│   ┌─────────────────┐   ┌──────────────────────┐   │
+│   │ TrafficManager  │   │  PriorityYield       │   │
+│   │ - Edge 예약     │   │  - Deadlock 감지     │   │
+│   │ - Capacity 체크 │   │  - Backtrack yield  │   │
+│   └────────┬────────┘   └──────────────────────┘   │
+│            │                                        │
+│            │ (edge_id, holder_id) pairs             │
+│            ▼                                        │
+│   ┌──────────────────────────────────┐              │
+│   │ ReservationToRouteBridge          │              │
+│   │ /dynamic_edges → DynamicEdgesScorer              │
+│   └──────────────────────────────────┘              │
+└──────────────┬─────────────────────────────────────┘
+               │
+               │ (차단 edge 목록 publish)
+               │
+               ▼
+┌────────────────────────────────────────────────────┐
+│  nav2_route Route Server (Nav2 표준)                 │
+│                                                      │
+│   factory_graph.geojson 로드 (노드/엣지)              │
+│   ↓                                                  │
+│   edge_cost_functions: [                             │
+│     DistanceScorer,                                  │
+│     DynamicEdgesScorer  ← 예약 반영                   │
+│   ]                                                  │
+│   ↓                                                  │
+│   ComputeAndTrackRoute action → nav_msgs/Path        │
+│   ↓                                                  │
+│   ReroutingService (차단 변경 시 자동 재계산)         │
+└──────────────┬─────────────────────────────────────┘
+               │
+               │ nav_msgs/Path
+               │
+               ▼
+┌────────────────────────────────────────────────────┐
+│  Nav2 Controller (DWB / Regulated Pure Pursuit)     │
+│  - waypoint 간 저수준 모션 제어                       │
+│  - 장애물 회피 (costmap)                              │
+│  - 제자리 회전 + 전진                                  │
+└────────────────────────────────────────────────────┘</div>
+
+      <h3>19.5 GeoJSON 그래프 파일 예시</h3>
+      <pre>{
+  <span class="str">"type"</span>: <span class="str">"FeatureCollection"</span>,
+  <span class="str">"features"</span>: [
+    {
+      <span class="str">"type"</span>: <span class="str">"Feature"</span>,
+      <span class="str">"id"</span>: <span class="str">"WP_MELT"</span>,
+      <span class="str">"geometry"</span>: {
+        <span class="str">"type"</span>: <span class="str">"Point"</span>,
+        <span class="str">"coordinates"</span>: [<span class="num">0.2</span>, <span class="num">0.5</span>]
+      },
+      <span class="str">"properties"</span>: {
+        <span class="str">"frame"</span>: <span class="str">"map"</span>,
+        <span class="str">"type"</span>: <span class="str">"station"</span>,
+        <span class="str">"label"</span>: <span class="str">"용해로"</span>
+      }
+    },
+    {
+      <span class="str">"type"</span>: <span class="str">"Feature"</span>,
+      <span class="str">"id"</span>: <span class="str">"WP_INT_L"</span>,
+      <span class="str">"geometry"</span>: {
+        <span class="str">"type"</span>: <span class="str">"Point"</span>,
+        <span class="str">"coordinates"</span>: [<span class="num">0.5</span>, <span class="num">0.5</span>]
+      },
+      <span class="str">"properties"</span>: { <span class="str">"type"</span>: <span class="str">"intersection"</span> }
+    },
+    {
+      <span class="str">"type"</span>: <span class="str">"Feature"</span>,
+      <span class="str">"id"</span>: <span class="str">"E_MELT_INTL"</span>,
+      <span class="str">"geometry"</span>: {
+        <span class="str">"type"</span>: <span class="str">"LineString"</span>,
+        <span class="str">"coordinates"</span>: [[<span class="num">0.2</span>, <span class="num">0.5</span>], [<span class="num">0.5</span>, <span class="num">0.5</span>]]
+      },
+      <span class="str">"properties"</span>: {
+        <span class="str">"start_id"</span>: <span class="str">"WP_MELT"</span>,
+        <span class="str">"end_id"</span>: <span class="str">"WP_INT_L"</span>,
+        <span class="str">"cost"</span>: <span class="num">0.3</span>,
+        <span class="str">"speed_limit"</span>: <span class="num">0.15</span>
+      }
+    }
+    <span class="comment">// ... 나머지 waypoint와 edge들 ...</span>
+  ]
+}</pre>
+
+      <h3>19.6 Route Server 설정 (우리 맞춤)</h3>
+      <pre>route_server:
+  ros__parameters:
+    base_frame: <span class="str">"base_link"</span>
+    route_frame: <span class="str">"map"</span>
+    path_density: <span class="num">0.02</span>       <span class="comment"># 1cm 단위 (소형 로봇)</span>
+    max_planning_time: <span class="num">0.5</span>
+    radius_to_achieve_node: <span class="num">0.05</span>   <span class="comment"># 5cm 도착 판정</span>
+
+    graph_file_loader: <span class="str">"GeoJsonGraphFileLoader"</span>
+    graph_file_loader.plugin: <span class="str">"nav2_route::GeoJsonGraphFileLoader"</span>
+    graph_filepath: <span class="str">"/opt/casting_factory/factory_graph.geojson"</span>
+
+    <span class="comment"># Edge cost: 거리 + 예약 상태</span>
+    edge_cost_functions: [<span class="str">"DistanceScorer"</span>, <span class="str">"DynamicEdgesScorer"</span>]
+    DistanceScorer:
+      plugin: <span class="str">"nav2_route::DistanceScorer"</span>
+    DynamicEdgesScorer:
+      plugin: <span class="str">"nav2_route::DynamicEdgesScorer"</span>
+
+    <span class="comment"># Route Operations: 속도 제한 + 재라우팅</span>
+    operations: [<span class="str">"AdjustSpeedLimit"</span>, <span class="str">"ReroutingService"</span>]</pre>
+
+      <h3>19.7 예약 상태 → Route Server 브릿지 코드</h3>
+      <pre><span class="kw">import</span> rclpy
+<span class="kw">from</span> rclpy.node <span class="kw">import</span> Node
+<span class="kw">from</span> nav2_route_msgs.msg <span class="kw">import</span> DynamicEdges
+
+<span class="kw">class</span> ReservationToRouteBridge(Node):
+    <span class="str">"""
+    우리 TrafficManager의 예약 상태를 nav2_route의
+    DynamicEdgesScorer에 전달하는 브릿지 노드.
+    """</span>
+
+    <span class="kw">def</span> __init__(self, traffic_manager):
+        <span class="kw">super</span>().__init__(<span class="str">"reservation_to_route_bridge"</span>)
+        self.tm = traffic_manager
+
+        <span class="comment"># DynamicEdgesScorer가 구독하는 토픽에 차단 edge 발행</span>
+        self.pub = self.create_publisher(
+            DynamicEdges,
+            <span class="str">"/dynamic_edges"</span>,
+            qos_profile=<span class="num">10</span>,
+        )
+        self.timer = self.create_timer(<span class="num">0.1</span>, self.publish_blocked)  <span class="comment"># 10Hz</span>
+
+    <span class="kw">def</span> publish_blocked(self):
+        msg = DynamicEdges()
+        <span class="comment"># 다른 로봇이 사용 중인 edge를 "차단됨" 으로 표시</span>
+        <span class="kw">for</span> edge_id, edge <span class="kw">in</span> self.tm.edges.items():
+            <span class="kw">if</span> edge.current_users:
+                msg.closed_edges.append(edge_id)
+        self.pub.publish(msg)</pre>
+
+      <h3>19.8 구현 코드량 비교</h3>
+      <table>
+        <thead><tr><th>항목</th><th>섹션 ①~⑯ 자체 구현</th><th>Route Server 활용</th></tr></thead>
+        <tbody>
+          <tr><td>그래프 자료구조</td><td>직접 구현 (~100줄)</td><td>GeoJSON 파일 (설계 1회)</td></tr>
+          <tr><td>Dijkstra</td><td>직접 구현 (~80줄)</td><td>Nav2 제공</td></tr>
+          <tr><td>Polygon adjacency</td><td>shapely 연산 (~50줄)</td><td>불필요</td></tr>
+          <tr><td>재계획 로직</td><td>직접 구현 (~60줄)</td><td><code>ReroutingService</code> 제공</td></tr>
+          <tr><td>Nav2 goal 시퀀스 변환</td><td>직접 구현 (~40줄)</td><td><code>nav_msgs/Path</code> 직접 사용</td></tr>
+          <tr><td>TrafficManager (우리 고유 로직)</td><td>필요 (~150줄)</td><td>필요 (~150줄)</td></tr>
+          <tr><td>ReservationToRouteBridge</td><td>-</td><td>신규 (~50줄)</td></tr>
+          <tr><td>Priority Yield (우리 고유)</td><td>필요 (~200줄)</td><td>필요 (~200줄)</td></tr>
+          <tr><td><strong>총계</strong></td><td><strong>~680줄</strong></td><td><strong>~400줄</strong></td></tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>약 41% 코드량 감소</strong>. 더 중요한 건 <strong>Nav2 공식 구현에 의존</strong>한다는 점 — 유지보수 부담이 크게 줄어듭니다.
+      </div>
+
+      <h3>19.9 남은 불확실성</h3>
+      <div class="note warn">
+        <ul style="margin:6px 0 0 18px;">
+          <li><strong>설치 가용성 검증 필요</strong>: <code>apt-cache search nav2-route</code> 또는 <code>ros2 pkg list | grep nav2_route</code>로 확인</li>
+          <li><strong>정확한 Jazzy 지원 버전</strong>: 공식 docs는 "Jazzy+"로 표기하지만 Humble/Iron에는 미포함 (source build 필요)</li>
+          <li><strong>플러그인 API 시그니처</strong>: <code>DynamicEdgesScorer</code> 메시지 포맷이 릴리스마다 변경 가능</li>
+          <li>설치 불가 시 대안: <strong>source build</strong> 또는 섹션 ⑱의 자체 구현 방식 유지</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="s20">
+      <h2>⑳ [v1.1] 업데이트된 로드맵 & 결론 개정</h2>
+
+      <h3>20.1 수정된 Phase 로드맵</h3>
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>기존 계획 (v1.0)</th><th>수정 계획 (v1.1)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Phase 0</strong></td>
+            <td>—</td>
+            <td><strong>nav2_route 가용성 검증</strong><br>(<code>apt-cache search nav2-route</code>)</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 1</strong></td>
+            <td>TrafficManager (Full Path Lock)<br>Polygon Zone 방식</td>
+            <td><strong>factory_graph.geojson 설계</strong><br>Waypoint + Edge 정의 · Route Server 연동</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 2</strong></td>
+            <td>Sliding Window 추가</td>
+            <td><strong>TrafficManager (Edge-based)</strong> + <strong>ReservationToRouteBridge</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Phase 3</strong></td>
+            <td>Backtrack Yield</td>
+            <td><strong>Priority Yield (Waypoint 단위 Backtrack)</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Phase 4</strong></td>
+            <td>Reroute fallback</td>
+            <td><strong>DynamicEdgesScorer 활용 자동 reroute</strong> (Route Server 내장)</td>
+          </tr>
+          <tr>
+            <td><strong>Phase 5</strong></td>
+            <td>Dynamic Priority Boost</td>
+            <td>동일 (배터리/긴급도 반영)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>20.2 최종 설계 결정 요약</h3>
+      <ol>
+        <li><strong>추상화</strong>: Polygon Zone → <strong>Waypoint + Edge</strong></li>
+        <li><strong>경로 계획</strong>: 직접 Dijkstra → <strong>nav2_route Route Server</strong></li>
+        <li><strong>그래프 포맷</strong>: YAML → <strong>GeoJSON</strong> (Route Server 표준)</li>
+        <li><strong>예약 단위</strong>: Zone 면적 → <strong>Edge 점유</strong></li>
+        <li><strong>회피 메커니즘</strong>: Pocket → <strong>Backtrack Yield</strong> (waypoint 1개 역이동)</li>
+        <li><strong>Nav2 API</strong>: <code>BackwardMotionController</code> → <strong><code>navigate_to_pose</code></strong> (제자리 회전 + 전진)</li>
+        <li><strong>재계획</strong>: 수동 구현 → <strong>Route Server <code>ReroutingService</code></strong></li>
+      </ol>
+
+      <h3>20.3 "우리가 직접 만들 것" vs "Nav2가 해주는 것"</h3>
+      <div class="grid-2">
+        <div class="card">
+          <h4>우리 고유 로직 (직접 구현)</h4>
+          <ul>
+            <li>TrafficManager (Edge 예약 관리)</li>
+            <li>Deadlock Detector (2-robot cycle)</li>
+            <li>Priority Yield Resolver (FIFO tiebreak)</li>
+            <li>Backtrack Target 탐색</li>
+            <li>ReservationToRouteBridge (ROS2 노드)</li>
+            <li>FleetCoordinator 메인 루프</li>
+            <li>FastAPI ↔ ROS2 dispatch 브릿지</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Nav2 Route Server (활용)</h4>
+          <ul>
+            <li>그래프 파일 파싱 (GeoJSON)</li>
+            <li>Dijkstra 경로 탐색</li>
+            <li>Edge cost 계산 (plugin)</li>
+            <li>차단 edge 자동 회피</li>
+            <li>재계획 트리거</li>
+            <li>Edge별 속도 제한 publish</li>
+            <li><code>nav_msgs/Path</code> 생성</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>20.4 Fallback 전략 (Route Server 미지원 시)</h3>
+      <div class="note info">
+        만약 ROS 2 Jazzy에서 <code>nav2_route</code> 설치가 불가능하거나 버전 호환 문제가 발생하면, <strong>섹션 ⑱의 자체 구현 방식</strong>으로 되돌립니다:
+        <ol style="margin:6px 0 0 18px;">
+          <li>Waypoint/Edge 데이터 구조 자체 정의 (약 100줄)</li>
+          <li>Dijkstra 직접 구현 (약 80줄)</li>
+          <li>Nav2는 저수준 <code>navigate_to_pose</code>만 사용</li>
+          <li>재계획은 <code>RobotController._on_waiting</code>에서 수동 트리거</li>
+        </ol>
+        이 경우에도 전체 아키텍처와 알고리즘은 동일하게 유지됩니다.
+      </div>
+
+      <h3>20.5 다음 액션 아이템</h3>
+      <ol>
+        <li><strong>nav2_route 가용성 검증</strong> — ROS 2 Jazzy 환경에서 <code>ros2 pkg list | grep nav2_route</code></li>
+        <li><strong>GitHub 레포 생성</strong> — <code>casting_factory_fleet</code> (public 또는 private 확인 필요)</li>
+        <li><strong>Phase 1 — GeoJSON 그래프 작성</strong> — 실제 공장 맵 레이아웃 기반 waypoint/edge 정의</li>
+        <li><strong>Phase 2 — TrafficManager + Bridge 구현</strong> — 약 200줄</li>
+        <li><strong>Phase 3 — Priority Yield 통합</strong> — 약 200줄</li>
+        <li><strong>통합 테스트</strong> — Gazebo 또는 실제 3대 Pinkypro 로봇으로</li>
+      </ol>
+
+      <h3>20.6 v1.0에서 v1.1로의 변경 요약</h3>
+      <div class="note good">
+        <strong>본 문서 v1.1의 핵심 변경점</strong>:
+        <ol style="margin:6px 0 0 18px;">
+          <li><strong>섹션 ⑰</strong>: Nav2 <code>compute_path</code>가 Zone 예약을 모르는 허점 식별 → 그래프 기반 계획 필요성 확립</li>
+          <li><strong>섹션 ⑱</strong>: Polygon Zone → Waypoint + Edge 추상화 재정립 (소형 맵에 적합)</li>
+          <li><strong>섹션 ⑲</strong>: Nav2 공식 <code>nav2_route</code> Route Server 발견 및 통합 설계 — 자체 Dijkstra 구현 대체</li>
+          <li><strong>섹션 ⑳</strong>: 수정된 Phase 로드맵, 구현 코드량 약 41% 감소</li>
+        </ol>
+        <strong>섹션 ①~⑯은 그대로 보존</strong>되며, 설계 진화 과정과 배경 지식으로 참조 가치가 있습니다.
+      </div>
+    </section>
+
+    <footer>
+      Casting Factory Fleet Traffic Management Design Document ·
+      Version 1.1 (2026-04-08) · 본 문서는 <code>docs/fleet_traffic_management.html</code>에 저장됨<br>
+      <span style="color:#6b7699;">v1.0 (초기): Polygon Zone + 자체 구현 · v1.1 (개정): Waypoint/Edge + nav2_route Route Server</span>
+    </footer>
+
+  </div>
+</body>
+</html>

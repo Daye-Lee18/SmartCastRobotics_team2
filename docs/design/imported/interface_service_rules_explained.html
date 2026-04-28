@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interface Service 구현 규칙 해설 — 주니어~미드 개발자를 위한 학습 문서 (2026-04-21)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --fail: #ef4444;
+    --info: #818cf8;
+    --border: #475569;
+    --highlight: #fde68a;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 2px solid var(--accent);
+  }
+  header h1 { margin: 0; font-size: 1.75rem; color: var(--accent); }
+  header p { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+  .badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--panel2);
+    color: var(--text);
+  }
+  .badge.ok { background: var(--ok); color: #052e16; }
+  .badge.warn { background: var(--warn); color: #422006; }
+  .badge.info { background: var(--info); color: #1e1b4b; }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    background: rgba(15,23,42,0.95);
+    backdrop-filter: blur(6px);
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    z-index: 10;
+  }
+  nav.toc a { color: var(--accent); margin-right: 1rem; text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+  section {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+  }
+  section h2 {
+    margin-top: 0;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
+  section h3 { color: var(--highlight); font-size: 1.08rem; margin-top: 1.5rem; }
+  section h4 { color: var(--text); font-size: 0.98rem; margin-top: 1rem; }
+  code {
+    background: var(--panel2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    color: #fde68a;
+  }
+  pre {
+    background: #020617;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+  }
+  pre code { background: transparent; color: var(--text); padding: 0; }
+  .rule-card {
+    background: var(--panel2);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+  }
+  .rule-card h4 { margin-top: 0; color: var(--accent); }
+  .rule-card .step-label {
+    display: inline-block;
+    background: var(--accent);
+    color: #082f49;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+    margin-top: 0.4rem;
+  }
+  .rule-card p.step-text { margin-top: 0.3rem; }
+  .rule-card p.step-text + .step-label { margin-top: 0.8rem; }
+  .rule-card .evidence {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-family: monospace;
+  }
+  .analogy {
+    background: rgba(56,189,248,0.08);
+    border-left: 3px solid var(--info);
+    padding: 0.6rem 1rem;
+    margin: 0.8rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+  }
+  .analogy::before { content: "🧩 비유: "; font-weight: 700; color: var(--info); }
+  .pitfall {
+    background: rgba(239,68,68,0.08);
+    border-left: 3px solid var(--fail);
+    padding: 0.6rem 1rem;
+    margin: 0.8rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+  }
+  .pitfall::before { content: "⚠️ 자주 하는 실수: "; font-weight: 700; color: var(--fail); }
+  .tip {
+    background: rgba(34,197,94,0.08);
+    border-left: 3px solid var(--ok);
+    padding: 0.6rem 1rem;
+    margin: 0.8rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+  }
+  .tip::before { content: "💡 팁: "; font-weight: 700; color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    background: var(--panel2);
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+  }
+  .mermaid-wrap {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .mermaid { text-align: center; }
+  .glossary dt { font-weight: 700; color: var(--accent); margin-top: 0.8rem; }
+  .glossary dd { margin: 0.2rem 0 0 1rem; color: var(--text); font-size: 0.9rem; }
+  footer { text-align: center; color: var(--muted); padding: 2rem 1rem 3rem; font-size: 0.82rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Interface Service 구현 규칙 해설</h1>
+  <p>주니어~미드 개발자를 위한 교육 문서 · V6 canonical · 2026-04-21</p>
+  <div class="badges">
+    <span class="badge info">교육 목적</span>
+    <span class="badge ok">20 규칙 PASS 18/20</span>
+    <span class="badge warn">읽는 순서 추천: ①→②→③→...</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#intro">0. 시작하기</a>
+  <a href="#glossary">① 용어 사전</a>
+  <a href="#big-picture">② 큰 그림</a>
+  <a href="#boundary">③ 계층 경계 C-1~C-5</a>
+  <a href="#internal">④ 내부 구조 I-1~I-6</a>
+  <a href="#ordering">⑤ 고객 계약 O-1~O-4</a>
+  <a href="#management">⑥ 관리자 계약 M-1~M-5</a>
+  <a href="#data">⑦ 데이터 계약 D-1~D-3</a>
+  <a href="#quickref">⑧ 실무 의사결정</a>
+  <a href="#pitfalls">⑨ 흔한 실수 모음</a>
+</nav>
+
+<main>
+
+<!-- ============ 0. Intro ============ -->
+<section id="intro">
+  <h2>0. 이 문서를 읽기 전에</h2>
+
+  <p>이 문서는 <strong>casting-factory 프로젝트의 Interface Service 가 왜 지금처럼 설계되었는지</strong> 를 설명합니다. 단순히 "규칙 지켜라" 가 아니라, <strong>각 규칙이 해결하려는 문제</strong> 와 <strong>깨지면 어떤 일이 일어나는지</strong> 를 함께 다룹니다.</p>
+
+  <h3>읽는 대상</h3>
+  <ul>
+    <li>Python/FastAPI 는 쓸 줄 알지만 <strong>gRPC · 마이크로서비스 분리</strong> 는 해본 적 없는 주니어</li>
+    <li>모놀리식 REST 는 해봤지만 <strong>실시간 스트림 vs polling</strong> 선택에서 막혔던 미드</li>
+    <li>새 엔드포인트를 어디(Interface vs Management) 에 두어야 할지 망설여지는 팀원</li>
+  </ul>
+
+  <h3>이 문서를 읽고 나면</h3>
+  <ul>
+    <li>"이 기능은 <code>backend/app/</code> 에 넣어야 할까, <code>backend/management/</code> 에 넣어야 할까?" 를 5초 안에 판단</li>
+    <li>코드 리뷰에서 "C-3 위반입니다" 같은 커뮤니케이션이 가능</li>
+    <li>장애 발생 시 "어느 계층 문제지?" 로 범위를 좁혀 10분 안에 격리</li>
+  </ul>
+
+  <h3>읽는 데 걸리는 시간</h3>
+  <p>처음 한 번: <strong>약 30–45분</strong>. 이후는 참조용으로 필요한 섹션만 점프.</p>
+</section>
+
+<!-- ============ 1. Glossary ============ -->
+<section id="glossary">
+  <h2>① 용어 사전 (먼저 익히면 편한 단어들)</h2>
+
+  <dl class="glossary">
+    <dt>Interface Service</dt>
+    <dd>웹 브라우저(Admin 포털, Customer 포털) 로부터 <strong>HTTP REST 요청</strong>을 받는 FastAPI 프로세스. 위치: <code>backend/app/</code>, 포트: 8000.</dd>
+
+    <dt>Management Service</dt>
+    <dd>공장 설비(로봇·컨베이어·AMR)의 <strong>실제 제어 두뇌</strong>. gRPC 로 통신. 위치: <code>backend/management/</code>, 포트: 50051.</dd>
+
+    <dt>Ordering Service</dt>
+    <dd>고객이 주문을 넣는 웹 페이지(<code>/customer</code>). 외부에 공개.</dd>
+
+    <dt>Ordering Management Service</dt>
+    <dd>관리자가 주문을 승인/출고 처리하는 웹 페이지(<code>/admin</code>, <code>/orders</code>). 내부.</dd>
+
+    <dt>canonical (아키텍처)</dt>
+    <dd>팀이 합의한 <strong>표준</strong> 설계도. "canonical 이미지 = 이 프로젝트의 공식 아키텍처 그림".</dd>
+
+    <dt>gRPC</dt>
+    <dd>Google 이 만든 고성능 RPC. HTTP/2 위에서 동작. REST 와 다르게 <strong>스트리밍</strong>(서버가 한 번 응답 시작하면 계속 이벤트를 밀어줄 수 있음)을 지원.</dd>
+
+    <dt>REST vs RPC</dt>
+    <dd>REST 는 "자원(Resource) 에 HTTP 메서드" 모델. RPC 는 "함수 호출(procedure call)" 모델. 이 프로젝트는 외부 공개는 REST, 내부는 gRPC.</dd>
+
+    <dt>proxy (프록시)</dt>
+    <dd>"대신 전달해주는 역할". Interface 의 <code>POST /api/production/start</code> 가 받은 요청을 Management 로 넘기는 것이 proxy.</dd>
+
+    <dt>싱글톤 (singleton)</dt>
+    <dd>프로세스 안에 <strong>단 하나만 존재하는 객체</strong>. 매번 새로 만들지 않고 처음 만든 것을 재사용.</dd>
+
+    <dt>lazy (지연 생성)</dt>
+    <dd>"실제로 처음 필요할 때" 만듦. Management gRPC 채널을 프로세스 시작 시점에 만들지 않고, 첫 호출 때 만드는 것.</dd>
+
+    <dt>SoC (Separation of Concerns)</dt>
+    <dd>"관심사 분리". 한 모듈은 한 가지 책임만 가지도록. Interface 는 HTTP, Management 는 설비 제어 — 섞지 않음.</dd>
+
+    <dt>SPOF (Single Point of Failure)</dt>
+    <dd>"한 곳이 죽으면 전체가 죽는 지점". Interface 와 Management 를 한 프로세스에 두면 FastAPI 죽으면 공장 정지 — 그게 SPOF.</dd>
+
+    <dt>mTLS</dt>
+    <dd>"mutual TLS". 클라이언트와 서버가 <strong>서로의 인증서</strong>를 검증. 내부 서비스 간 통신을 암호화 + 인증.</dd>
+
+    <dt>smartcast v2 스키마</dt>
+    <dd>이 프로젝트의 표준 DB 스키마(27테이블). 테이블 이름이 <code>Ord</code>, <code>Item</code>, <code>EquipTaskTxn</code> 같은 축약형. legacy 는 <code>orders</code>, <code>work_orders</code> 같은 v47 시절 이름.</dd>
+
+    <dt>public schema vs smartcast schema</dt>
+    <dd>같은 DB 안에서 테이블을 두 그룹으로 나눔. 새 것은 <code>smartcast.*</code>, legacy 는 <code>public.*</code>. PG 의 <code>search_path</code> 로 기본 조회 대상 조정.</dd>
+
+    <dt>proto / protobuf</dt>
+    <dd>gRPC 가 쓰는 "인터페이스 정의 파일". <code>management.proto</code> 를 바탕으로 Python 코드(<code>_pb2.py</code>, <code>_pb2_grpc.py</code>)를 자동 생성.</dd>
+
+    <dt>flag-gated (플래그 잠금)</dt>
+    <dd>환경변수로 기능 on/off. 배포하고도 즉시 활성화 안 하고, 안정성 확인 후 flag 만 켜서 전환.</dd>
+  </dl>
+</section>
+
+<!-- ============ 2. Big picture ============ -->
+<section id="big-picture">
+  <h2>② 큰 그림 — 3계층은 왜 이렇게 나눴나</h2>
+
+  <p>먼저 <strong>왜 한 덩어리로 두지 않고 쪼갰는지</strong> 부터.</p>
+
+  <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart LR
+  subgraph External["외부 (인터넷·LAN)"]
+    OMS["Ordering Management<br/>(관리자 웹)"]
+    OS["Ordering Service<br/>(고객 웹)"]
+  end
+  subgraph Interface["Interface Service<br/>:8000 · FastAPI"]
+    API["REST Endpoints"]
+  end
+  subgraph Mgmt["Management Service<br/>:50051 · gRPC"]
+    LOGIC["공장 제어 로직"]
+  end
+  subgraph HW["공장 설비"]
+    ROBOT["AMR·Cobot·컨베이어"]
+  end
+  subgraph Factory["Factory Operator PC"]
+    PyQt["PyQt 관제 앱"]
+  end
+
+  OMS -- "HTTPS" --> API
+  OS  -- "HTTPS" --> API
+  API -- "gRPC" --> LOGIC
+  LOGIC -- "ROS2·Serial" --> ROBOT
+  PyQt -- "gRPC 직결" --> LOGIC
+
+  classDef ext fill:#4338ca,stroke:#312e81,color:#fff
+  classDef iface fill:#0891b2,stroke:#0e7490,color:#fff
+  classDef mgmt fill:#16a34a,stroke:#166534,color:#fff
+  classDef hw fill:#a16207,stroke:#713f12,color:#fff
+  class OMS,OS ext
+  class API iface
+  class LOGIC mgmt
+  class ROBOT hw
+  class PyQt ext
+</pre>
+  </div>
+
+  <h3>핵심 관찰</h3>
+  <ol>
+    <li><strong>외부 웹</strong>(관리자/고객)은 Interface 만 보고, Management 는 존재조차 모른다.</li>
+    <li><strong>PyQt 는 Management 직결</strong>. Interface 를 거치지 않음. 이유: 현장 제어는 Interface 가 죽어도 멈추면 안 됨 (SPOF 회피).</li>
+    <li><strong>공장 설비(ROS2·Serial)</strong> 와 직접 말하는 건 Management 만. Interface 는 설비 프로토콜 0개.</li>
+  </ol>
+
+  <div class="analogy">
+    Interface 는 <strong>식당의 홀 매니저</strong>, Management 는 <strong>주방장</strong>. 손님(웹 브라우저)은 홀 매니저에게만 주문 전달. 단, VIP(PyQt 공장 담당자) 는 주방에 직접 들어가 불 끄라고 말할 수 있음. 홀 매니저가 쓰러져도 주방은 계속 돌아가야 공장 가동이 유지됨.
+  </div>
+</section>
+
+<!-- ============ 3. C-1~C-5 계층 경계 ============ -->
+<section id="boundary">
+  <h2>③ 계층 경계 규칙 (C-1 ~ C-5)</h2>
+
+  <p>이 5개 규칙은 <strong>"누가 누구와 말할 수 있나"</strong> 를 정의합니다. 깨지면 SoC 가 무너져서 한 곳을 고치면 전혀 엉뚱한 곳이 터지는 재앙이 시작됩니다.</p>
+
+  <!-- C-1 -->
+  <div class="rule-card">
+    <h4>C-1. 웹 포털(고객/관리자)은 Management(:50051) 와 직접 통신하면 안 된다</h4>
+
+    <p class="step-label">배경</p>
+    <p class="step-text">gRPC 는 기본적으로 HTTP/2 기반이라 브라우저가 직접 못 씁니다(gRPC-Web 같은 변환 레이어 필요). 또한 Management 포트(50051)를 인터넷에 열면 공장 제어 API 가 그대로 노출.</p>
+
+    <p class="step-label">규칙</p>
+    <p class="step-text">브라우저 코드(<code>src/</code>) 는 <code>/api/*</code> HTTP 만 호출한다. gRPC 라이브러리 import 금지.</p>
+
+    <p class="step-label">증거</p>
+    <p class="evidence">src/lib/api.ts 전체에서 `grpc`·`50051` 참조 0건</p>
+
+    <p class="step-label">왜 중요한가</p>
+    <p class="step-text">이 규칙이 깨지면 Management 포트를 방화벽에서 외부로 뚫어줘야 하고, 공격 표면이 급격히 늘어납니다. 또 Management API 스키마 변경 시 브라우저까지 배포해야 해서 릴리즈가 엉킴.</p>
+
+    <div class="pitfall">
+      "Admin 대시보드에 실시간 차트를 넣고 싶어서 브라우저에서 gRPC-Web 으로 직접 Mgmt 연결하면 어때요?" → <strong>C-1 위반</strong>. 대신 Interface 에 WebSocket 엔드포인트 추가 + 서버에서 Mgmt stream 구독 (M-4a 설계 옵션 참조).
+    </div>
+  </div>
+
+  <!-- C-2 -->
+  <div class="rule-card">
+    <h4>C-2. Interface Service 는 HTTP REST 이외의 프로토콜을 외부로 노출하지 않는다</h4>
+
+    <p class="step-label">배경</p>
+    <p class="step-text">한 프로세스가 HTTP + WebSocket + gRPC 서버 역할을 다 하면, 각 포트별 인증·로깅·모니터링이 파편화됩니다.</p>
+
+    <p class="step-label">규칙</p>
+    <p class="step-text"><code>backend/app/main.py</code> 의 FastAPI 앱은 포트 8000 만 바인딩. gRPC servicer 등록 금지.</p>
+
+    <p class="step-label">증거</p>
+    <p class="evidence">backend/app/main.py 에서 `grpc.server()` 호출 0건</p>
+
+    <div class="tip">
+      WebSocket(<code>/ws/dashboard</code>) 은 HTTP Upgrade 방식이라 포트 8000 그대로 사용 — 새 포트 노출 아님. 그래서 허용.
+    </div>
+  </div>
+
+  <!-- C-3 -->
+  <div class="rule-card">
+    <h4>C-3. Interface → Management 채널은 싱글톤 1곳에서만 생성한다</h4>
+
+    <p class="step-label">배경</p>
+    <p class="step-text">gRPC 채널을 매 요청마다 새로 만들면 TCP handshake + TLS handshake 가 매번 발생해 응답이 수백 ms 씩 늘어납니다. 채널은 "연결 풀" 같은 개념 — 한 번 만들어 재사용.</p>
+
+    <p class="step-label">규칙</p>
+    <p class="step-text">코드 어디서든 <code>grpc.insecure_channel(...)</code> 을 직접 호출하면 안 됨. 반드시 <code>app/clients/management.py</code> 의 <code>ManagementClient.get()</code> 싱글톤 경유.</p>
+
+    <p class="step-label">증거</p>
+    <p class="evidence">backend/app/ 안에서 `grpc.insecure_channel` 은 clients/management.py 1곳에만 존재</p>
+
+    <p class="step-label">왜 중요한가</p>
+    <p class="step-text">채널 누수(close 안 되는 채널이 누적되면) 또는 연결 폭풍(burst traffic 시 채널 N개 생성)은 디버깅이 매우 어렵습니다. 진입점을 1곳으로 강제하면 로그·메트릭·TLS 설정이 한곳에서 관리됨.</p>
+  </div>
+
+  <!-- C-4 -->
+  <div class="rule-card">
+    <h4>C-4. Interface Service 는 ROS2·MQTT·Serial 과 직접 통신하지 않는다</h4>
+
+    <p class="step-label">배경</p>
+    <p class="step-text">ROS2 는 리눅스 전용(DDS 라이브러리), Serial 은 특정 OS·USB 드라이버 의존. Interface 에 이런 dependency 를 넣으면 <strong>AWS 같은 클라우드 배포가 불가능</strong> 해짐.</p>
+
+    <p class="step-label">규칙</p>
+    <p class="step-text"><code>backend/app/</code> 하위에 <code>import rclpy</code>, <code>paho</code>, <code>serial</code> 같은 HW 라이브러리 없음. 설비 연결은 Management 가 독점.</p>
+
+    <p class="step-label">증거</p>
+    <p class="evidence">backend/app/ 안에 `rclpy`/`paho`/`pyserial` import 0건</p>
+
+    <div class="analogy">
+      Interface 를 "AWS 로 이사할 수 있는 가벼운 짐" 으로 유지. Management 는 공장 바닥에 고정된 "무거운 기계". 둘을 섞으면 Interface 도 공장에 묶임.
+    </div>
+  </div>
+
+  <!-- C-5 -->
+  <div class="rule-card">
+    <h4>C-5. Management 는 Interface HTTP 를 역호출하지 않는다</h4>
+
+    <p class="step-label">배경</p>
+    <p class="step-text">A → B 는 호출하는데 B → A 도 호출하면 <strong>순환 의존</strong>. 어느 한쪽을 재시작할 때 데드락 위험, 배포 순서 강제 등 문제 발생.</p>
+
+    <p class="step-label">규칙</p>
+    <p class="step-text">Management 안에 <code>requests</code>, <code>httpx</code>, <code>localhost:8000</code> 참조가 없어야 함.</p>
+
+    <p class="step-label">증거</p>
+    <p class="evidence">backend/management/ 에 requests/httpx/localhost:8000 참조 0건</p>
+
+    <p class="step-label">canonical 화살표 오해 주의</p>
+    <p class="step-text">canonical 이미지의 Interface ↔ Management 양방향 화살표는 <strong>"gRPC TCP 연결의 양방향 데이터 흐름"</strong> 을 뜻합니다. 같은 TCP 소켓 위에서 Interface 가 호출하고 Management 가 스트리밍으로 응답하는 것 — "Management 가 Interface 에 별도 HTTP 요청을 보내는" 의미가 절대 아닙니다.</p>
+  </div>
+</section>
+
+<!-- ============ 4. I-1~I-6 내부 구조 ============ -->
+<section id="internal">
+  <h2>④ 내부 구조 규칙 (I-1 ~ I-6)</h2>
+
+  <p>계층 경계(C 규칙)가 외부 관계라면, I 규칙은 <strong>Interface 내부의 견고함</strong>에 대한 것입니다.</p>
+
+  <div class="rule-card">
+    <h4>I-1. Management gRPC 채널은 lazy + 싱글톤</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">① <strong>lazy</strong>: FastAPI 가 기동할 때 Management 로 안 붙어도 OK. 첫 호출 때 붙는다. ② <strong>싱글톤</strong>: 그 후로는 프로세스가 죽을 때까지 같은 채널 재사용.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">Management 가 아직 안 떠있어도 Interface 는 정상 시작해야 함(배포 순서 자유). 그리고 요청마다 채널 만들면 성능 폭망.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>I-2. Management 장애 → 503, Interface 는 안 죽는다</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">Mgmt 가 crash 했거나 응답 안 하면, Interface 는 <code>ManagementUnavailable</code> 예외를 <code>HTTPException(503 Service Unavailable)</code> 로 변환해 브라우저에 반환. Interface 자체는 다른 요청을 계속 처리.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">웹 관리자가 "생산 시작" 버튼 눌렀더니 Interface 가 같이 죽어버리면 주문 조회 같은 다른 기능도 마비. 한 기능 실패가 전체 정지로 번지면 안 됨.</p>
+    <div class="tip">이 패턴을 "<strong>graceful degradation</strong>"(우아한 열화) 이라고 합니다. 하위 시스템 실패가 상위를 끌어내리지 않도록 하는 것.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>I-3. proxy 플래그는 <em>모듈 import 시점</em>에 고정</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text"><code>_PROXY_START_PRODUCTION = os.environ.get(...)</code> 가 모듈 최상위에 있고, 함수 안이 아님. 즉 FastAPI 시작할 때 한 번 읽고 그대로 고정.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">uvicorn 이 worker 여러 개(보통 2~4개)를 띄우면, 각 worker 가 독립 프로세스. 환경변수를 실시간으로 바꾸면 어떤 worker 는 새 값, 어떤 worker 는 옛 값을 써서 <strong>요청마다 결과가 다른 비결정성</strong> 버그가 발생. 배포 시 <code>systemctl restart</code> 로 전체 재시작을 강제하면 해결.</p>
+    <div class="pitfall">"환경변수 <code>export INTERFACE_PROXY_START_PRODUCTION=1</code> 했는데 왜 안 바뀌지?" → worker 재시작 필요. 런북에 명시되어 있음.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>I-4. FastAPI lifespan 이 종료 시 채널 정리</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text"><code>@asynccontextmanager async def lifespan():</code> 의 <code>yield</code> 뒤에 <code>ManagementClient.get().close()</code>. 즉 프로세스 종료 직전에 gRPC 채널을 깨끗이 닫음.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">gRPC 채널에 연결된 Mgmt 측 리소스도 정리됨. 안 하면 Mgmt 의 connection count 가 계속 늘어나다가 "too many connections" 로 죽는 누수 발생.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>I-5. proto stubs 부재 시 graceful degradation</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text"><code>management_pb2</code> 가 아직 생성 안 된 개발 환경이어도 FastAPI 는 기동. <code>_PROTO_AVAILABLE=False</code> 로 표시하고, Management 호출 시도 시점에만 <code>ManagementUnavailable</code> 예외.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">신규 개발자가 <code>make proto</code> 를 잊고 <code>uvicorn app.main:app</code> 해도, 읽기 전용 엔드포인트는 정상 동작. proto 가 필요한 기능만 에러. <strong>최소 작동 가능 상태 (MVP)</strong> 를 유지.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>I-6. 운영 환경 mTLS 활성화</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">환경변수 <code>MGMT_GRPC_TLS_ENABLED=1</code> + <code>certs/</code> 디렉터리 세팅 시, Interface 와 Management 가 서로 인증서를 교환 검증.</p>
+    <p class="step-label">현재 상태</p>
+    <p class="step-text">코드 경로는 구현됨. 개발/내부망 환경에서는 <code>0</code>(insecure) 유지. 외부 망에 노출되는 운영 배포 시에만 <code>1</code>.</p>
+    <div class="tip">내부망만 사용하는 공장에서는 현실적으로 mTLS 생략 허용. 외부 노출 시에만 필수.</div>
+  </div>
+</section>
+
+<!-- ============ 5. O-1~O-4 고객 계약 ============ -->
+<section id="ordering">
+  <h2>⑤ 고객 포털 계약 (O-1 ~ O-4)</h2>
+
+  <div class="rule-card">
+    <h4>O-1. 고객 발주는 <code>POST /api/orders/customer</code> 단일 엔드포인트로 수신</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">고객이 주문 폼 제출하면 <strong>이 한 엔드포인트</strong>가 받아서 smartcast <code>Ord</code>, <code>OrdDetail</code>, <code>OrdStat(PENDING)</code> 3개 테이블에 동시에 INSERT.</p>
+    <p class="step-label">왜 "단일"</p>
+    <p class="step-text">단계별(/api/orders/step1, /step2) 로 나누면 중간 단계에서 이탈한 주문이 DB 에 쓰레기로 남음. 한 트랜잭션으로 all-or-nothing.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>O-2. 이메일 조회는 빈 배열로 fallback</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">해당 이메일로 주문이 없어도 <strong>404 가 아니라 200 + 빈 배열 <code>[]</code></strong> 반환.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">404 는 "경로가 없다" 의 의미. 주문 없음은 "경로는 맞고 결과가 비어 있음". 의미가 다름. 프론트엔드도 빈 배열을 받으면 "주문 없음" 메시지만 띄우면 되지만 404 면 에러 처리 분기가 늘어남.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>O-3. 제품 / 하중 등급은 공개 읽기 전용</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text"><code>GET /api/products</code>, <code>GET /api/load-classes</code> 는 인증 없이 조회 가능. 고객이 발주 폼에서 드롭다운 채우는 용도.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>O-4. <strong>고객 포털은 발주 상태 변경을 호출하면 안 된다</strong> (현재 🔴 실패)</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">주문 승인/반려/출고는 관리자만 할 수 있어야 함. 현재 <code>POST /api/orders/{id}/status</code> 에 권한 가드가 없어 아무나 호출 가능.</p>
+    <p class="step-label">왜 실패 표시인가</p>
+    <p class="step-text">이 엔드포인트가 CORS <code>allow_origins=["*"]</code> + 프론트 password gate 뿐이라, 악의적 사용자가 curl 로 바로 때리면 임의 주문을 "completed" 로 바꿀 수 있음. <strong>운영 배포 전 반드시 해결</strong>.</p>
+    <div class="tip">단기 조치: Interface 앞단에 nginx basic auth. 장기: JWT/OAuth 세션 미들웨어 + <code>Depends(require_admin)</code>.</div>
+  </div>
+</section>
+
+<!-- ============ 6. M-1~M-5 관리자 계약 ============ -->
+<section id="management">
+  <h2>⑥ 관리자 포털 계약 (M-1 ~ M-5)</h2>
+
+  <div class="rule-card">
+    <h4>M-1. 주문 파이프라인 6단계 지원</h4>
+    <p class="step-label">상태 흐름</p>
+    <p class="step-text"><code>접수(pending) → 승인(approved) → 생산(in_production) → 생산완료(production_completed) → 출고(shipping_ready) → 완료(completed)</code></p>
+    <p class="step-label">구현</p>
+    <p class="step-text"><code>POST /api/orders/{id}/status?new_stat=...</code> 로 전이. smartcast <code>OrdStat</code> 테이블에 이력 INSERT (덮어쓰기 X).</p>
+    <div class="tip">상태 변경은 <strong>이력 테이블에 append</strong>. 주문의 "현재 상태" 는 "가장 최근 OrdStat row" 로 계산. 이렇게 하면 변경 이력 추적이 공짜로 따라옴.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>M-2. 생산 모니터링 실시간 뷰</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">Admin 포털의 "생산 모니터링" 페이지가 필요한 데이터 — items / equip_tasks / equip_stats — 를 REST 로 제공.</p>
+    <p class="step-label">구현</p>
+    <p class="step-text"><code>GET /api/production/items</code>, <code>/equip-tasks</code>, <code>/equip-stats</code>. 각각 smartcast ORM 모델과 1:1 매핑.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>M-3. 품질 / 물류 / 재고 조회</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">관리자가 필요한 모든 <strong>읽기</strong> 는 Interface 에서 바로 DB 조회. Management 를 거치지 않음.</p>
+    <p class="step-label">왜 읽기는 Interface 가 직접 하나</p>
+    <p class="step-text">① 읽기는 트랜잭션 경합 없음 ② Management 로 proxy 하면 gRPC 왕복 레이턴시 추가 ③ DB 는 공유라 Management 가 쓴 것을 Interface 도 즉시 볼 수 있음.</p>
+  </div>
+
+  <div class="rule-card">
+    <h4>M-4. 실시간은 <em>소비자 적합형</em> 채널</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">"모든 UI 에 실시간 push 를 꽂자" 가 아니라, <strong>실시간이 정말 필요한 곳에만</strong> push. 나머지는 polling.</p>
+    <p class="step-label">구체적으로</p>
+    <ul>
+      <li><strong>PyQt (공장 담당자)</strong>: 1초 이내 알람 필수 → Management 의 <code>WatchAlerts</code> gRPC 스트림 직접 구독</li>
+      <li><strong>Admin 웹 포털</strong>: 비동기 모니터링 → <code>/ws/dashboard</code> 5초 polling 으로 충분</li>
+      <li><strong>Customer 웹</strong>: 실시간 필요 없음 → 주문 조회 on-demand</li>
+    </ul>
+    <div class="analogy">
+      119 대원(PyQt) 은 즉시 호출 무전기. 사무실 직원(Admin) 은 5초마다 새로고침되는 대시보드. 고객(Customer) 은 필요할 때 확인하는 앱. 세 사람 다 실시간 push 를 꽂을 필요 없음.
+    </div>
+  </div>
+
+  <div class="rule-card">
+    <h4>M-4a (설계 결정). Mgmt → Interface 스트림 relay 는 도입하지 않음</h4>
+    <p class="step-label">네 가지 근거</p>
+    <ol>
+      <li>실시간 필요 소비자(PyQt) 는 이미 canonical 직결</li>
+      <li>Admin 동시접속 ≤ 10 범위에서 5초 polling DB 부하 (6~20 query/s) 가 trivial</li>
+      <li>stream relay 도입 시 connection mgmt + backpressure + stale client detection 으로 복잡도 상승</li>
+      <li>canonical 의 bi-dir TCP 화살표는 gRPC full-duplex 프로토콜 속성이며 push 의무 도입 의미 아님</li>
+    </ol>
+    <p class="step-label">승격 트리거(M-4b)</p>
+    <p class="step-text">다음 중 하나 성립 시 Phase C-3 로 승격: ① Critical alert SLA &lt; 2초 요구 ② Admin 동시접속 ≥ 30 상시 ③ 웹에서 현장 제어 UX 필요.</p>
+    <div class="tip">"왜 canonical 에 양방향 화살표가 있는데 구현 안 해?" 라는 질문이 나올 수 있음. 답: 화살표는 "데이터가 양방향으로 흐를 수 있다" 는 프로토콜 사실일 뿐, 어느 방향을 <em>언제 반드시 구현해야 한다</em> 는 명령이 아님.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>M-5. 생산 개시는 Management 로 위임</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">"생산 시작" 은 DB 에 3개 테이블(<code>OrdStat MFG</code> + <code>Item</code> + <code>EquipTaskTxn</code>) 을 원자적으로 INSERT 해야 함. 이 트랜잭션은 Management 가 소유.</p>
+    <p class="step-label">구현</p>
+    <p class="step-text">Interface 의 <code>POST /api/production/start</code> 는 <code>INTERFACE_PROXY_START_PRODUCTION=1</code> 일 때 Management <code>StartProduction</code> gRPC 로 proxy. 응답 shape 은 기존 클라이언트 호환 유지.</p>
+  </div>
+</section>
+
+<!-- ============ 7. D-1~D-3 데이터 계약 ============ -->
+<section id="data">
+  <h2>⑦ 데이터 계약 (D-1 ~ D-3)</h2>
+
+  <div class="rule-card">
+    <h4>D-1. Interface 와 Management 는 <strong>같은 DB, 같은 URL</strong></h4>
+    <p class="step-label">의미</p>
+    <p class="step-text">두 서비스 모두 <code>DATABASE_URL</code> 환경변수를 공유. 결과적으로 같은 PG 인스턴스의 같은 스키마를 본다.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">DB 를 나누면 "어떤 것이 진실인가"(source of truth) 문제가 발생. 같은 주문 데이터가 두 DB 에 있으면 동기화 로직이 필요하고, 불일치 버그가 생김. 공유가 가장 단순.</p>
+    <div class="pitfall">Management 에만 별도 DB 를 두고 싶은 유혹이 있지만, 그 순간 "Interface 가 쓴 주문이 Management 에 언제 전파되나?" 라는 CDC 문제가 시작됨.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>D-2. smartcast v2 스키마가 기본, public schema legacy 는 선별 import</h4>
+    <p class="step-label">현재 상태</p>
+    <p class="step-text">DB 에 두 스키마 병존: <code>smartcast.*</code>(신규 27테이블) + <code>public.*</code>(레거시 잔존 4테이블: <code>alerts</code>, <code>handoff_acks</code>, <code>transport_tasks</code>, <code>rfid_scan_log</code>).</p>
+    <p class="step-label">왜 legacy 를 다 못 없앴나</p>
+    <p class="step-text">SPEC-AMR-001, SPEC-RFID-001 같은 하드웨어 이벤트 테이블이 smartcast 설계에 아직 안 들어감. 제거 대신 선별 import 로 충돌 회피.</p>
+    <p class="step-label">구현</p>
+    <p class="step-text"><code>app/models/models_mgmt.py</code> 가 legacy 4 테이블만 명시적으로 re-export. <code>models_legacy.py</code> 를 통째 import 하면 smartcast <code>Item</code> 과 legacy <code>Item</code> 이 SQLAlchemy <code>Base.metadata</code> 에서 충돌.</p>
+    <div class="analogy">이사 중인 집 — 새 집(smartcast)으로 옮긴 가구가 대부분이지만, 몇 개(legacy 4 테이블) 는 아직 옛 집에 있음. 필요한 것만 "이 서랍에서 가져와" 라고 명시.</div>
+  </div>
+
+  <div class="rule-card">
+    <h4>D-3. SQLite 폴백은 없다</h4>
+    <p class="step-label">의미</p>
+    <p class="step-text"><code>DATABASE_URL</code> 환경변수가 없으면 FastAPI 가 fail-fast (시작 시 바로 예외). SQLite 로 자동 전환 안 함.</p>
+    <p class="step-label">왜</p>
+    <p class="step-text">이전 버전에서는 개발 편의로 SQLite fallback 이 있었는데, 결과적으로 "내 개발 PC 에선 되는데 서버에선 안 됨" 버그가 반복됐다. 같은 DB 엔진(PostgreSQL)만 쓰도록 강제하면 환경 차이 버그가 사라짐.</p>
+    <div class="tip">"로컬 개발에 PG 띄우기 귀찮아요" → Tailscale + 원격 PG (<code>100.107.120.14</code>) 공유. <code>docs/SETUP.md</code> 참조.</div>
+  </div>
+</section>
+
+<!-- ============ 8. 실무 의사결정 ============ -->
+<section id="quickref">
+  <h2>⑧ 실무 의사결정 — "새 기능을 어디에 넣을까?"</h2>
+
+  <table>
+    <thead><tr><th>기능 유형</th><th>정답 위치</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>고객/관리자 웹에서 호출하는 읽기 API</td>
+        <td>Interface <code>backend/app/routes/</code></td>
+        <td>HTTP + DB 조회만 — 설비 제어 불필요</td>
+      </tr>
+      <tr>
+        <td>주문 상태 변경 (DB 3 테이블 원자 트랜잭션)</td>
+        <td>Management <code>backend/management/services/</code> + Interface proxy 엔드포인트</td>
+        <td>트랜잭션 경계는 Management 소유 (M-5)</td>
+      </tr>
+      <tr>
+        <td>AMR 상태 전이 버튼 (PyQt 에서)</td>
+        <td>Management gRPC 신규 RPC</td>
+        <td>PyQt 는 gRPC 직결. Interface 불필요</td>
+      </tr>
+      <tr>
+        <td>새 알람 타입 푸시 (PyQt)</td>
+        <td>Management <code>WatchAlerts</code> 스트림에 얹음</td>
+        <td>PyQt 가 이미 구독 중. 새 채널 만들 필요 없음</td>
+      </tr>
+      <tr>
+        <td>새 알람 타입 푸시 (Admin 웹)</td>
+        <td>DB 에 alert INSERT → 기존 <code>/ws/dashboard</code> polling 이 자동 감지</td>
+        <td>M-4 원칙 — Admin 은 polling 으로 충분</td>
+      </tr>
+      <tr>
+        <td>ROS2 토픽 구독/퍼블리시</td>
+        <td>Management 전용</td>
+        <td>C-4 — Interface 는 HW 프로토콜 금지</td>
+      </tr>
+      <tr>
+        <td>ESP32 Serial 명령</td>
+        <td>Management → gRPC <code>WatchConveyorCommands</code> → Jetson → Serial</td>
+        <td>Phase D-1/D-2 canonical 경로</td>
+      </tr>
+      <tr>
+        <td>관리자 전용 액션(주문 승인 등)</td>
+        <td>Interface 라우트 + 권한 가드 (O-4 해결 후)</td>
+        <td>외부 HTTP 수신 지점은 Interface</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>의사결정 플로우</h3>
+  <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart TD
+  START([새 기능 요구사항]) --> Q1{웹 브라우저에서<br/>호출하나?}
+  Q1 -- "예" --> Q2{설비 제어 or<br/>트랜잭션 경계?}
+  Q2 -- "아니오 (읽기·집계)" --> A1[Interface 라우트<br/>backend/app/routes/]
+  Q2 -- "예 (쓰기·제어)" --> A2[Management 서비스<br/>+ Interface proxy]
+  Q1 -- "아니오 (PyQt·Jetson)" --> Q3{실시간 필요?}
+  Q3 -- "예" --> A3[Management gRPC<br/>streaming RPC]
+  Q3 -- "아니오" --> A4[Management gRPC<br/>단항 RPC]
+
+  classDef in fill:#0891b2,stroke:#0e7490,color:#fff
+  classDef mgmt fill:#16a34a,stroke:#166534,color:#fff
+  class A1 in
+  class A2,A3,A4 mgmt
+</pre>
+  </div>
+</section>
+
+<!-- ============ 9. Pitfalls ============ -->
+<section id="pitfalls">
+  <h2>⑨ 자주 하는 실수 모음</h2>
+
+  <div class="pitfall">
+    "Interface 에서 AMR 에 직접 명령 보내야지" — <strong>C-4 위반</strong>. Interface 는 HW 프로토콜을 모릅니다. Management 의 gRPC 로 보내세요.
+  </div>
+
+  <div class="pitfall">
+    "성능을 위해 매 요청 새 gRPC 채널 만들자" — <strong>C-3 위반, I-1 위반</strong>. 반대입니다. 채널은 재사용이 성능의 핵심.
+  </div>
+
+  <div class="pitfall">
+    "Management 가 Interface API 를 호출해서 상태 동기화" — <strong>C-5 위반</strong>. 양방향 호출은 순환 의존. DB 공유(D-1)로 해결하세요.
+  </div>
+
+  <div class="pitfall">
+    "brownser 에서 gRPC-Web 으로 실시간 푸시" — <strong>C-1 위반</strong>. 브라우저는 HTTP 만. 실시간이 정말 필요하면 Interface 에 WebSocket.
+  </div>
+
+  <div class="pitfall">
+    "환경변수 <code>INTERFACE_PROXY_START_PRODUCTION=1</code> 로 바꿨는데 안 먹혀" — <strong>I-3 설계 의도</strong>. worker 전체 재시작 필요. 런북 §4.1 참조.
+  </div>
+
+  <div class="pitfall">
+    "Management 가 죽으니까 Interface 도 죽어버리네" — <strong>I-2 위반</strong>. <code>ManagementUnavailable</code> 을 잡아 503 으로 변환하도록 fix 필요. graceful degradation.
+  </div>
+
+  <div class="pitfall">
+    "개발용 SQLite 로 빠르게 시작하자" — <strong>D-3 위반</strong>. 환경 차이 버그 반복의 원인. 원격 PG 공유 사용.
+  </div>
+
+  <div class="pitfall">
+    "<code>POST /api/orders/{id}/status</code> 는 누가 호출해도 되는 거 아니야?" — <strong>O-4</strong>. 현재 권한 가드가 없어 보안 취약. 운영 배포 전 해결 필요.
+  </div>
+
+  <div class="pitfall">
+    "Admin 포털에 gRPC stream 으로 실시간 꽂자" — <strong>M-4a 위반 가능</strong>. 승격 트리거(M-4b) 3건 중 하나 성립 여부부터 확인. 비동기 모니터링이면 polling 이 충분.
+  </div>
+
+  <div class="pitfall">
+    "<code>models_legacy.py</code> 전체 import 하면 되잖아" — <strong>D-2 위반</strong>. legacy Item 이 smartcast Item 과 SQLAlchemy metadata 에서 충돌. <code>models_mgmt.py</code> 로 선별 import.
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    <strong>더 읽기</strong>:
+    <a href="interface_service_audit.html">interface_service_audit.html</a> (감사 원문) ·
+    <a href="management_service_design.md">Management 설계</a> ·
+    <a href="DEPLOY-phase-a-to-c3.md">배포 런북</a> ·
+    <a href="SPEC-C2-schema-migration.md">SPEC-C2 스키마 이관</a>
+  </p>
+  <p>
+    Generated 2026-04-21 · V6 canonical · 교육용 문서 ·
+    질문이 남으면 설계 리드에게 <code>§번호</code> 로 지칭하면 대화가 빠릅니다
+  </p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: { fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif', fontSize: '14px' },
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Casting-FMS v2 — 팩트 기반 컴포넌트 분석</title>
+<style>
+  :root {
+    --bg: #0b1120; --panel: #111827; --panel-lt: #1f2937; --border: #374151;
+    --text: #f3f4f6; --text-dim: #9ca3af;
+    --accent: #60a5fa; --accent2: #a78bfa;
+    --green: #34d399; --yellow: #fbbf24; --orange: #fb923c; --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; font-size: 14px; }
+  .hero { background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1e1b4b 100%); padding: 3rem 2rem 2.5rem; text-align: center; border-bottom: 1px solid var(--border); }
+  .hero h1 { font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { margin-top: 0.5rem; color: var(--text-dim); font-size: 0.95rem; }
+  .hero .badge { display: inline-block; margin-top: 1rem; padding: 0.3rem 1rem; background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); border-radius: 999px; font-size: 0.78rem; color: var(--accent); }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--accent); display: flex; align-items: center; gap: 0.5rem; }
+  .section-title .num { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: var(--accent); color: var(--bg); border-radius: 50%; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { padding: 0.55rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+  th { background: var(--panel-lt); font-weight: 600; color: var(--accent); white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  pre { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; overflow-x: auto; font-size: 0.78rem; line-height: 1.55; color: var(--text-dim); font-family: 'SF Mono', monospace; white-space: pre; }
+  code { font-family: 'SF Mono', monospace; font-size: 0.82em; }
+  .c { background: rgba(96,165,250,0.1); padding: 0.1rem 0.4rem; border-radius: 4px; color: var(--accent); }
+  .badge-s { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
+  .b-have { background: #14532d; color: #bbf7d0; }
+  .b-partial { background: #713f12; color: #fde68a; }
+  .b-need { background: #7f1d1d; color: #fca5a5; }
+  .b-sr { background: #312e81; color: #c7d2fe; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+  .highlight { padding: 1rem 1.25rem; border-radius: 8px; margin: 1rem 0; font-size: 0.88rem; }
+  .h-info { background: rgba(96,165,250,0.08); border-left: 4px solid var(--accent); }
+  .h-warn { background: rgba(251,191,36,0.08); border-left: 4px solid var(--yellow); }
+  .h-good { background: rgba(52,211,153,0.08); border-left: 4px solid var(--green); }
+  .h-red { background: rgba(248,113,113,0.08); border-left: 4px solid var(--red); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .d-g { background: var(--green); } .d-y { background: var(--yellow); } .d-r { background: var(--red); }
+  .status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 2rem; margin-bottom: 2rem; }
+  .toc h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; } .toc li { margin-bottom: 0.3rem; font-size: 0.88rem; }
+  .toc a { color: var(--accent); text-decoration: none; } .toc a:hover { text-decoration: underline; }
+  .footer { text-align: center; padding: 2rem; color: var(--text-dim); font-size: 0.78rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+  .sr-tag { font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 3px; background: #312e81; color: #c7d2fe; font-weight: 600; margin-right: 0.25rem; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Casting-FMS v2 &mdash; 팩트 기반 컴포넌트 분석</h1>
+  <p>Confluence SR + 코드베이스 대조 검증 &rarr; 실제 필요한 FMS 컴포넌트 도출</p>
+  <div class="badge">SmartCast Robotics &middot; 2026-04-13 &middot; CONFLUENCE_FACTS.md + 코드베이스 교차검증</div>
+</header>
+
+<div class="container">
+
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">검증 방법론</a></li>
+    <li><a href="#s2">Confluence SR &harr; FMS 컴포넌트 매핑</a></li>
+    <li><a href="#s3">코드베이스 기 구현 현황</a></li>
+    <li><a href="#s4">FMS 컴포넌트 판정 (보유 / 보강 / 신규)</a></li>
+    <li><a href="#s5">컴포넌트별 상세 분석</a></li>
+    <li><a href="#s6">Confluence 시나리오 기준 실행 검증</a></li>
+    <li><a href="#s7">구현 우선순위 및 로드맵</a></li>
+    <li><a href="#s8">V6 결정 (2026-04-14 추가)</a></li>
+  </ol>
+</nav>
+
+<!-- ═══ V6 결정 추가 ═══ -->
+<section class="section" id="s8">
+  <h2 class="section-title"><span class="num">8</span> V6 결정 (2026-04-14)</h2>
+  <div class="card" style="border-left: 4px solid var(--accent)">
+    <h3>Management Service 독립 프로세스화 + gRPC 직결</h3>
+    <div class="highlight h-info">
+      <strong>합의 사항</strong>: Factory Operator PC(PyQt)는 Interface Service(FastAPI)를 거치지 않고
+      Management Service(gRPC :50051) 와 직접 TCP 통신한다.
+    </div>
+    <table>
+      <tr><th>항목</th><th>결정</th></tr>
+      <tr><td>프로토콜</td><td>gRPC (Protocol Buffers)</td></tr>
+      <tr><td>포트</td><td>50051</td></tr>
+      <tr><td>네트워크</td><td>공장 내부망 전용 (외부 방화벽 차단)</td></tr>
+      <tr><td>PyQt 연결</td><td>Management Service 직결</td></tr>
+      <tr><td>Admin/Customer PC</td><td>Interface Service(HTTP) 유지</td></tr>
+      <tr><td>DB</td><td>Interface Service 와 공유 (PostgreSQL + TimescaleDB)</td></tr>
+    </table>
+    <div class="highlight h-good" style="margin-top:1rem">
+      <strong>이유</strong>: Interface Service 장애/AWS 이관 중에도 공장 가동을 중단시키지 않기 위함.
+      현장 PC 는 Interface Service 의 배포·장애·네트워크 변경에 영향받지 않는다.
+    </div>
+    <p style="margin-top:1rem">
+      상세 설계 문서: <code class="c">docs/management_service_design.md</code><br>
+      gRPC API 정의: <code class="c">backend/management/proto/management.proto</code><br>
+      서버 스캐폴드: <code class="c">backend/management/</code><br>
+      PyQt 클라이언트: <code class="c">monitoring/app/management_client.py</code>
+    </p>
+  </div>
+</section>
+
+<!-- ═══ 1 ═══ -->
+<section class="section" id="s1">
+  <h2 class="section-title"><span class="num">1</span> 검증 방법론</h2>
+  <div class="card">
+    <h3>이전 분석의 문제점</h3>
+    <p style="font-size:0.88rem">v1 보고서에서 Fleet State Manager를 P0 필수로 제안했으나, 프로젝트 코드베이스의 <code class="c">equipment</code> 테이블이 이미 로봇 위치/배터리/상태를 관리하고 있었음. <strong>일반론적 FMS 아키텍처를 프로젝트 실정 확인 없이 적용한 오류.</strong></p>
+    <div class="highlight h-info" style="margin-top:1rem">
+      <strong>v2 검증 원칙</strong>: 모든 컴포넌트 제안은 반드시 (1) Confluence SR ID와 (2) 코드베이스 실제 구현 상태를 교차 확인한 후 판정.
+    </div>
+  </div>
+  <div class="card">
+    <h3>검증 소스</h3>
+    <table>
+      <tr><th>소스</th><th>내용</th><th>최종 갱신</th></tr>
+      <tr><td>Confluence SR</td><td><code class="c">docs/CONFLUENCE_FACTS.md</code> &mdash; SR-ORD, SR-CTL, SR-CAST, SR-TR, SR-INS, SR-CONV, SR-STO, SR-OUT, SR-POST, SR-CLN (60~70개 SR)</td><td>2026-04-13 v42</td></tr>
+      <tr><td>관제 기술조사</td><td>Confluence page 20774933 &mdash; Task Manager, Task Allocator, Traffic Manager 역할 정의 + A제품 시나리오</td><td>2026-04-13 v11</td></tr>
+      <tr><td>SA V6 아키텍처</td><td>6개 Controller 네이밍 확정: Management Service, Manufacturing Service, Stacking Service, Transport Service, HW Control Service, Image Publishing Service</td><td>Confluence 3375131 v42</td></tr>
+      <tr><td>코드베이스</td><td>backend/app/models, routes, schemas &mdash; 16개 모델, 30+ API, WebSocket</td><td>2026-04-13</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ 2 ═══ -->
+<section class="section" id="s2">
+  <h2 class="section-title"><span class="num">2</span> Confluence SR &harr; FMS 컴포넌트 매핑</h2>
+  <div class="card">
+    <h3>SR 카테고리별 FMS 컴포넌트 대응</h3>
+    <table>
+      <tr><th>SR 카테고리</th><th>핵심 SR ID</th><th>대응 FMS 컴포넌트</th><th>역할</th></tr>
+      <tr>
+        <td><span class="sr-tag">SR-CTL</span> 관제</td>
+        <td>SR-CTL-04 생산 개시<br>SR-CTL-05 우선순위</td>
+        <td><strong>Task Manager</strong></td>
+        <td>work_order &rarr; Task 분해, 우선순위 계산, 상태 추적</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-TR</span> 이송</td>
+        <td>SR-TR-02-02 자원 배정</td>
+        <td><strong>Task Allocator</strong></td>
+        <td>가용 로봇 스코어링 &rarr; 최적 배정</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-TR</span> 이송</td>
+        <td>SR-TR-03-02 이동 기능<br>SR-TR-04 예외 처리</td>
+        <td><strong>Traffic Manager</strong></td>
+        <td>경로 충돌 방지, 교착 해소</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-TR</span> 이송</td>
+        <td>SR-TR-02-01 자원 상태 관리<br>SR-TR-02-03 충전 및 복귀</td>
+        <td><strong>equipment 테이블</strong> (기 구현)</td>
+        <td>위치, 배터리, 상태 4단계 (유휴/작업중/충전필요/사용불가)</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-TR</span> 이송</td>
+        <td>SR-TR-01-01 이송 요청 생성<br>SR-TR-01-02 상태 관리</td>
+        <td><strong>transport_tasks 테이블</strong> (기 구현)</td>
+        <td>이송 작업 CRUD + 10단계 상태 전이</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-TR</span> 이송</td>
+        <td>SR-TR-02-04 출발 조건 확인<br>SR-TR-03-01 인계/인수</td>
+        <td><strong>Robot Executor</strong> (미구현)</td>
+        <td>실제 ROS2 명령 송출 + 인수인계 프로토콜</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-STO</span> 적재</td>
+        <td>SR-STO-01-01 최적 위치 할당</td>
+        <td><strong>warehouse_racks 테이블</strong> (기 구현)</td>
+        <td>랙 점유 관리 (zone, status, item)</td>
+      </tr>
+      <tr>
+        <td><span class="sr-tag">SR-CTL</span> 관제</td>
+        <td>SR-CTL-01 실시간 모니터링<br>SR-CTL-03 이상 감지</td>
+        <td><strong>Execution Monitor</strong> (미구현)</td>
+        <td>타임아웃, 실패 감지, 알림 발생</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ 3 ═══ -->
+<section class="section" id="s3">
+  <h2 class="section-title"><span class="num">3</span> 코드베이스 기 구현 현황</h2>
+  <div class="card">
+    <h3>FMS 관련 DB 모델 (이미 구현)</h3>
+    <table>
+      <tr><th>모델</th><th>테이블</th><th>핵심 컬럼</th><th>대응 SR</th><th>API</th></tr>
+      <tr>
+        <td><code class="c">Equipment</code></td>
+        <td>equipment</td>
+        <td>type(amr/furnace/mold_press), status, pos_x/y/z, battery, speed, error_count</td>
+        <td><span class="sr-tag">SR-TR-02-01</span></td>
+        <td>GET /api/production/equipment</td>
+      </tr>
+      <tr>
+        <td><code class="c">TransportTask</code></td>
+        <td>transport_tasks</td>
+        <td>from/to, item_id, priority, status, assigned_robot_id</td>
+        <td><span class="sr-tag">SR-TR-01</span></td>
+        <td>GET/POST /api/logistics/tasks<br>PATCH .../status</td>
+      </tr>
+      <tr>
+        <td><code class="c">WarehouseRack</code></td>
+        <td>warehouse_racks</td>
+        <td>zone, status(empty/occupied), item_id, row, col</td>
+        <td><span class="sr-tag">SR-STO-01</span></td>
+        <td>GET /api/logistics/warehouse</td>
+      </tr>
+      <tr>
+        <td><code class="c">OutboundOrder</code></td>
+        <td>outbound_orders</td>
+        <td>product_id, quantity, destination, policy(FIFO), completed</td>
+        <td><span class="sr-tag">SR-OUT-01</span></td>
+        <td>GET/PATCH /api/logistics/outbound-orders</td>
+      </tr>
+      <tr>
+        <td><code class="c">ProductionJob</code></td>
+        <td>production_jobs</td>
+        <td>order_id, priority_score/rank, assigned_stage, status</td>
+        <td><span class="sr-tag">SR-CTL-04/05</span></td>
+        <td>POST /api/production/schedule/*</td>
+      </tr>
+      <tr>
+        <td><code class="c">ProcessStage</code></td>
+        <td>process_stages</td>
+        <td>stage, status, temperature, progress, equipment_id</td>
+        <td><span class="sr-tag">SR-CTL-01</span></td>
+        <td>GET/PATCH /api/production/stages</td>
+      </tr>
+      <tr>
+        <td><code class="c">Alert</code></td>
+        <td>alerts</td>
+        <td>equipment_id, type, severity, message</td>
+        <td><span class="sr-tag">SR-CTL-03</span></td>
+        <td>GET/PATCH /api/alerts</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>기 구현 비즈니스 로직</h3>
+    <table>
+      <tr><th>로직</th><th>파일:라인</th><th>내용</th></tr>
+      <tr>
+        <td>우선순위 계산 (7요소)</td>
+        <td><code class="c">schedule.py:34-210</code></td>
+        <td>납기 긴급도, 착수 가능성, AMR 가용성, 용해로/조형기 확인</td>
+      </tr>
+      <tr>
+        <td>AMR 가용성 판단</td>
+        <td><code class="c">schedule.py:92-98</code></td>
+        <td>type=="amr" + (idle 또는 charging+battery>50%) 필터</td>
+      </tr>
+      <tr>
+        <td>이송 작업 로봇 배정</td>
+        <td><code class="c">logistics.py:61-62</code></td>
+        <td>PATCH로 assigned_robot_id 업데이트</td>
+      </tr>
+      <tr>
+        <td>이송 자원 4단계</td>
+        <td><code class="c">CONFLUENCE_FACTS.md:928-932</code></td>
+        <td>유휴/작업중/충전필요(30%이하)/사용불가 &rarr; 코드 매핑 완료 (e95724a)</td>
+      </tr>
+      <tr>
+        <td>WebSocket 실시간 push</td>
+        <td><code class="c">websocket.py:178-199</code></td>
+        <td>5초 interval DB 폴링 &rarr; 공정/알림/KPI 브로드캐스트</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ 4 ═══ -->
+<section class="section" id="s4">
+  <h2 class="section-title"><span class="num">4</span> FMS 컴포넌트 판정</h2>
+
+  <div class="card">
+    <table>
+      <tr>
+        <th>#</th>
+        <th>컴포넌트</th>
+        <th>판정</th>
+        <th>근거 (Confluence SR + 코드)</th>
+        <th>부족한 것</th>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>1</td>
+        <td><strong>Task Manager</strong></td>
+        <td><span class="status"><span class="dot d-g"></span> 보유 (보강)</span></td>
+        <td>
+          SR-CTL-04/05 &rarr; <code class="c">schedule.py</code> 우선순위 계산 + ProductionJob 생성 구현.<br>
+          Confluence 시나리오의 work_order &rarr; Task 분해는 개념 정의만 완료.
+        </td>
+        <td>work_order &rarr; item_id &rarr; Task[] 자동 분해 로직 (현재 수동)</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>2</td>
+        <td><strong>Task Allocator</strong></td>
+        <td><span class="status"><span class="dot d-g"></span> 보유 (보강)</span></td>
+        <td>
+          SR-TR-02-02 &rarr; <code class="c">schedule.py:92-98</code> AMR 가용성 판단 + <code class="c">logistics.py:61</code> 로봇 배정.<br>
+          거리/우선순위/배터리 스코어링 개념은 아키텍처 문서에 설계됨.
+        </td>
+        <td>거리 기반 스코어링, capability 매칭 (AMR vs Cobot)</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>3</td>
+        <td><strong>Traffic Manager</strong></td>
+        <td><span class="status"><span class="dot d-y"></span> 보유 (설계만)</span></td>
+        <td>
+          SR-TR-03-02 + SR-TR-04 &rarr; <code class="c">docs/fleet_traffic_management.html</code> Waypoint/Edge + Backtrack Yield 설계 완료.<br>
+          코드 구현은 아직 없음.
+        </td>
+        <td>Waypoint 그래프 데이터, 경로 충돌 검사, 노드 잠금 로직 전체</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>4</td>
+        <td><strong>로봇 상태 관리<br>(Fleet State)</strong></td>
+        <td><span class="status"><span class="dot d-g"></span> 보유 (보강)</span></td>
+        <td>
+          SR-TR-02-01 &rarr; <code class="c">equipment</code> 테이블에 pos_x/y/z, battery, status, speed 저장.<br>
+          SR-TR-02-03 충전 &rarr; schedule.py에서 charging+battery>50% 판단 구현.<br>
+          이송 자원 4단계 코드 매핑 완료 (e95724a).
+        </td>
+        <td>heartbeat 수신 엔드포인트, offline 자동 전환 (3초 타임아웃)</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td>5</td>
+        <td><strong>Robot / Cell Executor</strong></td>
+        <td><span class="status"><span class="dot d-r"></span> 미구현 (필수)</span></td>
+        <td>
+          SR-TR-02-04 출발 조건 확인 + SR-TR-03-01 인계/인수 + SA V6 Controller 5개.<br>
+          코드에 ROS2 action client, 로봇팔 제어, 컨베이어 명령 송출 구현 없음.
+        </td>
+        <td>전체 (ROS2 NavigateToPose, MoveIt, Serial JSON 명령 인터페이스)</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td>6</td>
+        <td><strong>Execution Monitor</strong></td>
+        <td><span class="status"><span class="dot d-r"></span> 미구현 (필수)</span></td>
+        <td>
+          SR-CTL-03 이상 감지 &rarr; <code class="c">alerts</code> 테이블은 있으나, 자동 타임아웃/재시도 감지 로직 없음.<br>
+          현재 WebSocket은 5초 폴링으로 상태 "표시"만 하고 "감시+대응"은 안 함.
+        </td>
+        <td>Task 타임아웃 감지, 자동 재배정, heartbeat 누락 알림</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>7</td>
+        <td><strong>적재 관리<br>(Resource)</strong></td>
+        <td><span class="status"><span class="dot d-g"></span> 보유 (부분)</span></td>
+        <td>
+          SR-STO-01 &rarr; <code class="c">warehouse_racks</code> 테이블로 랙 점유 관리.<br>
+          SR-STO-01-01 최적 위치 할당 로직은 미구현.
+        </td>
+        <td>스테이션/버퍼/독 예약 로직 (창고 랙 외 공정 스테이션)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="highlight h-good">
+    <strong>결론</strong>: 별도 서비스로 신규 구축이 필요한 컴포넌트는 <strong>2개</strong> (Robot Executor, Execution Monitor).
+    나머지 5개는 기존 DB 모델 + 로직을 보강하면 충분.
+  </div>
+</section>
+
+<!-- ═══ 5 ═══ -->
+<section class="section" id="s5">
+  <h2 class="section-title"><span class="num">5</span> 컴포넌트별 상세 분석</h2>
+
+  <!-- Robot Executor -->
+  <div class="card" style="border-left: 4px solid var(--red)">
+    <h3><span class="badge-s b-need">신규 필수</span> Robot / Cell Executor</h3>
+    <p style="font-size:0.88rem; margin-bottom:0.75rem">계획/조율 레이어의 결정을 <strong>실제 하드웨어 명령</strong>으로 변환하는 계층. 이것 없이는 로봇이 움직이지 않음.</p>
+
+    <div class="grid-2">
+      <div>
+        <strong style="font-size:0.85rem">Confluence SA V6 Controller 매핑</strong>
+        <table style="margin-top:0.5rem">
+          <tr><th>SA V6 이름</th><th>대상 HW</th><th>통신</th></tr>
+          <tr><td>Transport Service</td><td>AMR (RPi4)</td><td>ROS2 nav2 Action</td></tr>
+          <tr><td>Manufacturing Service</td><td>좌측 Cobot (RPi5)</td><td>ROS2 MoveIt</td></tr>
+          <tr><td>Stacking Service</td><td>우측 Cobot (RPi5)</td><td>ROS2 MoveIt</td></tr>
+          <tr><td>HW Control Service</td><td>컨베이어 (ESP32)</td><td>Serial 9600 JSON</td></tr>
+          <tr><td>Image Publishing Service</td><td>비전 카메라 (Jetson)</td><td>ROS2 Topic</td></tr>
+        </table>
+      </div>
+      <div>
+        <strong style="font-size:0.85rem">코드베이스 현황</strong>
+        <table style="margin-top:0.5rem">
+          <tr><th>항목</th><th>상태</th></tr>
+          <tr><td>ROS2 action client</td><td><span class="status"><span class="dot d-r"></span> 없음</span></td></tr>
+          <tr><td>MoveIt 인터페이스</td><td><span class="status"><span class="dot d-r"></span> 없음</span></td></tr>
+          <tr><td>컨베이어 Serial</td><td><span class="status"><span class="dot d-g"></span> 펌웨어 구현 완료</span> (firmware/)</td></tr>
+          <tr><td>비전 호출</td><td><span class="status"><span class="dot d-r"></span> 없음</span></td></tr>
+        </table>
+        <div class="highlight h-warn" style="margin-bottom:0">
+          컨베이어 펌웨어(ESP32 + TOF250)만 구현 완료. ROS2 기반 AMR/Cobot 실행 계층 전체가 부재.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Execution Monitor -->
+  <div class="card" style="border-left: 4px solid var(--red)">
+    <h3><span class="badge-s b-need">신규 필수</span> Execution Monitor</h3>
+    <p style="font-size:0.88rem; margin-bottom:0.75rem">Task 실행 중 이상 상태 감지 + 자동 복구. <span class="sr-tag">SR-CTL-03</span> 이상 감지 및 알림 직접 대응.</p>
+
+    <div class="grid-2">
+      <div>
+        <strong style="font-size:0.85rem">SR 요구사항</strong>
+        <table style="margin-top:0.5rem">
+          <tr><th>SR</th><th>요구</th><th>NFR</th></tr>
+          <tr><td>SR-CTL-03</td><td>이상 감지 및 알림</td><td>감지 1초 이내</td></tr>
+          <tr><td>SR-CTL-01</td><td>공정 Map 실시간 모니터링</td><td>갱신 1초 이내</td></tr>
+          <tr><td>SR-TR-04</td><td>이송 수행 중 예외 처리</td><td>-</td></tr>
+        </table>
+      </div>
+      <div>
+        <strong style="font-size:0.85rem">코드베이스 현황</strong>
+        <table style="margin-top:0.5rem">
+          <tr><th>항목</th><th>상태</th></tr>
+          <tr><td>alerts 테이블</td><td><span class="status"><span class="dot d-g"></span> 있음</span> (저장만)</td></tr>
+          <tr><td>WebSocket 5초 push</td><td><span class="status"><span class="dot d-g"></span> 있음</span> (표시만)</td></tr>
+          <tr><td>타임아웃 자동 감지</td><td><span class="status"><span class="dot d-r"></span> 없음</span></td></tr>
+          <tr><td>자동 재배정/재시도</td><td><span class="status"><span class="dot d-r"></span> 없음</span></td></tr>
+        </table>
+        <div class="highlight h-warn" style="margin-bottom:0">
+          Alert 데이터 저장과 UI 표시는 되지만, "감지 &rarr; 판단 &rarr; 대응" 자동화 로직이 없음.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Manager 보강 -->
+  <div class="card" style="border-left: 4px solid var(--yellow)">
+    <h3><span class="badge-s b-partial">보유 (보강 필요)</span> Task Manager</h3>
+    <table>
+      <tr><th style="width:35%">구현 완료</th><th style="width:35%">보강 필요</th><th>SR 근거</th></tr>
+      <tr>
+        <td>우선순위 7요소 계산 (<code class="c">schedule.py</code>)<br>ProductionJob 생성/관리<br>PriorityChangeLog 감사 추적</td>
+        <td>work_order &rarr; item_id[] &rarr; Task[] 자동 분해<br>Task 간 순서 제약 그래프 (DAG)<br>Task 상태 전이 자동화</td>
+        <td><span class="sr-tag">SR-CTL-04</span> <span class="sr-tag">SR-CTL-05</span><br>Confluence 시나리오: 생산 5 + 적재 2 + 출고 3 = item당 10 Task</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Task Allocator 보강 -->
+  <div class="card" style="border-left: 4px solid var(--yellow)">
+    <h3><span class="badge-s b-partial">보유 (보강 필요)</span> Task Allocator</h3>
+    <table>
+      <tr><th style="width:35%">구현 완료</th><th style="width:35%">보강 필요</th><th>SR 근거</th></tr>
+      <tr>
+        <td>AMR 가용성 판단 (idle/charging+50%)<br>로봇 배정 API (assigned_robot_id)</td>
+        <td>거리 기반 스코어링 (pos_x/y &harr; Task 목적지)<br>capability 매칭 (AMR=이동, Cobot=조작)<br>배터리 <30% 자동 충전 Task 삽입</td>
+        <td><span class="sr-tag">SR-TR-02-02</span> <span class="sr-tag">SR-TR-02-03</span><br>이송 자원 4단계: 충전필요(30%이하)</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Traffic Manager -->
+  <div class="card" style="border-left: 4px solid var(--yellow)">
+    <h3><span class="badge-s b-partial">설계 완료 (구현 필요)</span> Traffic Manager</h3>
+    <table>
+      <tr><th style="width:35%">설계 완료</th><th style="width:35%">구현 필요</th><th>근거</th></tr>
+      <tr>
+        <td>1m x 2m 맵 + 0.12m AMR 3대<br>Waypoint-Edge 그래프<br>Backtrack Yield 알고리즘</td>
+        <td>Waypoint 데이터 구조 (DB or config)<br>실시간 노드 잠금 로직<br>경로 계산 + 충돌 검사 엔진</td>
+        <td><code class="c">docs/fleet_traffic_management.html</code><br><span class="sr-tag">SR-TR-03-02</span> <span class="sr-tag">SR-TR-04</span><br>NFR: AMR 위치 오차 &plusmn;5cm</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 로봇 상태 보강 -->
+  <div class="card" style="border-left: 4px solid var(--green)">
+    <h3><span class="badge-s b-have">보유 (소규모 보강)</span> 로봇 상태 관리</h3>
+    <table>
+      <tr><th style="width:35%">구현 완료</th><th style="width:35%">보강 필요</th><th>SR 근거</th></tr>
+      <tr>
+        <td><code class="c">equipment</code> 테이블 (pos_x/y/z, battery, status, speed, error_count)<br>REST API 조회<br>WebSocket 실시간 push<br>이송 자원 4단계 매핑 (e95724a)</td>
+        <td>POST /api/equipment/{id}/heartbeat 엔드포인트<br>offline 자동 전환 (last_update + 3초)<br>배터리 임계값 알림 자동 생성</td>
+        <td><span class="sr-tag">SR-TR-02-01</span><br>NFR: 공정 Map 갱신 1초 이내</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══ 6 ═══ -->
+<section class="section" id="s6">
+  <h2 class="section-title"><span class="num">6</span> Confluence 시나리오 기준 실행 검증</h2>
+  <div class="card">
+    <h3>"A제품 10개 생산" 시나리오 &mdash; 컴포넌트별 실행 가능 여부</h3>
+    <table>
+      <tr><th>#</th><th>Task</th><th>실행 주체</th><th>필요 컴포넌트</th><th>현재 상태</th></tr>
+      <tr><td colspan="5" style="background:var(--panel-lt);color:var(--accent);font-weight:700;text-align:center">생산 Task (item당 5개)</td></tr>
+      <tr><td>1</td><td>주형 제작</td><td>Cobot</td><td>Task Allocator, Executor</td><td><span class="dot d-y"></span> Allocator 부분, <span class="dot d-r"></span> Executor 없음</td></tr>
+      <tr><td>2</td><td>주조 구역 이동</td><td>AMR</td><td>Allocator, Traffic, Executor</td><td><span class="dot d-y"></span> Allocator 부분, <span class="dot d-y"></span> Traffic 설계만, <span class="dot d-r"></span> Executor 없음</td></tr>
+      <tr><td>3</td><td>탈형 &amp; 상차</td><td>Cobot</td><td>Executor</td><td><span class="dot d-r"></span> 없음</td></tr>
+      <tr><td>4</td><td>후처리 구역 이동</td><td>AMR</td><td>Traffic, Executor</td><td><span class="dot d-y"></span> 설계만, <span class="dot d-r"></span> Executor 없음</td></tr>
+      <tr><td>5</td><td>적재 구역 이동</td><td>AMR</td><td>Traffic, Executor</td><td><span class="dot d-y"></span> 설계만, <span class="dot d-r"></span> Executor 없음</td></tr>
+      <tr><td colspan="5" style="background:var(--panel-lt);color:var(--accent);font-weight:700;text-align:center">적재 Task (item당 2개)</td></tr>
+      <tr><td>6</td><td>하차</td><td>Cobot</td><td>Executor</td><td><span class="dot d-r"></span> 없음</td></tr>
+      <tr><td>7</td><td>적재 + 대기 이동</td><td>Cobot + AMR</td><td>warehouse_racks, Traffic, Executor</td><td><span class="dot d-g"></span> 랙 있음, <span class="dot d-y"></span>/<span class="dot d-r"></span></td></tr>
+    </table>
+    <div class="highlight h-red">
+      <strong>차단 요인</strong>: 7개 Task 모두 Robot Executor가 필요하나 미구현. <strong>Executor 없이는 시나리오 실행 불가.</strong>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 7 ═══ -->
+<section class="section" id="s7">
+  <h2 class="section-title"><span class="num">7</span> 구현 우선순위 및 로드맵</h2>
+
+  <div class="card">
+    <table>
+      <tr><th>우선순위</th><th>컴포넌트</th><th>작업 유형</th><th>추정 규모</th><th>근거</th></tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td style="color:var(--red);font-weight:700">P0</td>
+        <td><strong>Robot / Cell Executor</strong></td>
+        <td>신규 구축</td>
+        <td>ROS2 패키지 + Python 인터페이스</td>
+        <td>이것 없이는 어떤 Task도 실행 불가. SA V6의 5개 Controller 구현체</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td style="color:var(--orange);font-weight:700">P1</td>
+        <td><strong>Execution Monitor</strong></td>
+        <td>신규 구축</td>
+        <td>백엔드 서비스 (비동기 감시 루프)</td>
+        <td>SR-CTL-03 이상 감지 1초 이내. 무인 운영의 필수 안전망</td>
+      </tr>
+      <tr style="background:rgba(251,191,36,0.06)">
+        <td style="color:var(--yellow);font-weight:700">P1</td>
+        <td><strong>Traffic Manager</strong></td>
+        <td>설계 &rarr; 구현</td>
+        <td>Waypoint 그래프 + 충돌 검사 엔진</td>
+        <td>AMR 2대 이상 동시 이동 시 필수. 설계는 완료</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>P2</td>
+        <td>Task Manager 보강</td>
+        <td>기존 코드 확장</td>
+        <td>schedule.py에 Task 분해 로직 추가</td>
+        <td>현재 수동 분해 &rarr; 자동화</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>P2</td>
+        <td>Task Allocator 보강</td>
+        <td>기존 코드 확장</td>
+        <td>스코어링 함수 개선</td>
+        <td>거리 + capability + 배터리 종합 평가</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>P3</td>
+        <td>로봇 상태 보강</td>
+        <td>API 1개 추가</td>
+        <td>heartbeat 엔드포인트 + offline 로직</td>
+        <td>equipment 테이블 기존 활용</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>P3</td>
+        <td>적재 관리 보강</td>
+        <td>로직 추가</td>
+        <td>스테이션 예약 + FIFO/LIFO 선택</td>
+        <td>warehouse_racks 기존 활용</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>최종 요약</h3>
+    <pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  현재 보유 (DB + API + 로직)                                      │
+  │                                                                  │
+  │  ● equipment 테이블 (로봇 상태)    ● transport_tasks (이송)        │
+  │  ● warehouse_racks (적재)         ● production_jobs (스케줄링)     │
+  │  ● alerts (알림)                  ● process_stages (공정)         │
+  │  ● 우선순위 7요소 계산             ● AMR 가용성 판단               │
+  │  ● WebSocket 실시간 push          ● 이송 자원 4단계 매핑           │
+  ├──────────────────────────────────────────────────────────────────┤
+  │  보강 필요 (기존 코드 확장)                                        │
+  │                                                                  │
+  │  ○ Task 자동 분해 (Task Manager)                                  │
+  │  ○ 스코어링 개선 (Task Allocator)                                  │
+  │  ○ heartbeat + offline 전환                                       │
+  │  ○ 스테이션 예약 로직                                              │
+  ├──────────────────────────────────────────────────────────────────┤
+  │  신규 구축 필수 (코드 없음)                                         │
+  │                                                                  │
+  │  ✗ Robot / Cell Executor (P0) — SA V6 5개 Controller 구현체        │
+  │  ✗ Execution Monitor (P1) — 타임아웃/재시도/알림 자동화              │
+  │  ✗ Traffic Manager (P1) — 설계 완료, 코드 구현 필요                 │
+  └──────────────────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+</section>
+
+</div>
+
+<footer class="footer">
+  SmartCast Robotics &mdash; Casting-FMS v2 &middot; 2026-04-13<br>
+  검증 소스: CONFLUENCE_FACTS.md (v42) + 코드베이스 교차검증<br>
+  <span style="color:var(--yellow)">이전 버전(v1)의 Fleet State Manager P0 오류 정정 반영</span>
+</footer>
+
+</body>
+</html>

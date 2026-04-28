@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Casting Factory - System Architecture</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #f6f7fb;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    color: #1a1a2e;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { text-align: center; color: #16213e; margin-bottom: 4px; font-size: 24px; }
+  .subtitle { text-align: center; color: #777; font-size: 13px; margin-bottom: 24px; }
+
+  .diagram {
+    background: #fff;
+    border: 1px solid #e3e6ef;
+    border-radius: 12px;
+    padding: 28px 32px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  }
+
+  /* Layer row */
+  .layer-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 16px;
+    align-items: stretch;
+    padding: 18px 0;
+    border-bottom: 1px dashed #c8ccdb;
+  }
+  .layer-row:last-of-type { border-bottom: none; }
+  .layer-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: #16213e;
+    background: #f0f2fa;
+    border-radius: 8px;
+    border: 1px solid #d5d9e8;
+  }
+  .layer-content {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  /* Component box */
+  .comp {
+    flex: 1 1 0;
+    min-width: 220px;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    background: #fff;
+  }
+  .comp.done { border: 2px solid #2ecc71; background: #f0faf3; }
+  .comp.progress { border: 2px solid #f39c12; background: #fff8ec; }
+  .comp.planned { border: 2px dashed #bdc3c7; background: #fafbfc; }
+
+  .comp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .comp-title { font-weight: 700; font-size: 14px; color: #16213e; }
+  .status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .status.done { background: #2ecc71; color: #fff; }
+  .status.progress { background: #f39c12; color: #fff; }
+  .status.planned { background: #95a5a6; color: #fff; }
+
+  .comp-sub {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+  .comp-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .item {
+    font-size: 10px;
+    background: #eef1f9;
+    color: #1a1a2e;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+  .item.highlight { background: #16213e; color: #fff; }
+
+  /* Connection lines using flex spacers */
+  .arrow-row {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 4px 0;
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+  }
+  .arrow-row span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .arrow {
+    display: inline-block;
+    width: 40px;
+    height: 2px;
+    position: relative;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left: 6px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+  .arrow.http { color: #6366f1; background: #6366f1; }
+  .arrow.ws { color: #06b6d4; background: #06b6d4; }
+  .arrow.mqtt { color: #f59e0b; background: #f59e0b; }
+  .arrow.ros2 { color: #10b981; background: #10b981; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin: 20px 0 0 0;
+    padding: 14px;
+    background: #f0f2fa;
+    border-radius: 8px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #16213e;
+  }
+  .legend-line {
+    width: 30px;
+    height: 3px;
+    border-radius: 2px;
+  }
+  .legend-line.http { background: #6366f1; }
+  .legend-line.ws { background: #06b6d4; }
+  .legend-line.mqtt { background: #f59e0b; }
+  .legend-line.ros2 { background: #10b981; border-top: 2px dashed #10b981; background: none; }
+  .legend-status {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+  }
+  .legend-status.done { background: #2ecc71; }
+  .legend-status.progress { background: #f39c12; }
+  .legend-status.planned { background: #bdc3c7; }
+
+  /* Phase roadmap below diagram */
+  .roadmap {
+    margin-top: 28px;
+    background: #fff;
+    border: 1px solid #e3e6ef;
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .roadmap h2 {
+    font-size: 16px;
+    margin: 0 0 14px 0;
+    color: #16213e;
+  }
+  .phase {
+    padding: 10px 0;
+    border-bottom: 1px solid #eef1f9;
+    font-size: 13px;
+  }
+  .phase:last-child { border-bottom: none; }
+  .phase-title {
+    font-weight: 700;
+    color: #16213e;
+  }
+  .phase-desc { color: #6b7280; margin-top: 3px; line-height: 1.5; }
+  .done-text { color: #2ecc71; }
+  .progress-text { color: #f39c12; }
+  .planned-text { color: #95a5a6; }
+
+  /* Topic table */
+  .topics {
+    margin-top: 28px;
+    background: #fff;
+    border: 1px solid #e3e6ef;
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .topics h2 { font-size: 16px; margin: 0 0 12px 0; color: #16213e; }
+  .topics table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .topics th {
+    background: #f0f2fa;
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 700;
+    color: #16213e;
+    border-bottom: 1px solid #d5d9e8;
+  }
+  .topics td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #eef1f9;
+    font-family: 'SF Mono', Consolas, monospace;
+  }
+  .topics tr:last-child td { border-bottom: none; }
+  .topics .dir { font-family: inherit; color: #6b7280; }
+
+  /* Legend section headers */
+  .meta {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #95a5a6;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<h1>Casting Factory System Architecture</h1>
+<div class="subtitle">주물공장 관제 시스템 — 실제 구현 + 로드맵 기준 (v1.0)</div>
+
+<div class="diagram">
+
+  <!-- ============ UI LAYER ============ -->
+  <div class="layer-row">
+    <div class="layer-label">UI</div>
+    <div class="layer-content">
+      <div class="comp done">
+        <div class="comp-header">
+          <span class="comp-title">Admin Web (Next.js 16)</span>
+          <span class="status done">DONE</span>
+        </div>
+        <div class="comp-sub">관리자 / 고객 웹 — React 19 + TypeScript + Tailwind CSS 4 (port 3000)</div>
+        <div class="comp-items">
+          <span class="item">생산 계획</span>
+          <span class="item">주문 관리</span>
+          <span class="item">품질 관리</span>
+          <span class="item">입출고 내역</span>
+          <span class="item">customer</span>
+        </div>
+      </div>
+
+      <div class="comp done">
+        <div class="comp-header">
+          <span class="comp-title">Monitoring App (PyQt5)</span>
+          <span class="status done">v0.1</span>
+        </div>
+        <div class="comp-sub">관제실 데스크톱 앱 — PyQt5 5.15 + REST + WebSocket</div>
+        <div class="comp-items">
+          <span class="item">대시보드</span>
+          <span class="item">생산 모니터링</span>
+          <span class="item">품질 검사</span>
+          <span class="item">물류 이송</span>
+          <span class="item highlight">FactoryMap3D</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrows UI <-> Server -->
+  <div class="arrow-row">
+    <span><span class="arrow http"></span> HTTP (REST)</span>
+    <span><span class="arrow ws"></span> WebSocket</span>
+  </div>
+
+  <!-- ============ SERVER LAYER ============ -->
+  <div class="layer-row">
+    <div class="layer-label">Server</div>
+    <div class="layer-content">
+      <div class="comp done" style="flex: 2;">
+        <div class="comp-header">
+          <span class="comp-title">Control Server — FastAPI</span>
+          <span class="status done">DONE</span>
+        </div>
+        <div class="comp-sub">Python 3 + FastAPI + SQLAlchemy + Pydantic + asyncpg (port 8000)</div>
+        <div class="comp-items">
+          <span class="item">REST Routes</span>
+          <span class="item">WebSocket Mgr</span>
+          <span class="item">Scheduler</span>
+          <span class="item">Seeder</span>
+        </div>
+      </div>
+
+      <div class="comp progress">
+        <div class="comp-header">
+          <span class="comp-title">PostgreSQL 16 + TimescaleDB</span>
+          <span class="status progress">PHASE 1</span>
+        </div>
+        <div class="comp-sub">관계형 + 시계열 하이퍼테이블 + JSONB payload 저장</div>
+        <div class="comp-items">
+          <span class="item">JSONB</span>
+          <span class="item">Hypertables</span>
+          <span class="item">Continuous Aggregates</span>
+        </div>
+        <div class="comp-items" style="margin-top:6px;">
+          <span class="item">Alembic 마이그레이션</span>
+        </div>
+      </div>
+
+      <div class="comp progress">
+        <div class="comp-header">
+          <span class="comp-title">MQTT Bridge + Redis Cache</span>
+          <span class="status progress">PHASE 1</span>
+        </div>
+        <div class="comp-sub">asyncio-mqtt → WebSocket 포워딩 + DB 저장</div>
+        <div class="comp-items">
+          <span class="item">dispatcher</span>
+          <span class="item">publisher</span>
+          <span class="item">redis pub/sub</span>
+        </div>
+      </div>
+
+      <div class="comp planned">
+        <div class="comp-header">
+          <span class="comp-title">AI Server (Jetson Orin NX 16GB)</span>
+          <span class="status planned">PHASE 2</span>
+        </div>
+        <div class="comp-sub">비전 검사 + 불량 감지 (YOLO/분류 모델)</div>
+        <div class="comp-items">
+          <span class="item">camera capture</span>
+          <span class="item">inference</span>
+          <span class="item">mqtt pub</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- arrows Server <-> HW -->
+  <div class="arrow-row">
+    <span><span class="arrow mqtt"></span> MQTT over WiFi (Mosquitto on RPi5)</span>
+    <span><span class="arrow ros2"></span> ROS2 DDS</span>
+  </div>
+
+  <!-- ============ HW LAYER ============ -->
+  <div class="layer-row">
+    <div class="layer-label">HW</div>
+    <div class="layer-content">
+      <div class="comp done">
+        <div class="comp-header">
+          <span class="comp-title">ESP32 Conveyor</span>
+          <span class="status done">v4.0</span>
+        </div>
+        <div class="comp-sub">DevKitC V4 + L298N Motor Driver + JGB37-555 DC12V</div>
+        <div class="comp-items">
+          <span class="item">TOF250 x2</span>
+          <span class="item">ASCII UART 9600</span>
+          <span class="item highlight">MQTT pub/sub</span>
+          <span class="item">WiFi</span>
+        </div>
+      </div>
+
+      <div class="comp planned">
+        <div class="comp-header">
+          <span class="comp-title">Cobot Controllers × 2</span>
+          <span class="status planned">PHASE 2</span>
+        </div>
+        <div class="comp-sub">RPi5 + ROS2 Jazzy + MoveIt2 (pouring / pick-place)</div>
+        <div class="comp-items">
+          <span class="item">cobot_1</span>
+          <span class="item">cobot_2</span>
+          <span class="item">MoveIt2</span>
+          <span class="item">rosbridge</span>
+        </div>
+      </div>
+
+      <div class="comp planned">
+        <div class="comp-header">
+          <span class="comp-title">Vision Station</span>
+          <span class="status planned">PHASE 2</span>
+        </div>
+        <div class="comp-sub">RPi5 + Camera → Jetson 연계</div>
+        <div class="comp-items">
+          <span class="item">libcamera</span>
+          <span class="item">picamera2</span>
+        </div>
+      </div>
+
+      <div class="comp planned">
+        <div class="comp-header">
+          <span class="comp-title">AMR Controllers × 3</span>
+          <span class="status planned">PHASE 3</span>
+        </div>
+        <div class="comp-sub">RPi4 + ROS2 Jazzy + Nav2 + SLAM Toolbox</div>
+        <div class="comp-items">
+          <span class="item">amr_1</span>
+          <span class="item">amr_2</span>
+          <span class="item">amr_3</span>
+          <span class="item">LIDAR</span>
+          <span class="item">Nav2</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-line http"></div> HTTP (REST)</div>
+    <div class="legend-item"><div class="legend-line ws"></div> WebSocket</div>
+    <div class="legend-item"><div class="legend-line mqtt"></div> MQTT</div>
+    <div class="legend-item"><div class="legend-line ros2"></div> ROS2 DDS</div>
+    <div class="legend-item"><div class="legend-status done"></div> 구현 완료</div>
+    <div class="legend-item"><div class="legend-status progress"></div> 진행 중</div>
+    <div class="legend-item"><div class="legend-status planned"></div> 계획 단계</div>
+  </div>
+</div>
+
+<!-- ========= MQTT TOPIC TABLE ========= -->
+<div class="topics">
+  <h2>MQTT Topic Namespace</h2>
+  <table>
+    <thead>
+      <tr><th>Topic</th><th>Direction</th><th>Description</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>conveyor/1/status</td><td class="dir">ESP32 → Server</td><td class="dir">300ms 주기 상태 JSON (state, motor, tof, count)</td><td class="dir">✓ v4.0</td></tr>
+      <tr><td>conveyor/1/event</td><td class="dir">ESP32 → Server</td><td class="dir">entry / exit / post_start / cycle_done</td><td class="dir">✓ v4.0</td></tr>
+      <tr><td>conveyor/1/cmd</td><td class="dir">Server → ESP32</td><td class="dir">start / stop / reset / camera_ok</td><td class="dir">✓ v4.0</td></tr>
+      <tr><td>conveyor/1/heartbeat</td><td class="dir">ESP32 → Server</td><td class="dir">online / offline (LWT, retained)</td><td class="dir">✓ v4.0</td></tr>
+      <tr><td>vision/1/result</td><td class="dir">AI → ESP32</td><td class="dir">검사 결과 (ok/ng + defects)</td><td class="dir">△ Phase 2</td></tr>
+      <tr><td>cobot/{1,2}/status</td><td class="dir">Cobot → Server</td><td class="dir">ROS2 Jazzy, 암 pose + grip state (rosbridge 통해 발행)</td><td class="dir">△ Phase 2</td></tr>
+      <tr><td>cobot/{1,2}/cmd</td><td class="dir">Server → Cobot</td><td class="dir">동작 명령 (pick/place/pour) — 2대 코봇</td><td class="dir">△ Phase 2</td></tr>
+      <tr><td>amr/{1,2,3}/position</td><td class="dir">AMR → Server</td><td class="dir">ROS2 Jazzy, SLAM 좌표 + battery — 3대 AMR</td><td class="dir">△ Phase 3</td></tr>
+      <tr><td>amr/{1,2,3}/task</td><td class="dir">Server → AMR</td><td class="dir">운송 작업 할당 (task_allocator 기반)</td><td class="dir">△ Phase 3</td></tr>
+      <tr><td>factory/alarm</td><td class="dir">Server → *</td><td class="dir">전체 알람 브로드캐스트</td><td class="dir">△ Phase 4</td></tr>
+      <tr><td>factory/kpi</td><td class="dir">Server → *</td><td class="dir">OEE / throughput / defect rate</td><td class="dir">△ Phase 4</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ========= ROADMAP ========= -->
+<div class="roadmap">
+  <h2>Implementation Roadmap</h2>
+
+  <div class="phase">
+    <div class="phase-title">
+      <span class="done-text">■ Phase 0 — 현재 구현 완료</span>
+    </div>
+    <div class="phase-desc">
+      <strong>UI 분리 완료 (v3.4.0)</strong>:
+      Next.js 16 관리자 웹 (생산 계획 / 주문 / 품질 / 입출고)
+      + <strong>PyQt5 관제 모니터링 데스크톱 앱</strong> (대시보드 / 생산 / 품질 / 물류),
+      FastAPI + SQLite (개발용) + WebSocket,
+      ESP32 컨베이어 v4.0 펌웨어 (TOF250 x2 + L298N + MQTT 지원)
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">
+      <span class="progress-text">■ Phase 1 — PostgreSQL 마이그레이션 + MQTT 파이프라인</span>
+    </div>
+    <div class="phase-desc">
+      <strong>SQLite → PostgreSQL 16 + TimescaleDB 마이그레이션</strong>
+      (다중 하드웨어 동시 쓰기 대응, JSONB, 시계열 하이퍼테이블),
+      Alembic 스키마 관리 도입,
+      RPi5에 Mosquitto 브로커 설치,
+      FastAPI <code>backend/app/mqtt/</code> 모듈 추가,
+      ESP32 ↔ 서버 실시간 연동, WebSocket 이벤트 포워딩,
+      Redis 캐시 추가 (pub/sub + 핫 데이터)
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">
+      <span class="planned-text">■ Phase 2 — Vision / Cobot 통합</span>
+    </div>
+    <div class="phase-desc">
+      Jetson Orin NX 16GB 비전 서버 구축 (YOLO 기반 불량 감지),
+      <code>vision/1/result</code> 발행 → ESP32 구독,
+      <strong>협동로봇 2대</strong> (RPi5 + ROS2 Jazzy + MoveIt2)
+      — 주조 pouring + pick/place 담당
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">
+      <span class="planned-text">■ Phase 3 — AMR / ROS2 연동</span>
+    </div>
+    <div class="phase-desc">
+      <strong>AMR 3대</strong> (RPi4 + ROS2 Jazzy + Nav2 + SLAM Toolbox),
+      <code>rosbridge_websocket</code> 으로 FastAPI 연동,
+      작업 할당기 (<code>task_allocator.py</code>) 구현 — 3대 간 부하 분배,
+      3D 맵에 AMR 실시간 위치 표시 (FactoryMap3D)
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-title">
+      <span class="planned-text">■ Phase 4 — 관제 고도화</span>
+    </div>
+    <div class="phase-desc">
+      OEE / KPI 자동 계산 (PostgreSQL Continuous Aggregates 활용),
+      알람 룰 엔진 (PL/pgSQL 트리거 기반) + 임계값 관리 UI,
+      이력 조회 / 리포트 생성 (TimescaleDB 압축),
+      MinIO/S3 이미지 저장소,
+      PostgreSQL streaming replication (HA),
+      ERP / MES 외부 연동
+    </div>
+  </div>
+</div>
+
+<div class="meta">
+  Generated from codebase inspection · backend/app · src/app · firmware/conveyor_controller v4.0
+</div>
+
+</div>
+</body>
+</html>

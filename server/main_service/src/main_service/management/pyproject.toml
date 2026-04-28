@@ -1,0 +1,30 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-q",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "integration: tests requiring DB or external service",
+    "slow: tests over 1 second",
+]
+
+[tool.coverage.run]
+source = ["services"]
+omit = [
+    "*/management_pb2.py",
+    "*/management_pb2_grpc.py",
+    "tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

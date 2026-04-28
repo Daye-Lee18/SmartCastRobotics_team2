@@ -1,0 +1,15 @@
+grpcio>=1.80.0,<2.0
+grpcio-tools>=1.80.0,<2.0
+protobuf>=6.30.0,<7.0
+sqlalchemy>=2.0.35,<3.0
+psycopg[binary]>=3.2.0,<4.0   # PostgreSQL 드라이버 (Interface Service 와 동일)
+# HW 연동 — V6 canonical (Phase D 2026-04-20): MQTT 제거, Jetson Serial 경유로 통일.
+#   ESP32 명령은 command_queue → WatchConveyorCommands gRPC 스트림 → Jetson EspBridge Serial 송신.
+# AI Server (Phase 1: SSH/SCP 업로드)
+paramiko>=3.4.0,<4.0
+# Test
+pytest>=8.0,<10.0
+pytest-cov>=5.0,<7.0
+pydantic>=2.0,<3.0
+# ROS2 rclpy 는 시스템 패키지로 설치 (pip 불가). Ubuntu 24.04 Jazzy:
+#   sudo apt install ros-jazzy-rclpy ros-jazzy-nav2-msgs

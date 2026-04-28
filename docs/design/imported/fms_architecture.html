@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartCast FMS Architecture — 주조 공정 특화 Fleet Management System</title>
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111827;
+    --panel-lt: #1f2937;
+    --border: #374151;
+    --text: #f3f4f6;
+    --text-dim: #9ca3af;
+    --accent: #60a5fa;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --pink: #f472b6;
+    --cyan: #22d3ee;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 14px;
+  }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 50%, #1e1b4b 100%);
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero p { margin-top: 0.5rem; color: var(--text-dim); font-size: 0.95rem; }
+  .hero .badge {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.3rem 1rem;
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    color: var(--accent);
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* Section */
+  .section { margin-bottom: 2.5rem; }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* Card */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--accent);
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { padding: 0.55rem 0.75rem; border: 1px solid var(--border); text-align: left; }
+  th { background: var(--panel-lt); font-weight: 600; color: var(--accent); white-space: nowrap; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* Code */
+  pre {
+    background: #0d1117;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    color: var(--text-dim);
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    white-space: pre;
+  }
+  code {
+    font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    font-size: 0.82em;
+  }
+  .inline-code {
+    background: rgba(96,165,250,0.1);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+
+  /* Layer badges */
+  .layer-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .layer-planning  { background: #1e3a5f; color: #93c5fd; }
+  .layer-coord     { background: #4c1d95; color: #c4b5fd; }
+  .layer-exec      { background: #064e3b; color: #6ee7b7; }
+  .layer-data      { background: #78350f; color: #fde68a; }
+  .layer-have      { background: #14532d; color: #bbf7d0; }
+  .layer-need      { background: #7f1d1d; color: #fca5a5; }
+  .layer-recommend { background: #713f12; color: #fde68a; }
+
+  /* Status dot */
+  .status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+  .dot-yellow { background: var(--yellow); }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* Highlight */
+  .highlight {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+  }
+  .highlight-info { background: rgba(96,165,250,0.08); border-left: 4px solid var(--accent); }
+  .highlight-warn { background: rgba(251,191,36,0.08); border-left: 4px solid var(--yellow); }
+  .highlight-good { background: rgba(52,211,153,0.08); border-left: 4px solid var(--green); }
+
+  /* Component card */
+  .comp-card {
+    background: var(--panel-lt);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: all 0.2s;
+  }
+  .comp-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px rgba(96,165,250,0.12);
+  }
+  .comp-card .comp-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .comp-card .comp-desc { font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+  .comp-card .comp-role { font-size: 0.75rem; margin-top: 0.5rem; color: var(--yellow); }
+
+  /* TOC */
+  .toc {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 2rem;
+    margin-bottom: 2rem;
+  }
+  .toc h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.6rem; color: var(--accent); }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin-bottom: 0.3rem; font-size: 0.88rem; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  /* Flow arrow */
+  .flow-arrow {
+    text-align: center;
+    font-size: 1.5rem;
+    color: var(--text-dim);
+    margin: 0.5rem 0;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Casting-FMS Architecture</h1>
+  <p>open-RMF 없이 주조 공정에 특화된 Fleet Management System 설계</p>
+  <div class="badge">SmartCast Robotics &middot; casting-factory &middot; 2026-04-13</div>
+</header>
+
+<div class="container">
+
+<!-- TOC -->
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">설계 배경 및 전략</a></li>
+    <li><a href="#s2">전체 아키텍처 (4-Layer)</a></li>
+    <li><a href="#s3">보유 컴포넌트 (3개)</a></li>
+    <li><a href="#s4">추가 필수 컴포넌트 (4개)</a></li>
+    <li><a href="#s5">권장 컴포넌트 (2개)</a></li>
+    <li><a href="#s6">컴포넌트 간 인터페이스</a></li>
+    <li><a href="#s7">시나리오 검증: A제품 10개 생산</a></li>
+    <li><a href="#s8">갭 분석 요약</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════ 1. 배경 ═══════ -->
+<section class="section" id="s1">
+  <h2 class="section-title"><span class="num">1</span> 설계 배경 및 전략</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>왜 open-RMF를 사용하지 않는가?</h3>
+      <table>
+        <tr><th>항목</th><th>open-RMF</th><th>Casting-FMS</th></tr>
+        <tr><td>대상</td><td>범용 (물류센터, 병원 등)</td><td>주조 공정 특화</td></tr>
+        <tr><td>로봇 유형</td><td>AMR 위주</td><td>AMR + 로봇팔 (Cobot) 혼합</td></tr>
+        <tr><td>공정 모델</td><td>단순 이동 (A &rarr; B)</td><td>8단계 생산 공정 + 순서 제약</td></tr>
+        <tr><td>복잡도</td><td>ROS2 + rmf_core 대규모</td><td>필요한 모듈만 경량 구현</td></tr>
+        <tr><td>의존성</td><td>ROS2 Galactic/Humble 강결합</td><td>ROS2 Jazzy + 독립 Python</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Casting-FMS 핵심 원칙</h3>
+      <ul style="font-size:0.88rem; padding-left:1.2rem;">
+        <li><strong>Just Enough</strong>: open-RMF의 ~40개 패키지 중 필요한 개념만 추출</li>
+        <li><strong>공정 순서 강제</strong>: 동일 item_id의 Task는 반드시 순서 보장</li>
+        <li><strong>이종 로봇 통합</strong>: AMR (이동) + Cobot (조작)을 하나의 Task 체인으로 관리</li>
+        <li><strong>PostgreSQL 중심</strong>: 모든 상태를 DB에 기록 (PyQt5 + Web 양쪽 조회)</li>
+        <li><strong>점진적 확장</strong>: 3대 AMR로 시작, 구조 변경 없이 스케일 가능</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 2. 전체 아키텍처 ═══════ -->
+<section class="section" id="s2">
+  <h2 class="section-title"><span class="num">2</span> 전체 아키텍처 (4-Layer)</h2>
+
+  <div class="card">
+    <pre>
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Planning Layer                                                  │
+  │  ┌──────────────────┐     ┌──────────────────────────────────┐  │
+  │  │   Task Manager   │────▶│        Task Allocator            │  │
+  │  │   (분해 &middot; 추적)    │     │   (배정 + 배터리 체크 + 스코어링)  │  │
+  │  └──────────────────┘     └──────────────┬───────────────────┘  │
+  ├──────────────────────────────────────────┼───────────────────────┤
+  │  Coordination Layer                      │                       │
+  │  ┌──────────────────┐     ┌──────────────▼───────────────────┐  │
+  │  │ Traffic Manager  │◀───▶│   Resource Reservation Manager   │  │
+  │  │ (경로 충돌 방지)  │     │   (스테이션 / 버퍼 점유 관리)     │  │
+  │  └────────┬─────────┘     └──────────────────────────────────┘  │
+  ├───────────┼─────────────────────────────────────────────────────┤
+  │  Execution Layer                                                 │
+  │  ┌────────▼─────────┐     ┌──────────────────────────────────┐  │
+  │  │  Robot / Cell    │     │      Execution Monitor           │  │
+  │  │  Executor        │────▶│   (타임아웃 &middot; 실패 &middot; 재시도 감시)  │  │
+  │  │  (ROS2 명령 송출) │     │                                  │  │
+  │  └──────────────────┘     └──────────────────────────────────┘  │
+  ├──────────────────────────────────────────────────────────────────┤
+  │  Data Layer                                                      │
+  │  ┌──────────────────┐     ┌──────────────────────────────────┐  │
+  │  │  Fleet State     │     │      Map / Graph Server          │  │
+  │  │  Manager         │     │   (Waypoint-Edge 그래프)          │  │
+  │  │  (위치 &middot; 배터리  │     │                                  │  │
+  │  │   &middot; heartbeat)   │     │                                  │  │
+  │  └──────────────────┘     └──────────────────────────────────┘  │
+  └──────────────────────────────────────────────────────────────────┘
+    </pre>
+  </div>
+
+  <div class="card">
+    <h3>레이어별 책임</h3>
+    <table>
+      <tr><th>Layer</th><th>책임</th><th>핵심 질문</th></tr>
+      <tr>
+        <td><span class="layer-badge layer-planning">Planning</span></td>
+        <td>무엇을, 누가 할 것인가</td>
+        <td>work_order &rarr; Task 분해, 최적 로봇 배정</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-coord">Coordination</span></td>
+        <td>어디로, 언제 갈 것인가</td>
+        <td>경로 충돌 방지, 스테이션 점유 관리</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-exec">Execution</span></td>
+        <td>실제로 움직여라, 잘 되고 있는가</td>
+        <td>ROS2 action 호출, 타임아웃/재시도</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-data">Data</span></td>
+        <td>지금 상태가 어떤가</td>
+        <td>로봇 위치/배터리, 공장 맵 그래프</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 3. 보유 컴포넌트 ═══════ -->
+<section class="section" id="s3">
+  <h2 class="section-title"><span class="num">3</span> 보유 컴포넌트 (3개)</h2>
+
+  <div class="grid-3">
+    <div class="comp-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-planning">Planning</span>
+        <span class="status"><span class="dot dot-green"></span> 보유</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Task Manager</div>
+      <div class="comp-desc">
+        <code class="inline-code">work_order</code>를 <code class="inline-code">item_id</code>별 <code class="inline-code">Task</code>로 분해.
+        생산 Task (5단계) + 적재 Task (2단계) + 출고 Task (3단계) 순서 보장.
+      </div>
+      <div class="comp-role">입력: work_order &rarr; 출력: Task 배열 (순서 제약 포함)</div>
+    </div>
+
+    <div class="comp-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-planning">Planning</span>
+        <span class="status"><span class="dot dot-green"></span> 보유</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Task Allocator</div>
+      <div class="comp-desc">
+        가용 로봇 목록과 Task 조건을 받아 최적 로봇 선택.
+        거리, 우선순위, 배터리, capability 종합 스코어링.
+      </div>
+      <div class="comp-role">입력: Task + 로봇 목록 &rarr; 출력: 특정 로봇에 명령</div>
+    </div>
+
+    <div class="comp-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-coord">Coordination</span>
+        <span class="status"><span class="dot dot-green"></span> 보유</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Traffic Manager</div>
+      <div class="comp-desc">
+        AMR 간 경로 충돌 방지. Waypoint 노드 잠금, Backtrack Yield 알고리즘으로 데드락 해소.
+      </div>
+      <div class="comp-role">입력: 로봇 위치 + 경로 &rarr; 출력: 이동 허가 / 대기 신호</div>
+    </div>
+  </div>
+
+  <div class="highlight highlight-good">
+    <strong>Confluence 정의 현황</strong>: 3개 모두 역할 정의는 완료. 기능 정의, 인터페이스 정의, 기술 스택 후보는 아직 미정.
+  </div>
+</section>
+
+<!-- ═══════ 4. 추가 필수 ═══════ -->
+<section class="section" id="s4">
+  <h2 class="section-title"><span class="num">4</span> 추가 필수 컴포넌트 (4개)</h2>
+
+  <div class="grid-2">
+    <!-- Resource Reservation -->
+    <div class="comp-card" style="border-color:#7f1d1d">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-coord">Coordination</span>
+        <span class="status"><span class="dot dot-red"></span> 미보유 (필수)</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Resource Reservation Manager</div>
+      <div class="comp-desc">
+        공장 내 <strong>정적 자원</strong>(스테이션, 버퍼, 독, 충전소)의 점유 상태 관리.
+        Traffic Manager가 "이동 경로"를 관리한다면 이 매니저는 "머무르는 공간"을 관리.
+      </div>
+      <table style="margin-top:0.75rem">
+        <tr><th style="width:35%">관리 자원</th><th>예시</th></tr>
+        <tr><td>Production Station</td><td>주형 제작대, 주조 구역, 후처리 스테이션</td></tr>
+        <tr><td>Buffer Zone</td><td>냉각 대기 공간, 검사 대기열</td></tr>
+        <tr><td>Dock</td><td>적재 독, 출고 독</td></tr>
+        <tr><td>Charging Station</td><td>AMR 충전소</td></tr>
+      </table>
+      <div class="highlight highlight-warn" style="margin-bottom:0">
+        <strong>없으면?</strong> Task Allocator가 로봇을 배정해도, 도착할 스테이션이 이미 점유 중이면 로봇이 앞에서 무한 대기하거나 충돌 발생.
+      </div>
+    </div>
+
+    <!-- Robot Executor -->
+    <div class="comp-card" style="border-color:#7f1d1d">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-exec">Execution</span>
+        <span class="status"><span class="dot dot-red"></span> 미보유 (필수)</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Robot / Cell Executor</div>
+      <div class="comp-desc">
+        Planning/Coordination 레이어의 결정을 <strong>실제 하드웨어 명령</strong>으로 변환하는 계층.
+        3개 매니저가 "누가, 어디로, 언제"를 결정해도, 이것 없이는 로봇이 움직이지 않음.
+      </div>
+      <table style="margin-top:0.75rem">
+        <tr><th style="width:35%">대상</th><th>명령 인터페이스</th></tr>
+        <tr><td>AMR (RPi4)</td><td>ROS2 nav2 Action Client (<code class="inline-code">NavigateToPose</code>)</td></tr>
+        <tr><td>Cobot 로봇팔 (RPi5)</td><td>ROS2 MoveIt Action / 직접 제어</td></tr>
+        <tr><td>컨베이어 (ESP32)</td><td>Serial JSON 명령 (9600 UART)</td></tr>
+        <tr><td>비전 검사</td><td>ROS2 Service Call</td></tr>
+      </table>
+      <div class="highlight highlight-warn" style="margin-bottom:0">
+        <strong>없으면?</strong> 계획만 세우고 실행이 불가능. 두뇌는 있으나 팔다리가 없는 상태.
+      </div>
+    </div>
+
+    <!-- Execution Monitor -->
+    <div class="comp-card" style="border-color:#7f1d1d">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-exec">Execution</span>
+        <span class="status"><span class="dot dot-red"></span> 미보유 (필수)</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Execution Monitor</div>
+      <div class="comp-desc">
+        Task 실행 중 <strong>이상 상태 감지 + 자동 복구</strong>를 담당하는 감시자.
+        로봇이 멈추거나 Task가 예상 시간을 초과해도, 이것 없이는 시스템이 인지 불가.
+      </div>
+      <table style="margin-top:0.75rem">
+        <tr><th style="width:35%">감시 항목</th><th>대응 정책</th></tr>
+        <tr><td>Task 타임아웃</td><td>5분 초과 시 경보, 10분 초과 시 Task 취소 + 재배정</td></tr>
+        <tr><td>로봇 응답 없음</td><td>heartbeat 3회 누락 시 해당 로봇 비활성화</td></tr>
+        <tr><td>Task 실패</td><td>최대 3회 재시도, 초과 시 관리자 알림</td></tr>
+        <tr><td>데드락 감지</td><td>순환 대기 탐지 &rarr; Traffic Manager에 Backtrack 요청</td></tr>
+      </table>
+      <div class="highlight highlight-warn" style="margin-bottom:0">
+        <strong>없으면?</strong> 로봇 하나가 멈추면 전체 공장 라인이 정지. 무인 운영 불가능.
+      </div>
+    </div>
+
+    <!-- Fleet State Manager -->
+    <div class="comp-card" style="border-color:#7f1d1d">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-data">Data</span>
+        <span class="status"><span class="dot dot-red"></span> 미보유 (필수)</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Fleet State Manager</div>
+      <div class="comp-desc">
+        모든 AMR/Cobot의 <strong>실시간 상태를 집중 관리</strong>하는 중앙 데이터 허브.
+        Task Allocator, Traffic Manager, Execution Monitor 모두 이 데이터에 의존.
+      </div>
+      <table style="margin-top:0.75rem">
+        <tr><th style="width:35%">관리 데이터</th><th>소스</th></tr>
+        <tr><td>위치 (x, y, theta)</td><td>AMR ROS2 <code class="inline-code">/odom</code> 토픽</td></tr>
+        <tr><td>배터리 잔량 (%)</td><td>AMR BMS 보고</td></tr>
+        <tr><td>상태</td><td>idle / busy / charging / error / offline</td></tr>
+        <tr><td>현재 Task ID</td><td>Executor 보고</td></tr>
+        <tr><td>heartbeat</td><td>1초 주기, 3회 누락 시 offline 전환</td></tr>
+      </table>
+      <div class="highlight highlight-warn" style="margin-bottom:0">
+        <strong>없으면?</strong> Task Allocator가 로봇을 배정하려 해도 "어떤 로봇이 어디에 있고, 배터리가 얼마인지" 알 수 없음.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 5. 권장 ═══════ -->
+<section class="section" id="s5">
+  <h2 class="section-title"><span class="num">5</span> 권장 컴포넌트 (2개)</h2>
+
+  <div class="grid-2">
+    <div class="comp-card" style="border-color:#713f12">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-data">Data</span>
+        <span class="status"><span class="dot dot-yellow"></span> 권장</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Map / Graph Server</div>
+      <div class="comp-desc">
+        공장 바닥의 <strong>Waypoint-Edge 그래프</strong>를 제공. Traffic Manager가 경로 충돌을 판단하려면 이 그래프가 필수.
+        노드 잠금, 최단 경로 계산, 동적 장애물 반영의 기반 데이터.
+      </div>
+      <div class="highlight highlight-info" style="margin-bottom:0">
+        <strong>대안</strong>: Traffic Manager 내부에 하드코딩할 수 있지만, 공장 레이아웃 변경 시 코드 수정이 필요해 분리 권장.
+        현재 <code class="inline-code">docs/fleet_traffic_management.html</code>에 1m&times;2m 맵 + 0.12m AMR 3대 설계 완료.
+      </div>
+    </div>
+
+    <div class="comp-card" style="border-color:#713f12">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="layer-badge layer-planning">Planning</span>
+        <span class="status"><span class="dot dot-yellow"></span> 권장</span>
+      </div>
+      <div class="comp-name" style="margin-top:0.75rem">Battery / Charging Manager</div>
+      <div class="comp-desc">
+        AMR 배터리 상태를 모니터링하고 <strong>자동으로 충전 Task를 삽입</strong>.
+        Task Allocator 내부에 넣을 수도 있지만, 충전 스케줄링 로직이 복잡해지면 분리가 유리.
+      </div>
+      <table style="margin-top:0.75rem">
+        <tr><th>배터리 레벨</th><th>상태</th><th>동작</th></tr>
+        <tr><td>&gt; 30%</td><td style="color:var(--green)">정상</td><td>일반 Task 수행</td></tr>
+        <tr><td>20~30%</td><td style="color:var(--yellow)">충전 필요</td><td>현재 Task 완료 후 충전소 복귀 Task 자동 삽입</td></tr>
+        <tr><td>&lt; 20%</td><td style="color:var(--red)">위험</td><td>모든 새 Task 거부, 즉시 충전소 이동</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ 6. 인터페이스 ═══════ -->
+<section class="section" id="s6">
+  <h2 class="section-title"><span class="num">6</span> 컴포넌트 간 인터페이스</h2>
+
+  <div class="card">
+    <h3>데이터 흐름도</h3>
+    <pre>
+                     ┌────────────────┐
+                     │  Factory UI    │
+                     │  (PyQt5/Web)   │
+                     └───────┬────────┘
+                             │ work_order
+                             ▼
+                     ┌────────────────┐
+                     │  Task Manager  │
+                     │                │
+                     │  work_order    │
+                     │  → item_id[]  │
+                     │  → Task[]     │
+                     └───────┬────────┘
+                             │ Task[]
+                             ▼
+  ┌──────────────┐   ┌────────────────┐   ┌──────────────────────┐
+  │ Fleet State  │──▶│ Task Allocator │──▶│ Resource Reservation │
+  │ Manager      │   │                │   │ Manager              │
+  │              │   │ score(Task,    │   │                      │
+  │ 위치/배터리   │   │  Robot) → 배정 │   │ reserve(station)     │
+  └──────┬───────┘   └───────┬────────┘   └──────────┬───────────┘
+         │                   │                       │
+         │                   ▼                       │
+         │           ┌────────────────┐              │
+         │           │ Traffic Manager│◀─────────────┘
+         │           │               │
+         │           │ grant_passage()│
+         │           │ hold() / yield│
+         │           └───────┬────────┘
+         │                   │ 이동 허가
+         │                   ▼
+         │           ┌────────────────┐   ┌──────────────────────┐
+         │           │ Robot / Cell   │──▶│ Execution Monitor    │
+         └──────────▶│ Executor       │   │                      │
+                     │                │   │ timeout / retry /    │
+                     │ ROS2 action    │   │ failure detection    │
+                     │ Serial JSON    │   │                      │
+                     └────────────────┘   └──────────────────────┘
+                             │                       │
+                             ▼                       ▼
+                     ┌────────────────┐      Task 실패 시
+                     │  PostgreSQL    │      Task Manager에
+                     │  (상태 기록)    │      재배정 요청
+                     └────────────────┘
+    </pre>
+  </div>
+
+  <div class="card">
+    <h3>인터페이스 매트릭스</h3>
+    <table>
+      <tr>
+        <th>호출자</th>
+        <th>피호출자</th>
+        <th>인터페이스</th>
+        <th>프로토콜</th>
+      </tr>
+      <tr>
+        <td>Task Manager</td>
+        <td>Task Allocator</td>
+        <td><code class="inline-code">allocate(task)</code></td>
+        <td>함수 호출 / REST</td>
+      </tr>
+      <tr>
+        <td>Task Allocator</td>
+        <td>Fleet State Manager</td>
+        <td><code class="inline-code">get_available_robots(capability)</code></td>
+        <td>DB 조회 / REST</td>
+      </tr>
+      <tr>
+        <td>Task Allocator</td>
+        <td>Resource Reservation</td>
+        <td><code class="inline-code">reserve(station_id, task_id)</code></td>
+        <td>함수 호출 / REST</td>
+      </tr>
+      <tr>
+        <td>Task Allocator</td>
+        <td>Traffic Manager</td>
+        <td><code class="inline-code">request_path(robot_id, from, to)</code></td>
+        <td>함수 호출 / REST</td>
+      </tr>
+      <tr>
+        <td>Traffic Manager</td>
+        <td>Map/Graph Server</td>
+        <td><code class="inline-code">get_shortest_path(from, to)</code></td>
+        <td>함수 호출</td>
+      </tr>
+      <tr>
+        <td>Traffic Manager</td>
+        <td>Fleet State Manager</td>
+        <td><code class="inline-code">get_robot_positions()</code></td>
+        <td>DB 조회 / ROS2 topic</td>
+      </tr>
+      <tr>
+        <td>Robot Executor</td>
+        <td>AMR / Cobot</td>
+        <td><code class="inline-code">NavigateToPose</code>, MoveIt</td>
+        <td>ROS2 Action</td>
+      </tr>
+      <tr>
+        <td>Robot Executor</td>
+        <td>컨베이어</td>
+        <td><code class="inline-code">{"cmd":"RUN","speed":80}</code></td>
+        <td>Serial JSON (9600)</td>
+      </tr>
+      <tr>
+        <td>Execution Monitor</td>
+        <td>Robot Executor</td>
+        <td><code class="inline-code">get_task_status(task_id)</code></td>
+        <td>이벤트 구독 / 폴링</td>
+      </tr>
+      <tr>
+        <td>Execution Monitor</td>
+        <td>Task Manager</td>
+        <td><code class="inline-code">report_failure(task_id, reason)</code></td>
+        <td>콜백 / REST</td>
+      </tr>
+      <tr>
+        <td>AMR (ROS2)</td>
+        <td>Fleet State Manager</td>
+        <td><code class="inline-code">/fleet/heartbeat</code></td>
+        <td>ROS2 topic (1Hz)</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 7. 시나리오 검증 ═══════ -->
+<section class="section" id="s7">
+  <h2 class="section-title"><span class="num">7</span> 시나리오 검증: A제품 10개 생산</h2>
+
+  <div class="card">
+    <h3>시나리오 개요</h3>
+    <table>
+      <tr><th style="width:25%">항목</th><th>내용</th></tr>
+      <tr><td>work_order</td><td>A제품 10개 생산</td></tr>
+      <tr><td>item_id</td><td>A제품 1개 (x10)</td></tr>
+      <tr><td>Task 분해</td><td>생산 Task 5단계 + 적재 Task 2단계 = item당 7 Task, 총 70 Task</td></tr>
+      <tr><td>투입 로봇</td><td>AMR 3대 + Cobot 2대</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Task 체인 (item_id 1개 기준)</h3>
+    <table>
+      <tr><th>#</th><th>Task</th><th>실행 주체</th><th>필요 컴포넌트</th></tr>
+      <tr>
+        <td colspan="4" style="background:var(--panel-lt);color:var(--accent);font-weight:700;text-align:center">생산 Task</td>
+      </tr>
+      <tr><td>1</td><td>주형 제작</td><td>Cobot (로봇팔)</td><td>Task Allocator, Resource Reservation, Executor</td></tr>
+      <tr><td>2</td><td>주조 구역 이동</td><td>AMR</td><td>Task Allocator, Traffic Manager, Fleet State, Executor</td></tr>
+      <tr><td>3</td><td>탈형 &amp; 상차</td><td>Cobot (로봇팔)</td><td>Resource Reservation, Executor</td></tr>
+      <tr><td>4</td><td>후처리 구역 이동</td><td>AMR</td><td>Traffic Manager, Fleet State, Executor</td></tr>
+      <tr><td>5</td><td>적재 구역 이동</td><td>AMR</td><td>Traffic Manager, Fleet State, Executor</td></tr>
+      <tr>
+        <td colspan="4" style="background:var(--panel-lt);color:var(--accent);font-weight:700;text-align:center">적재 Task</td>
+      </tr>
+      <tr><td>6</td><td>하차</td><td>Cobot (로봇팔)</td><td>Resource Reservation, Executor</td></tr>
+      <tr><td>7</td><td>적재 + 대기구역 이동</td><td>Cobot + AMR</td><td>Resource Reservation, Traffic Manager, Executor</td></tr>
+    </table>
+    <div class="highlight highlight-info" style="margin-bottom:0">
+      <strong>순서 제약</strong>: 동일 item_id의 Task 1~7은 반드시 순차 실행. 서로 다른 item_id는 병렬 가능 (로봇 가용 시).
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>컴포넌트별 호출 횟수 (item 1개)</h3>
+    <table>
+      <tr><th>컴포넌트</th><th>호출 횟수</th><th>역할</th></tr>
+      <tr><td><span class="status"><span class="dot dot-green"></span> Task Manager</span></td><td>1회</td><td>7개 Task 생성 + 순서 그래프 정의</td></tr>
+      <tr><td><span class="status"><span class="dot dot-green"></span> Task Allocator</span></td><td>7회</td><td>각 Task마다 최적 로봇 배정</td></tr>
+      <tr><td><span class="status"><span class="dot dot-green"></span> Traffic Manager</span></td><td>3~4회</td><td>AMR 이동 Task마다 경로 충돌 체크</td></tr>
+      <tr><td><span class="status"><span class="dot dot-red"></span> Resource Reservation</span></td><td>4~5회</td><td>스테이션 도착 전 점유 예약</td></tr>
+      <tr><td><span class="status"><span class="dot dot-red"></span> Robot Executor</span></td><td>7회</td><td>모든 Task의 실제 명령 송출</td></tr>
+      <tr><td><span class="status"><span class="dot dot-red"></span> Execution Monitor</span></td><td>7회</td><td>모든 Task 실행 감시</td></tr>
+      <tr><td><span class="status"><span class="dot dot-red"></span> Fleet State Manager</span></td><td>상시</td><td>1Hz heartbeat 수신 + 배터리/위치 갱신</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════ 8. 갭 분석 ═══════ -->
+<section class="section" id="s8">
+  <h2 class="section-title"><span class="num">8</span> 갭 분석 요약</h2>
+
+  <div class="card">
+    <table>
+      <tr>
+        <th style="width:5%">#</th>
+        <th style="width:22%">컴포넌트</th>
+        <th style="width:10%">Layer</th>
+        <th style="width:10%">상태</th>
+        <th style="width:13%">우선순위</th>
+        <th>미구현 시 영향</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>Task Manager</td>
+        <td><span class="layer-badge layer-planning">Planning</span></td>
+        <td><span class="status"><span class="dot dot-green"></span> 보유</span></td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Task Allocator</td>
+        <td><span class="layer-badge layer-planning">Planning</span></td>
+        <td><span class="status"><span class="dot dot-green"></span> 보유</span></td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>Traffic Manager</td>
+        <td><span class="layer-badge layer-coord">Coordination</span></td>
+        <td><span class="status"><span class="dot dot-green"></span> 보유</span></td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr style="background:rgba(52,211,153,0.06)">
+        <td>4</td>
+        <td>Fleet State Manager</td>
+        <td><span class="layer-badge layer-data">Data</span></td>
+        <td><span class="status"><span class="dot dot-green"></span> 보유 (보강)</span></td>
+        <td>-</td>
+        <td>DB <code class="inline-code">equipment</code> 테이블로 이미 구현. heartbeat 수신 + offline 자동 전환 로직만 추가 필요</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td>5</td>
+        <td><strong>Robot / Cell Executor</strong></td>
+        <td><span class="layer-badge layer-exec">Execution</span></td>
+        <td><span class="status"><span class="dot dot-red"></span> 필수</span></td>
+        <td style="color:var(--red);font-weight:700">P0 (최우선)</td>
+        <td>실행 레이어 부재 &rarr; 계획만 세우고 로봇이 움직이지 않음</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td>6</td>
+        <td><strong>Resource Reservation</strong></td>
+        <td><span class="layer-badge layer-coord">Coordination</span></td>
+        <td><span class="status"><span class="dot dot-red"></span> 필수</span></td>
+        <td style="color:var(--orange);font-weight:700">P1</td>
+        <td>스테이션 충돌 &rarr; 2대 이상 동시 도착 시 물리적 사고 위험</td>
+      </tr>
+      <tr style="background:rgba(248,113,113,0.06)">
+        <td>7</td>
+        <td><strong>Execution Monitor</strong></td>
+        <td><span class="layer-badge layer-exec">Execution</span></td>
+        <td><span class="status"><span class="dot dot-red"></span> 필수</span></td>
+        <td style="color:var(--orange);font-weight:700">P1</td>
+        <td>장애 감지 불가 &rarr; 로봇 1대 정지 시 전체 라인 교착</td>
+      </tr>
+      <tr style="background:rgba(251,191,36,0.06)">
+        <td>8</td>
+        <td>Map / Graph Server</td>
+        <td><span class="layer-badge layer-data">Data</span></td>
+        <td><span class="status"><span class="dot dot-yellow"></span> 권장</span></td>
+        <td>P2</td>
+        <td>Traffic Manager 내부 하드코딩으로 대체 가능 (확장성 제한)</td>
+      </tr>
+      <tr style="background:rgba(251,191,36,0.06)">
+        <td>9</td>
+        <td>Battery / Charging Manager</td>
+        <td><span class="layer-badge layer-planning">Planning</span></td>
+        <td><span class="status"><span class="dot dot-yellow"></span> 권장</span></td>
+        <td>P2</td>
+        <td>Task Allocator에 통합 가능 (충전 로직 복잡도 증가 시 분리)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="highlight highlight-info">
+    <strong>구현 순서 제안</strong>:
+    P0 (Robot Executor) &rarr;
+    P1 (Resource Reservation + Execution Monitor) &rarr;
+    P2 (Map Server + Battery Manager).
+    Fleet State Manager는 기존 <code class="inline-code">equipment</code> 테이블 + heartbeat API 보강으로 대체.
+    P0 없이는 보유한 3개 컴포넌트도 실제 동작 불가.
+  </div>
+
+  <div class="card">
+    <h3>설계 문서 참조</h3>
+    <table>
+      <tr><th>컴포넌트</th><th>기존 설계 문서</th></tr>
+      <tr><td>Resource Reservation Manager</td><td><code class="inline-code">docs/architecture/10_resource_reservation_manager.html</code></td></tr>
+      <tr><td>Robot / Cell Executors</td><td><code class="inline-code">docs/architecture/11_robot_cell_executors.html</code></td></tr>
+      <tr><td>Execution Monitor</td><td><code class="inline-code">docs/architecture/12_execution_monitor.html</code></td></tr>
+      <tr><td>Task Allocator (상세)</td><td><code class="inline-code">docs/architecture/09_global_task_allocator.html</code></td></tr>
+      <tr><td>Task Manager (상세)</td><td><code class="inline-code">docs/architecture/07_workflow_task_manager.html</code></td></tr>
+      <tr><td>Fleet Traffic 설계</td><td><code class="inline-code">docs/fleet_traffic_management.html</code></td></tr>
+      <tr><td>전체 아키텍처 인덱스</td><td><code class="inline-code">docs/architecture/index.html</code></td></tr>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<footer class="footer">
+  SmartCast Robotics &mdash; Casting-FMS Architecture &middot; 2026-04-13 &middot; open-RMF 대체 주조 공정 특화 FMS
+  <br>참조: <a href="architecture/index.html" style="color:var(--accent)">전체 아키텍처 인덱스</a> &middot;
+  <a href="fleet_traffic_management.html" style="color:var(--accent)">Fleet Traffic 설계서</a>
+</footer>
+
+</body>
+</html>

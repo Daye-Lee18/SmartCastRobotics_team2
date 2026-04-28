@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12. Execution Monitor / Exception Handler</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Monitoring Layer</div>
+      <h1>12. Execution Monitor / Exception Handler<span class="badge monitor">Monitor</span></h1>
+      <div class="subtitle">
+        완료/실패/재시도/재할당 판단 · 상태 DB 반영 · UI 갱신 브로드캐스트
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">수신 이벤트</a></li>
+        <li><a href="#s3">성공 처리</a></li>
+        <li><a href="#s4">실패 분류와 복구 전략</a></li>
+        <li><a href="#s5">재시도 정책</a></li>
+        <li><a href="#s6">DB 갱신 & UI 알림</a></li>
+        <li><a href="#s7">구현 스케치</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Execution Monitor / Exception Handler</strong>는 전체 실행 루프를 닫는 피드백 컴포넌트입니다. Robot/Cell Executors로부터 결과를 수신하여 시스템 상태를 갱신하고, 실패 시 적절한 복구 전략을 선택합니다.</p>
+
+      <h3>1.1 역할</h3>
+      <ul>
+        <li>Executor 실행 결과 수신 (성공/실패)</li>
+        <li>task 상태 전이 (running → completed/failed)</li>
+        <li>실패 원인 분류 및 복구 전략 결정</li>
+        <li>재시도 / 재할당 / 사용자 개입 요청</li>
+        <li>Lane Queue에 work_order 완료 통지</li>
+        <li>WebSocket으로 UI에 실시간 알림</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 수신 이벤트</h2>
+
+      <p>Execution Monitor는 여러 소스로부터 이벤트를 구독합니다:</p>
+
+      <table>
+        <thead><tr><th>이벤트</th><th>소스</th><th>처리</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>task.completed</code></td>
+            <td>Executor</td>
+            <td>성공 시 Workflow에 알림, 실패 시 복구 판단</td>
+          </tr>
+          <tr>
+            <td><code>task.timeout</code></td>
+            <td>Monitor 자체 timer</td>
+            <td>장시간 응답 없음 → 강제 실패 처리</td>
+          </tr>
+          <tr>
+            <td><code>robot.error</code></td>
+            <td>Executor 하드웨어 에러</td>
+            <td>해당 robot unavailable 마킹, task 재할당</td>
+          </tr>
+          <tr>
+            <td><code>resource.stale</code></td>
+            <td>Resource Reservation Manager</td>
+            <td>stale 예약 경보</td>
+          </tr>
+          <tr>
+            <td><code>quality.fail</code></td>
+            <td>Vision Executor</td>
+            <td>불량 판정 시 sorting task 트리거</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s3">
+      <h2>③ 성공 처리</h2>
+
+      <pre><span class="kw">def</span> on_task_completed(result: ExecutionResult):
+    task = db.query(Task).get(result.task_id)
+
+    <span class="comment"># 1. Task 상태 전이</span>
+    task.state = TaskState.COMPLETED
+    task.ended_at = datetime.utcnow()
+    task.actual_duration_sec = result.elapsed_sec
+    task.output = result.output
+
+    <span class="comment"># 2. Executor robot 해제</span>
+    robot = fleet[task.assigned_to]
+    robot.state = <span class="str">"idle"</span>
+    robot.current_task_id = <span class="kw">None</span>
+
+    <span class="comment"># 3. Resource 해제</span>
+    <span class="kw">if</span> task.requires_station:
+        resource_mgr.release(task.station_id, task.assigned_to)
+
+    <span class="comment"># 4. 공정 이력 기록</span>
+    db.add(ProductionProcessLog(
+        work_order_id=task.work_order_id,
+        process_type=task.type.value,
+        process_status=<span class="str">"completed"</span>,
+        started_at=task.started_at,
+        ended_at=task.ended_at,
+        result_note=json.dumps(result.output),
+    ))
+    db.commit()
+
+    <span class="comment"># 5. Workflow에 알림 → dependency 해결</span>
+    workflow_mgr.on_task_completed(task.task_id, success=<span class="kw">True</span>)
+
+    <span class="comment"># 6. WebSocket 브로드캐스트</span>
+    broadcast_task_update(task)</pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ 실패 분류와 복구 전략</h2>
+
+      <p>실패는 원인별로 다르게 처리:</p>
+
+      <table>
+        <thead><tr><th>실패 타입</th><th>판단 기준</th><th>복구 전략</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>일시적 (Transient)</td>
+            <td>센서 노이즈, 네트워크 지연</td>
+            <td>동일 robot에 재시도 (최대 3회)</td>
+          </tr>
+          <tr>
+            <td>Robot 문제 (Robot-bound)</td>
+            <td>배터리 방전, 센서 고장</td>
+            <td>robot unavailable, 다른 robot에 재할당</td>
+          </tr>
+          <tr>
+            <td>환경 문제 (Environmental)</td>
+            <td>장애물, 경로 막힘</td>
+            <td>10초 후 재시도, 반복 시 관리자 개입 요청</td>
+          </tr>
+          <tr>
+            <td>영구 실패 (Permanent)</td>
+            <td>품질 불량, 데이터 불일치</td>
+            <td>task FAILED, work_order FAILED, 관리자 알람</td>
+          </tr>
+          <tr>
+            <td>상위 시스템 에러</td>
+            <td>예약 충돌, DB 에러</td>
+            <td>task를 Ready Pool로 반환, 원인 로그</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4.1 분류 로직</h3>
+      <pre><span class="kw">def</span> classify_failure(result: ExecutionResult) -&gt; FailureClass:
+    reason = result.failure_reason.lower()
+
+    <span class="kw">if</span> <span class="str">"timeout"</span> <span class="kw">in</span> reason <span class="kw">or</span> <span class="str">"network"</span> <span class="kw">in</span> reason:
+        <span class="kw">return</span> FailureClass.TRANSIENT
+    <span class="kw">if</span> <span class="str">"battery"</span> <span class="kw">in</span> reason <span class="kw">or</span> <span class="str">"hardware"</span> <span class="kw">in</span> reason:
+        <span class="kw">return</span> FailureClass.ROBOT_BOUND
+    <span class="kw">if</span> <span class="str">"obstacle"</span> <span class="kw">in</span> reason <span class="kw">or</span> <span class="str">"path not found"</span> <span class="kw">in</span> reason:
+        <span class="kw">return</span> FailureClass.ENVIRONMENTAL
+    <span class="kw">if</span> <span class="str">"quality"</span> <span class="kw">in</span> reason <span class="kw">or</span> <span class="str">"inspection"</span> <span class="kw">in</span> reason:
+        <span class="kw">return</span> FailureClass.PERMANENT
+    <span class="kw">return</span> FailureClass.UNKNOWN</pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 재시도 정책</h2>
+
+      <pre><span class="kw">class</span> RetryPolicy:
+    MAX_RETRIES = <span class="num">3</span>
+    BACKOFF_BASE_SEC = <span class="num">2</span>
+
+    <span class="kw">def</span> should_retry(self, task: Task, failure: FailureClass) -&gt; bool:
+        <span class="kw">if</span> task.retry_count &gt;= self.MAX_RETRIES:
+            <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">if</span> failure == FailureClass.PERMANENT:
+            <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> next_delay(self, retry_count: int) -&gt; float:
+        <span class="comment"># Exponential backoff: 2s, 4s, 8s</span>
+        <span class="kw">return</span> self.BACKOFF_BASE_SEC * (<span class="num">2</span> ** retry_count)
+
+<span class="kw">def</span> handle_failure(result: ExecutionResult):
+    task = db.query(Task).get(result.task_id)
+    failure_class = classify_failure(result)
+
+    <span class="kw">if</span> retry_policy.should_retry(task, failure_class):
+        delay = retry_policy.next_delay(task.retry_count)
+        task.retry_count += <span class="num">1</span>
+        task.state = TaskState.READY
+        db.commit()
+
+        <span class="comment"># 일정 시간 후 Pool에 재삽입</span>
+        scheduler.enter(delay, <span class="kw">lambda</span>: ready_pool.insert(task))
+
+        log.info(f<span class="str">"Retrying {task.task_id} in {delay}s "</span>
+                 f<span class="str">"(attempt {task.retry_count}/{retry_policy.MAX_RETRIES})"</span>)
+    <span class="kw">else</span>:
+        <span class="comment"># 영구 실패</span>
+        task.state = TaskState.FAILED
+        task.failure_reason = result.failure_reason
+        db.commit()
+
+        <span class="comment"># Workflow에 실패 전파 → work_order FAILED</span>
+        workflow_mgr.on_task_completed(task.task_id, success=<span class="kw">False</span>)
+
+        <span class="comment"># 관리자 알람</span>
+        emit_alert(
+            level=<span class="str">"critical"</span>,
+            message=f<span class="str">"Task {task.task_id} permanently failed"</span>,
+            details=result.failure_reason,
+        )</pre>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ DB 갱신 & UI 알림</h2>
+
+      <h3>6.1 DB 테이블 갱신</h3>
+      <table>
+        <thead><tr><th>테이블</th><th>갱신 내용</th></tr></thead>
+        <tbody>
+          <tr><td><code>task</code></td><td>state, ended_at, failure_reason, retry_count</td></tr>
+          <tr><td><code>work_order</code></td><td>work_status (모든 task 완료 시)</td></tr>
+          <tr><td><code>production_process_log</code></td><td>공정별 시작/종료 시각, 결과</td></tr>
+          <tr><td><code>equipment_status_history</code></td><td>설비 상태 전이</td></tr>
+          <tr><td><code>transport_task</code></td><td>task_status, started_at, ended_at</td></tr>
+          <tr><td><code>notification</code></td><td>사용자 알림 (실패 시)</td></tr>
+          <tr><td><code>inspection_result</code></td><td>검사 task 결과 (pass/fail)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 WebSocket 브로드캐스트</h3>
+      <pre><span class="kw">def</span> broadcast_task_update(task: Task):
+    payload = {
+        <span class="str">"event"</span>: <span class="str">"task_update"</span>,
+        <span class="str">"task_id"</span>: task.task_id,
+        <span class="str">"work_order_id"</span>: task.work_order_id,
+        <span class="str">"state"</span>: task.state.value,
+        <span class="str">"assigned_to"</span>: task.assigned_to,
+        <span class="str">"timestamp"</span>: datetime.utcnow().isoformat(),
+    }
+    websocket_manager.broadcast(<span class="str">"/ws/dashboard"</span>, payload)</pre>
+
+      <h3>6.3 알림 심각도</h3>
+      <ul>
+        <li><strong>Info</strong>: 정기 점검, 정상 완료</li>
+        <li><strong>Warning</strong>: 배터리 30% 이하, 일시 실패 후 재시도</li>
+        <li><strong>Critical</strong>: Permanent failure, robot unavailable, stale reservation</li>
+        <li><strong>Emergency</strong>: 배터리 15% 이하, 설비 고장</li>
+      </ul>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> ExecutionMonitor:
+    <span class="kw">def</span> __init__(self, db, workflow_mgr, ready_pool,
+                 resource_mgr, fleet, ws_manager):
+        self.db = db
+        self.workflow_mgr = workflow_mgr
+        self.ready_pool = ready_pool
+        self.resource_mgr = resource_mgr
+        self.fleet = fleet
+        self.ws = ws_manager
+        self.retry_policy = RetryPolicy()
+
+    <span class="kw">def</span> on_execution_result(self, result: ExecutionResult):
+        task = self.db.query(Task).get(result.task_id)
+        <span class="kw">if</span> <span class="kw">not</span> task:
+            log.warning(f<span class="str">"Unknown task {result.task_id}"</span>)
+            <span class="kw">return</span>
+
+        <span class="comment"># 공정 로그 기록</span>
+        self._record_process_log(task, result)
+
+        <span class="kw">if</span> result.success:
+            self._handle_success(task, result)
+        <span class="kw">else</span>:
+            self._handle_failure(task, result)
+
+    <span class="kw">def</span> _handle_success(self, task, result):
+        task.state = TaskState.COMPLETED
+        task.ended_at = datetime.utcnow()
+        task.output = result.output
+
+        <span class="comment"># 자원 해제</span>
+        robot = self.fleet[task.assigned_to]
+        robot.state = <span class="str">"idle"</span>
+        robot.current_task_id = <span class="kw">None</span>
+        <span class="kw">if</span> task.station_id:
+            self.resource_mgr.release(task.station_id, task.assigned_to)
+
+        self.db.commit()
+
+        <span class="comment"># Workflow에 dependency 해결 트리거</span>
+        self.workflow_mgr.on_task_completed(task.task_id, success=<span class="kw">True</span>)
+
+        <span class="comment"># UI 갱신</span>
+        self._broadcast(task)
+
+    <span class="kw">def</span> _handle_failure(self, task, result):
+        failure_class = classify_failure(result)
+        log.warning(
+            f<span class="str">"Task {task.task_id} failed: {result.failure_reason} "</span>
+            f<span class="str">"(class={failure_class.value})"</span>
+        )
+
+        <span class="kw">if</span> failure_class == FailureClass.ROBOT_BOUND:
+            <span class="comment"># 로봇 문제 → unavailable 처리</span>
+            robot = self.fleet[task.assigned_to]
+            robot.state = <span class="str">"unavailable"</span>
+            emit_alert(<span class="str">"critical"</span>,
+                       f<span class="str">"Robot {robot.id} marked unavailable"</span>)
+
+        <span class="kw">if</span> self.retry_policy.should_retry(task, failure_class):
+            self._retry(task, failure_class)
+        <span class="kw">else</span>:
+            self._mark_permanent_failure(task, result)
+
+    <span class="kw">def</span> _retry(self, task, failure_class):
+        delay = self.retry_policy.next_delay(task.retry_count)
+        task.retry_count += <span class="num">1</span>
+        task.state = TaskState.READY
+        task.assigned_to = <span class="kw">None</span>  <span class="comment"># 재할당 가능</span>
+        self.db.commit()
+
+        <span class="comment"># scheduler에 delayed insert 예약</span>
+        threading.Timer(delay, <span class="kw">lambda</span>: self.ready_pool.insert(task)).start()
+        log.info(f<span class="str">"Retry scheduled for {task.task_id} in {delay}s"</span>)
+
+    <span class="kw">def</span> _mark_permanent_failure(self, task, result):
+        task.state = TaskState.FAILED
+        task.failure_reason = result.failure_reason
+        task.ended_at = datetime.utcnow()
+        self.db.commit()
+
+        self.workflow_mgr.on_task_completed(task.task_id, success=<span class="kw">False</span>)
+        emit_alert(<span class="str">"critical"</span>,
+                   f<span class="str">"Task {task.task_id} permanently failed: "</span>
+                   f<span class="str">"{result.failure_reason}"</span>)
+
+    <span class="kw">def</span> _broadcast(self, task):
+        self.ws.broadcast(<span class="str">"/ws/dashboard"</span>, {
+            <span class="str">"event"</span>: <span class="str">"task_update"</span>,
+            <span class="str">"task_id"</span>: task.task_id,
+            <span class="str">"state"</span>: task.state.value,
+        })</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류 (이벤트 소스)</h3>
+      <ul>
+        <li><a href="11_robot_cell_executors.html"><strong>11 Robot/Cell Executors</strong></a>: ExecutionResult 수신</li>
+        <li><a href="10_resource_reservation_manager.html"><strong>10 Resource Reservation</strong></a>: stale 경보</li>
+      </ul>
+      <h3>하류 (피드백)</h3>
+      <ul>
+        <li><a href="07_workflow_task_manager.html"><strong>07 Workflow / Task Manager</strong></a>: dependency 해결 트리거</li>
+        <li><a href="08_ready_task_pool.html"><strong>08 Ready Task Pool</strong></a>: 재시도 task 재삽입</li>
+        <li><a href="05_production_lane_queue.html"><strong>05 Production Lane Queue</strong></a>: work_order 완료 알림</li>
+        <li><a href="06_shipment_lane_queue.html"><strong>06 Shipment Lane Queue</strong></a>: 출고 완료 알림</li>
+        <li><a href="02_order_api_db.html"><strong>02 Order API / DB</strong></a>: 상태 영속화</li>
+        <li><a href="01_office_ui.html"><strong>01 Office UI</strong></a> / <a href="03_factory_manager_ui.html"><strong>03 Factory Manager UI</strong></a>: WebSocket 브로드캐스트</li>
+      </ul>
+
+      <div class="note good">
+        <strong>Loop Closure</strong>: Execution Monitor는 Office UI → DB → Scheduler → Queue → Workflow → Allocator → Executor → Monitor의 실행 루프를 닫습니다. 여기서 결과가 DB에 기록되면 UI가 즉시 반영되어 사용자가 현재 상태를 볼 수 있습니다.
+      </div>
+
+      <div class="cross-links">
+        <a href="11_robot_cell_executors.html">
+          <div class="label">← 이전</div>
+          <div class="name">11. Robot / Cell Executors</div>
+        </a>
+        <a href="index.html">
+          <div class="label">돌아가기 →</div>
+          <div class="name">Architecture Index</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 12. Execution Monitor · 2026-04-08 · 마지막 문서</footer>
+  </div>
+</body>
+</html>

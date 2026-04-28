@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interface Service 내부 구조 — 6개 규칙 해설 (주니어~미드 개발자용)</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --fail: #ef4444;
+    --border: #475569;
+    --highlight: #fde68a;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 1.8rem; }
+  header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+  h1 { color: var(--accent); margin: 0 0 0.3rem; font-size: 1.55rem; }
+  .sub { color: var(--muted); font-size: 0.88rem; }
+  .intro {
+    background: rgba(56,189,248,0.06);
+    border-left: 3px solid var(--accent);
+    padding: 0.8rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 1.5rem;
+    font-size: 0.92rem;
+  }
+  .intro p { margin: 0.3rem 0; }
+
+  .rule {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    margin-bottom: 1rem;
+  }
+  .rule h2 {
+    color: var(--accent);
+    margin: 0 0 0.6rem;
+    font-size: 1.05rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .rule h2 .rid {
+    display: inline-block;
+    background: var(--accent);
+    color: #082f49;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+    font-family: monospace;
+  }
+  .rule .lead {
+    color: var(--highlight);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 0.3rem 0 0.6rem;
+  }
+  .rule .step {
+    margin-top: 0.6rem;
+    font-size: 0.88rem;
+  }
+  .rule .step .label {
+    display: inline-block;
+    background: var(--card2);
+    color: var(--accent);
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 0.4rem;
+    letter-spacing: 0.03em;
+  }
+  code {
+    background: var(--card2);
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    color: var(--highlight);
+  }
+  pre {
+    background: #020617;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.7rem;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    margin: 0.5rem 0;
+  }
+  pre code { background: transparent; color: var(--text); padding: 0; }
+
+  .consequence {
+    background: rgba(239,68,68,0.08);
+    border-left: 3px solid var(--fail);
+    padding: 0.5rem 0.9rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .consequence::before { content: "❌ 깨지면: "; font-weight: 700; color: var(--fail); }
+
+  .analogy {
+    background: rgba(56,189,248,0.06);
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 0.9rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .analogy::before { content: "🧩 비유: "; font-weight: 700; color: var(--accent); }
+
+  .note {
+    background: rgba(251,191,36,0.08);
+    border-left: 3px solid var(--warn);
+    padding: 0.5rem 0.9rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+  .note::before { content: "ℹ️ 상태: "; font-weight: 700; color: var(--warn); }
+
+  .summary {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.3rem;
+    margin-top: 1.5rem;
+  }
+  .summary h2 { color: var(--accent); margin: 0 0 0.6rem; font-size: 1.05rem; }
+  .summary table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .summary th, .summary td {
+    text-align: left;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary th {
+    background: var(--card2);
+    color: var(--accent);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+  }
+  .summary td code { font-size: 0.75rem; }
+  .summary .status-ok { color: var(--ok); }
+  .summary .status-warn { color: var(--warn); }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.78rem;
+    padding: 1.2rem 0 2rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<header>
+  <h1>Interface Service 내부 구조 — 6개 규칙 해설</h1>
+  <p class="sub">§4.2 / I-1 ~ I-6 · 주니어~미드 개발자용 · 2026-04-21</p>
+</header>
+
+<div class="intro">
+  <p>"내부 구조" 란 <strong>Interface Service(FastAPI 프로세스) 안에서 어떻게 동작해야 하는가</strong> 에 대한 규칙입니다. "외부와 어떻게 통신하나"(C-1~C-5) 와 다르게, 여기서는 <strong>내부 리소스(gRPC 채널, 플래그, 예외) 를 어떻게 다룰까</strong> 가 핵심.</p>
+  <p>한 줄 요약: <strong>빨리 뜨고, 오래 안 죽고, 깔끔하게 끝난다.</strong></p>
+</div>
+
+<!-- I-1 -->
+<div class="rule">
+  <h2><span class="rid">I-1</span>gRPC 채널은 lazy 생성 + 싱글톤 재사용</h2>
+  <p class="lead">"Management 연결선은 처음 필요할 때 딱 하나만 만들고 계속 써라"</p>
+
+  <div class="step"><span class="label">무엇을</span> FastAPI 가 시작할 때 Management 로 바로 연결하지 않고, 첫 gRPC 호출이 발생한 시점에 연결을 생성. 그리고 그 후로는 같은 연결을 프로세스가 죽을 때까지 재사용.</div>
+
+  <div class="step"><span class="label">왜</span>
+    <ol style="margin:0.3rem 0 0;padding-left:1.2rem">
+      <li>Management 가 아직 안 떠있어도 Interface 는 정상 기동 (배포 순서 자유)</li>
+      <li>요청마다 채널 만들면 TCP·TLS 핸드셰이크 때문에 응답이 수백 ms 씩 증가</li>
+    </ol>
+  </div>
+
+  <div class="step"><span class="label">어디서</span> <code>clients/management.py:90-104</code> <code>_ensure_channel()</code> + <code>_instance</code> 싱글톤</div>
+
+  <pre><code>class ManagementClient:
+    _instance = None
+
+    @classmethod
+    def get(cls):                 # 싱글톤 진입점
+        if cls._instance is None:
+            cls._instance = cls()
+            # → __init__ 에서는 채널 안 만듦 (lazy)
+        return cls._instance
+
+    def _ensure_channel(self):    # 처음 호출 시에만 채널 생성
+        if self._channel is None:
+            self._channel = grpc.insecure_channel(...)</code></pre>
+
+  <div class="analogy">전화기를 매번 새로 사서 통화 후 버리는 게 아니라, 한 대 사서 계속 쓰는 것. 처음 전화 걸 때 꺼내서 전원 켜고, 그 후로는 스탠바이.</div>
+
+  <div class="consequence">Interface 기동 순서가 Management 에 의존(Mgmt 먼저 떠야 함) · 요청마다 수백 ms 지연 · 디버깅 불가능한 connection leak</div>
+</div>
+
+<!-- I-2 -->
+<div class="rule">
+  <h2><span class="rid">I-2</span>Management 장애 → HTTP 503, Interface 는 안 죽는다</h2>
+  <p class="lead">"주방(Mgmt) 이 고장 나도 홀 매니저(Interface) 는 서비스 계속"</p>
+
+  <div class="step"><span class="label">무엇을</span> Management 가 crash, timeout, 연결 거부 등으로 응답 안 하면 <code>ManagementUnavailable</code> 예외 → FastAPI 에서 <code>HTTPException(503 Service Unavailable)</code> 로 변환해 브라우저에 반환. Interface 프로세스는 계속 다른 요청 처리.</div>
+
+  <div class="step"><span class="label">왜</span> "생산 시작" 버튼이 실패해도 "주문 조회" 같은 다른 읽기 기능은 살아있어야 함. 한 기능 장애가 전체 서비스 중단으로 번지면 운영 불가.</div>
+
+  <div class="step"><span class="label">어디서</span> <code>clients/management.py</code> 에서 <code>ManagementUnavailable</code> 발생 → <code>routes/management.py:40</code> 또는 <code>routes/production.py:157-161</code> 에서 503 매핑</div>
+
+  <pre><code># routes/management.py
+try:
+    client.health()
+except ManagementUnavailable as exc:
+    raise HTTPException(503, f"Management Service unavailable: {exc}")</code></pre>
+
+  <div class="analogy">비행기 엔진이 하나 꺼져도 다른 엔진으로 회항할 수 있어야 안전. 한 엔진 불량이 기체 전체 추락으로 번지면 안 됨.</div>
+
+  <div class="note">이 패턴을 <strong>graceful degradation</strong>(우아한 열화) 이라고 합니다. 전문용어로 기억해두면 회의에서 편함.</div>
+</div>
+
+<!-- I-3 -->
+<div class="rule">
+  <h2><span class="rid">I-3</span>proxy 플래그는 모듈 import 시점 고정</h2>
+  <p class="lead">"환경변수는 FastAPI 시작할 때 딱 한 번 읽고 고정"</p>
+
+  <div class="step"><span class="label">무엇을</span> <code>INTERFACE_PROXY_START_PRODUCTION</code> 같은 동작 모드 플래그를 <strong>함수 안에서 매번 <code>os.environ.get()</code> 호출하지 않고</strong>, 모듈 최상위 상수로 한 번만 읽어 고정.</div>
+
+  <div class="step"><span class="label">왜</span> uvicorn 은 워커(worker) 여러 개를 띄움. 각 워커는 별도 프로세스. 환경변수를 실시간으로 바꾸면 워커마다 다른 값을 써서 <strong>요청이 어느 워커로 가느냐에 따라 다른 결과</strong> 가 나옴. 그래서 플래그 변경 시 <strong>worker 전체 재시작</strong> 을 강제해야 일관성 유지.</div>
+
+  <div class="step"><span class="label">어디서</span> <code>routes/production.py:179</code></div>
+
+  <pre><code># routes/production.py (파일 최상위)
+_PROXY_START_PRODUCTION = os.environ.get(
+    "INTERFACE_PROXY_START_PRODUCTION", "0"
+) in ("1", "true")   # import 시점에 한 번만 평가
+
+@router.post("/start")
+def start_production(...):
+    if _PROXY_START_PRODUCTION:   # 상수 참조 (재평가 X)
+        return _proxy_path(...)
+    return _legacy_path(...)</code></pre>
+
+  <div class="consequence">"<code>export FLAG=1</code> 했는데 왜 안 먹혀요?" 질문 반복 발생. 일부 워커만 새 값을 써서 재현하기 어려운 버그 (flaky). 런북에 명시: <strong>flag 변경 시 systemctl restart 필수</strong>.</div>
+
+  <div class="analogy">영화관 좌석 표: 상영 시작 전에 한 번 끊고 끝. 상영 중간에 좌석 바꾸면 혼란. 서비스 재기동 전에는 그 워커가 받은 값으로 끝까지 간다.</div>
+</div>
+
+<!-- I-4 -->
+<div class="rule">
+  <h2><span class="rid">I-4</span>FastAPI lifespan 이 shutdown 시 채널 정리</h2>
+  <p class="lead">"끝날 때 쓰던 자원 깔끔하게 닫고 나가기"</p>
+
+  <div class="step"><span class="label">무엇을</span> FastAPI 의 <code>@asynccontextmanager async def lifespan()</code> 안에서 <code>yield</code> 뒤(= 프로세스 종료 직전)에 <code>ManagementClient.get().close()</code> 호출해서 gRPC 채널을 명시적으로 정리.</div>
+
+  <div class="step"><span class="label">왜</span> gRPC 채널을 안 닫고 프로세스 죽이면 Management 측 연결 카운터가 증가한 채 남음. 반복되면 Mgmt 의 max connections 소진 → "too many connections" 로 Mgmt 도 죽음. <strong>리소스 누수</strong>.</div>
+
+  <div class="step"><span class="label">어디서</span> <code>main.py:35</code> (lifespan 함수 내 yield 후)</div>
+
+  <pre><code>@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ... startup 코드 ...
+    yield
+    # ↓ shutdown 시 실행
+    try:
+        ManagementClient.get().close()
+    except Exception:
+        pass   # 이미 닫혔거나 채널 없을 수도 — 무시</code></pre>
+
+  <div class="analogy">퇴근할 때 사무실 불 끄고 문 잠그기. 안 하면 내일 출근한 사람이 불켜진 빈 사무실 보고 당황.</div>
+
+  <div class="note">Python 은 프로세스 종료 시 대부분 자원을 알아서 회수하지만, <strong>원격 리소스(연결 상태)</strong> 는 직접 close 하지 않으면 상대편에 "연결됨" 으로 남음.</div>
+</div>
+
+<!-- I-5 -->
+<div class="rule">
+  <h2><span class="rid">I-5</span>proto stubs 부재 시 graceful degradation</h2>
+  <p class="lead">"자동 생성 파일이 없어도 Interface 는 기동되어야 한다"</p>
+
+  <div class="step"><span class="label">무엇을</span> <code>management_pb2.py</code>, <code>management_pb2_grpc.py</code> (protoc 로 자동 생성되는 파일) 가 없으면 <code>_PROTO_AVAILABLE = False</code> 로 플래그 지정하고 FastAPI 는 그대로 기동. 대신 Mgmt 호출 시도 시 <code>ManagementUnavailable("proto stubs not compiled")</code>.</div>
+
+  <div class="step"><span class="label">왜</span> 신규 개발자가 처음 <code>git clone</code> 후 <code>uvicorn app.main:app</code> 실행 시, proto 를 아직 안 빌드했어도 읽기 전용 기능은 바로 체험 가능. 모든 기능을 막아버리면 온보딩이 막힘. <strong>최소 작동 가능 상태 (MVP)</strong> 를 항상 유지.</div>
+
+  <div class="step"><span class="label">어디서</span> <code>clients/management.py:39-49</code></div>
+
+  <pre><code>try:
+    import management_pb2
+    import management_pb2_grpc
+    _PROTO_AVAILABLE = True
+except ImportError as exc:
+    logger.warning("proto stubs 미컴파일 — 'make proto' 필요")
+    _PROTO_AVAILABLE = False
+
+# 호출 시점에서만 에러
+def _ensure_channel(self):
+    if not _PROTO_AVAILABLE:
+        raise ManagementUnavailable("proto stubs not compiled")</code></pre>
+
+  <div class="analogy">새 차를 샀는데 네비가 아직 활성화 안 됐다고 차가 아예 안 움직이면 곤란. 네비 없이도 주행은 가능. 네비 버튼 누를 때만 "활성화 필요" 안내.</div>
+</div>
+
+<!-- I-6 -->
+<div class="rule">
+  <h2><span class="rid">I-6</span>운영 환경 mTLS 활성화</h2>
+  <p class="lead">"외부 망에 노출될 때는 서로 신분증 교환"</p>
+
+  <div class="step"><span class="label">무엇을</span> 환경변수 <code>MGMT_GRPC_TLS_ENABLED=1</code> + <code>certs/</code> 디렉터리에 인증서 세팅 시, Interface↔Management 가 서로의 인증서를 검증. 통신도 TLS 로 암호화.</div>
+
+  <div class="step"><span class="label">왜</span> gRPC 기본은 insecure (평문). 공장 내부망만 쓸 때는 큰 위험 아니지만, VPN 이나 외부 네트워크를 경유하면 중간자 공격(MITM) 가능. mTLS 는 <strong>암호화 + 신원 확인</strong> 두 가지를 한 번에 해결.</div>
+
+  <div class="step"><span class="label">어디서</span> <code>clients/management.py:97-128</code> — TLS 코드 경로는 이미 구현되어 있고 환경변수로 토글</div>
+
+  <pre><code>if os.environ.get("MGMT_GRPC_TLS_ENABLED", "0") == "1":
+    creds = grpc.ssl_channel_credentials(
+        root_certificates=ca, private_key=key, certificate_chain=crt
+    )
+    self._channel = grpc.secure_channel(target, creds)
+else:
+    self._channel = grpc.insecure_channel(target)  # 내부망 개발</code></pre>
+
+  <div class="note">개발/공장 내부망은 현재 <code>MGMT_GRPC_TLS_ENABLED=0</code> (OFF). 외부 노출 배포 시에만 켜면 됨 (<code>v6_review.md S-001</code> 권장조치 완료).</div>
+
+  <div class="analogy">사무실 내부만 들어가는 엘리베이터는 카드키 없음. 본사 로비(외부 접근 가능 지점) 는 반드시 출입증 검사. 둘 다 완벽히 안전한 건물 만들려면 로비도 카드키 필수지만, 당장 위험 낮은 내부는 미활성 상태로 둘 수 있음.</div>
+</div>
+
+<!-- 요약 -->
+<div class="summary">
+  <h2>6개 규칙 요약</h2>
+  <table>
+    <thead><tr><th>ID</th><th>한 줄</th><th>위치</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>I-1</td><td>채널 lazy + 싱글톤</td><td><code>clients/management.py:90-104</code></td><td class="status-ok">✅ 구현</td></tr>
+      <tr><td>I-2</td><td>Mgmt 장애 → 503, Interface 생존</td><td><code>management.py:40</code>, <code>production.py:157</code></td><td class="status-ok">✅ 구현</td></tr>
+      <tr><td>I-3</td><td>flag 는 import 시점 고정</td><td><code>production.py:179</code></td><td class="status-ok">✅ 구현</td></tr>
+      <tr><td>I-4</td><td>lifespan shutdown 에서 close</td><td><code>main.py:35</code></td><td class="status-ok">✅ 구현</td></tr>
+      <tr><td>I-5</td><td>proto 부재 시 graceful</td><td><code>clients/management.py:39-49</code></td><td class="status-ok">✅ 구현</td></tr>
+      <tr><td>I-6</td><td>운영 mTLS 활성화</td><td><code>clients/management.py:97-128</code></td><td class="status-warn">⚠️ 코드 있음 · default OFF</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  연관 문서:
+  <a href="interface_service_rules_explained.html">상세판 (20 규칙 전체)</a> ·
+  <a href="interface_service_cheatsheet.html">치트시트 (1페이지)</a> ·
+  <a href="interface_service_audit.html">감사 원문</a>
+  <br/>V6 canonical · 2026-04-21 · <code>feat/v6-phase-c2-proxy</code>
+</footer>
+
+</div>
+
+</body>
+</html>

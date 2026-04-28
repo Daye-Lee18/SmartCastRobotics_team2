@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>08. Ready Task Pool</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Workflow Layer</div>
+      <h1>08. Ready Task Pool<span class="badge workflow">Workflow</span></h1>
+      <div class="subtitle">
+        dependency가 해결된 task들의 집합 · Allocator가 소비 · 다중 우선순위 인덱스
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">Lane Queue와의 차이</a></li>
+        <li><a href="#s3">자료구조 (다중 인덱스)</a></li>
+        <li><a href="#s4">Capability 기반 분류</a></li>
+        <li><a href="#s5">Allocator 연동</a></li>
+        <li><a href="#s6">Starvation 방지</a></li>
+        <li><a href="#s7">구현 스케치</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Ready Task Pool</strong>은 <strong>당장 실행 가능한 task들</strong>의 집합입니다. Workflow Task Manager가 task를 READY 상태로 승격시키면 이 Pool에 삽입되고, Global Task Allocator가 로봇을 배정할 때 여기서 꺼냅니다.</p>
+
+      <h3>1.1 특성</h3>
+      <ul>
+        <li><strong>다수의 work_order task가 섞여 있음</strong> — 생산 task + 출고 task + 재배치 task</li>
+        <li><strong>모든 dependency 해결됨</strong> — 즉시 실행 가능</li>
+        <li><strong>Capability별 분류</strong> — AMR task, Manipulator task 등</li>
+        <li><strong>우선순위 유지</strong> — work_order의 priority_score 상속</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② Lane Queue와의 차이</h2>
+      <table>
+        <thead><tr><th>측면</th><th>Lane Queue (05, 06)</th><th>Ready Task Pool (08)</th></tr></thead>
+        <tbody>
+          <tr><td>단위</td><td>work_order</td><td>task (세분화)</td></tr>
+          <tr><td>Dependency</td><td>없음</td><td>해결된 것만 pool 진입</td></tr>
+          <tr><td>동시 처리</td><td>Production=1, Shipment=N</td><td>수십~수백 task 공존 가능</td></tr>
+          <tr><td>소비자</td><td>Workflow Task Manager</td><td>Global Task Allocator</td></tr>
+          <tr><td>정렬</td><td>work_order priority</td><td>task priority (상속)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s3">
+      <h2>③ 자료구조 (다중 인덱스)</h2>
+
+      <p>Allocator는 "AMR에게 줄 수 있는 task 중 가장 급한 것" 같은 쿼리를 자주 합니다. 따라서 Pool은 <strong>capability별 heap</strong>을 여러 개 유지합니다:</p>
+
+      <pre>@dataclass
+<span class="kw">class</span> ReadyTaskPool:
+    <span class="comment"># capability → heap[(sort_key, task_id)]</span>
+    _heaps: dict[str, list] = field(default_factory=dict)
+    <span class="comment"># task_id → Task (빠른 조회)</span>
+    _index: dict[str, Task] = field(default_factory=dict)
+    _lock: threading.RLock = field(default_factory=threading.RLock)
+
+    <span class="kw">def</span> insert(self, task: Task):
+        <span class="kw">with</span> self._lock:
+            sort_key = (
+                -task.priority_score,
+                task.ready_at,     <span class="comment"># READY 전환 시각 (FIFO tiebreak)</span>
+                task.task_id,
+            )
+            <span class="comment"># 필요한 capability 각각에 추가</span>
+            <span class="kw">for</span> cap <span class="kw">in</span> task.required_capability:
+                heap = self._heaps.setdefault(cap, [])
+                heappush(heap, (sort_key, task.task_id))
+            self._index[task.task_id] = task
+
+    <span class="kw">def</span> peek_for(self, capability: str) -&gt; Task | <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            heap = self._heaps.get(capability)
+            <span class="kw">while</span> heap:
+                _, tid = heap[<span class="num">0</span>]
+                <span class="kw">if</span> tid <span class="kw">in</span> self._index:
+                    <span class="kw">return</span> self._index[tid]
+                heappop(heap)  <span class="comment"># stale entry 제거</span>
+            <span class="kw">return</span> <span class="kw">None</span>
+
+    <span class="kw">def</span> claim(self, task_id: str) -&gt; Task | <span class="kw">None</span>:
+        <span class="str">"""Allocator가 task 소유권을 가져감. Pool에서 제거."""</span>
+        <span class="kw">with</span> self._lock:
+            task = self._index.pop(task_id, <span class="kw">None</span>)
+            <span class="comment"># heap entry는 lazy 삭제 (peek_for에서 처리)</span>
+            <span class="kw">return</span> task</pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ Capability 기반 분류</h2>
+
+      <p>각 task는 수행에 필요한 <strong>capability 리스트</strong>를 가집니다:</p>
+
+      <table>
+        <thead><tr><th>Task Type</th><th>Required Capabilities</th><th>후보 Executor</th></tr></thead>
+        <tbody>
+          <tr><td>material_input</td><td><code>["amr"]</code> or <code>["conveyor"]</code></td><td>AMR 또는 컨베이어</td></tr>
+          <tr><td>melting</td><td><code>["furnace_control"]</code></td><td>ESP32 Controller</td></tr>
+          <tr><td>molding</td><td><code>["manipulator", "molding"]</code></td><td>MyCobot280 #1</td></tr>
+          <tr><td>pouring</td><td><code>["manipulator", "pouring"]</code></td><td>MyCobot280 #1</td></tr>
+          <tr><td>demolding</td><td><code>["manipulator", "demolding"]</code></td><td>MyCobot280 #2</td></tr>
+          <tr><td>transport</td><td><code>["amr"]</code></td><td>Pinkypro × 3</td></tr>
+          <tr><td>inspection</td><td><code>["vision", "ai"]</code></td><td>Jetson Orin NX</td></tr>
+          <tr><td>storage</td><td><code>["amr", "manipulator"]</code></td><td>AMR + Cobot</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>다중 capability</strong>: <code>["manipulator", "pouring"]</code>은 "manipulator 중에서 pouring 가능한 것"을 의미. 이는 Allocator의 매칭 로직과 연계.
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ Allocator 연동</h2>
+
+      <p>Allocator가 task를 가져가는 전형적인 패턴:</p>
+
+      <pre><span class="comment"># Global Task Allocator 측</span>
+<span class="kw">def</span> allocate_tick():
+    <span class="kw">for</span> robot <span class="kw">in</span> idle_robots:
+        <span class="kw">for</span> cap <span class="kw">in</span> robot.capabilities:
+            task = ready_pool.peek_for(cap)
+            <span class="kw">if</span> task <span class="kw">and</span> can_assign(robot, task):
+                claimed = ready_pool.claim(task.task_id)
+                assign_to_robot(claimed, robot)
+                <span class="kw">break</span>  <span class="comment"># 다음 robot으로</span></pre>
+
+      <h3>5.1 동시 claim 경쟁</h3>
+      <p>두 Allocator 인스턴스(또는 스레드)가 같은 task를 동시에 claim하려 하면? → <code>_lock</code>으로 직렬화. <code>claim()</code>은 원자적이며, 첫 번째가 <code>pop()</code>한 후 두 번째는 <code>None</code> 받음.</p>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ Starvation 방지</h2>
+
+      <p>고우선순위 task가 계속 들어오면 저우선순위 task가 영원히 대기할 수 있음. 해결책:</p>
+
+      <h3>6.1 Aging 알고리즘</h3>
+      <pre><span class="kw">def</span> apply_aging(self, interval_sec: int = <span class="num">60</span>):
+    <span class="str">"""주기적으로 대기 시간 기반으로 우선순위 가점."""</span>
+    now = datetime.utcnow()
+    <span class="kw">for</span> task <span class="kw">in</span> self._index.values():
+        wait_time = (now - task.ready_at).total_seconds()
+        aging_bonus = int(wait_time / interval_sec)  <span class="comment"># 분당 1점</span>
+        task.effective_priority = task.priority_score + aging_bonus
+    self._reheapify()</pre>
+
+      <h3>6.2 최대 대기 시간 경보</h3>
+      <p>task가 <strong>5분 이상</strong> READY 상태인 경우 Execution Monitor에 경보:</p>
+      <pre><span class="kw">def</span> check_stale_tasks(self):
+    threshold = timedelta(minutes=<span class="num">5</span>)
+    now = datetime.utcnow()
+    <span class="kw">for</span> task <span class="kw">in</span> self._index.values():
+        <span class="kw">if</span> now - task.ready_at &gt; threshold:
+            emit_alert(<span class="str">"task_starvation"</span>, task_id=task.task_id)</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> ReadyTaskPool:
+    <span class="kw">def</span> __init__(self):
+        self._heaps: dict[str, list[tuple]] = {}
+        self._index: dict[str, Task] = {}
+        self._lock = threading.RLock()
+
+    <span class="kw">def</span> insert(self, task: Task) -&gt; <span class="kw">None</span>:
+        task.state = TaskState.READY
+        task.ready_at = datetime.utcnow()
+        <span class="kw">with</span> self._lock:
+            sort_key = (
+                -task.priority_score,
+                task.ready_at,
+                task.task_id,
+            )
+            <span class="kw">for</span> cap <span class="kw">in</span> task.required_capability:
+                heap = self._heaps.setdefault(cap, [])
+                heappush(heap, (sort_key, task.task_id))
+            self._index[task.task_id] = task
+
+    <span class="kw">def</span> peek_for(self, capability: str) -&gt; Task | <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            heap = self._heaps.get(capability, [])
+            <span class="kw">while</span> heap:
+                _, tid = heap[<span class="num">0</span>]
+                <span class="kw">if</span> tid <span class="kw">in</span> self._index:
+                    <span class="kw">return</span> self._index[tid]
+                heappop(heap)  <span class="comment"># stale cleanup</span>
+            <span class="kw">return</span> <span class="kw">None</span>
+
+    <span class="kw">def</span> claim(self, task_id: str) -&gt; Task | <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            <span class="kw">return</span> self._index.pop(task_id, <span class="kw">None</span>)
+
+    <span class="kw">def</span> size(self) -&gt; int:
+        <span class="kw">with</span> self._lock:
+            <span class="kw">return</span> len(self._index)
+
+    <span class="kw">def</span> size_by_capability(self) -&gt; dict[str, int]:
+        <span class="kw">with</span> self._lock:
+            counts = {}
+            <span class="kw">for</span> cap, heap <span class="kw">in</span> self._heaps.items():
+                counts[cap] = sum(
+                    <span class="num">1</span> <span class="kw">for</span> _, tid <span class="kw">in</span> heap <span class="kw">if</span> tid <span class="kw">in</span> self._index
+                )
+            <span class="kw">return</span> counts</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="07_workflow_task_manager.html"><strong>07 Workflow Task Manager</strong></a>: <code>insert()</code> 호출</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="09_global_task_allocator.html"><strong>09 Global Task Allocator</strong></a>: <code>peek_for()</code>, <code>claim()</code> 호출</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="07_workflow_task_manager.html">
+          <div class="label">← 이전</div>
+          <div class="name">07. Workflow / Task Manager</div>
+        </a>
+        <a href="09_global_task_allocator.html">
+          <div class="label">다음 →</div>
+          <div class="name">09. Global Task Allocator</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 08. Ready Task Pool · 2026-04-08</footer>
+  </div>
+</body>
+</html>

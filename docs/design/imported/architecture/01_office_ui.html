@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01. Office UI — 사무실 UI 설계</title>
+  <style>
+    :root{--bg:#0b1020;--panel:#121933;--panel-lt:#1a2344;--border:#2a365c;
+      --text:#e6ecff;--text-dim:#9aa6c7;--accent:#60a5fa;--accent-2:#a855f7;
+      --good:#34d399;--warn:#fbbf24;--danger:#f87171;--code-bg:#0d1429}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+      font-size:14px;line-height:1.65}
+    .wrap{max-width:1100px;margin:0 auto;padding:40px 28px 80px}
+    header{border-bottom:2px solid var(--border);padding-bottom:22px;margin-bottom:30px}
+    header .breadcrumb{font-size:11px;color:var(--text-dim);margin-bottom:8px}
+    header .breadcrumb a{color:var(--accent);text-decoration:none}
+    header h1{font-size:24px;margin:0 0 6px;
+      background:linear-gradient(135deg,#60a5fa,#a855f7);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    header .subtitle{font-size:13px;color:var(--text-dim)}
+    header .badge{display:inline-block;padding:3px 10px;border-radius:10px;
+      font-size:10.5px;font-weight:700;background:#1e3a8a;color:#bfdbfe;
+      margin-left:8px;vertical-align:middle}
+    nav.toc{background:var(--panel);border:1px solid var(--border);
+      border-radius:10px;padding:18px 22px;margin-bottom:30px}
+    nav.toc h2{font-size:12px;margin:0 0 10px;color:var(--text-dim);
+      letter-spacing:0.05em;text-transform:uppercase}
+    nav.toc ol{columns:2;margin:0;padding-left:20px;font-size:13px}
+    nav.toc li{margin:4px 0;break-inside:avoid}
+    nav.toc a{color:var(--accent);text-decoration:none}
+    section{background:var(--panel);border:1px solid var(--border);
+      border-radius:12px;padding:24px 26px;margin-bottom:20px}
+    section h2{font-size:18px;margin:0 0 14px;padding-bottom:10px;
+      border-bottom:1px solid var(--border);color:var(--accent)}
+    section h3{font-size:14px;margin:18px 0 8px;color:var(--accent-2)}
+    section h4{font-size:12px;margin:12px 0 6px;color:var(--good);
+      text-transform:uppercase;letter-spacing:0.04em}
+    p{margin:8px 0 12px}
+    code{font-family:"SF Mono",Menlo,monospace;background:var(--code-bg);
+      color:#a3e4ff;padding:1.5px 6px;border-radius:4px;font-size:12.5px}
+    pre{background:var(--code-bg);border:1px solid var(--border);
+      border-radius:8px;padding:16px 18px;overflow-x:auto;
+      font-family:"SF Mono",Menlo,monospace;font-size:12.5px;
+      line-height:1.55;color:#d6e4ff}
+    pre code{background:none;padding:0;color:inherit}
+    .comment{color:#6b7699;font-style:italic}
+    .kw{color:#f472b6}
+    .str{color:#a3e4ff}
+    .num{color:#fbbf24}
+    table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+    th,td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+    th{background:var(--panel-lt);color:var(--accent);font-weight:600}
+    tbody tr:nth-child(even){background:rgba(255,255,255,0.015)}
+    .ascii{background:var(--code-bg);border:1px solid var(--border);
+      border-radius:6px;padding:14px 18px;font-family:"SF Mono",Menlo,monospace;
+      font-size:12px;color:var(--text-dim);white-space:pre;
+      overflow-x:auto;line-height:1.4}
+    .note{padding:12px 16px;border-radius:6px;margin:12px 0;font-size:12.5px}
+    .note.info{background:rgba(96,165,250,0.08);border-left:3px solid var(--accent)}
+    .note.warn{background:rgba(251,191,36,0.08);border-left:3px solid var(--warn)}
+    .note.danger{background:rgba(248,113,113,0.08);border-left:3px solid var(--danger)}
+    .note.good{background:rgba(52,211,153,0.08);border-left:3px solid var(--good)}
+    ul,ol{padding-left:22px}
+    li{margin:4px 0}
+    .cross-links{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+    .cross-links a{background:var(--panel-lt);border:1px solid var(--border);
+      border-radius:8px;padding:14px 16px;text-decoration:none;color:var(--text);
+      transition:border-color 0.2s}
+    .cross-links a:hover{border-color:var(--accent)}
+    .cross-links .label{font-size:10px;color:var(--text-dim);text-transform:uppercase}
+    .cross-links .name{font-size:13px;color:var(--accent);margin-top:4px}
+    footer{text-align:center;color:var(--text-dim);font-size:11.5px;
+      margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Architecture Index</a> / Presentation Layer</div>
+      <h1>01. Office UI — 사무실 UI<span class="badge">UI</span></h1>
+      <div class="subtitle">
+        고객 주문 접수 · 검토 · 승인 워크플로우 · Next.js 16 + React 19
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">역할 & 범위</a></li>
+        <li><a href="#s3">화면 구성</a></li>
+        <li><a href="#s4">5단계 발주 폼</a></li>
+        <li><a href="#s5">주문 상태 전이</a></li>
+        <li><a href="#s6">API 연동</a></li>
+        <li><a href="#s7">구현 코드 스케치</a></li>
+        <li><a href="#s8">NFR 요구사항</a></li>
+        <li><a href="#s9">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Office UI</strong>는 주물 공장의 고객과 사무실 직원이 사용하는 웹 기반 발주·검토·승인 인터페이스입니다. 아키텍처에서 가장 상위의 프레젠테이션 계층이며, 모든 주문은 여기서 시작됩니다.</p>
+
+      <h3>1.1 포지셔닝</h3>
+      <div class="ascii">[고객 발주]                   [사무실 직원 승인]
+     │                              │
+     ▼                              ▼
+┌──────────────────────────────────────────┐
+│           Office UI (이 문서)            │  ← 여기
+│   Next.js 16.2.1 + React 19.2.4          │
+└─────────────────┬────────────────────────┘
+                  │ REST API
+                  ▼
+        [Order API / DB] (문서 02)</div>
+
+      <h3>1.2 실제 코드베이스 위치</h3>
+      <ul>
+        <li><code>src/app/customer/page.tsx</code> — 고객 발주 5단계 폼</li>
+        <li><code>src/app/customer/orders/page.tsx</code> — 고객 주문 조회</li>
+        <li><code>src/app/orders/page.tsx</code> — 사무실 직원 주문 관리</li>
+        <li><code>src/components/Sidebar.tsx</code> — 관리자 네비게이션</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 역할 & 범위</h2>
+
+      <h3>2.1 책임 (Responsibilities)</h3>
+      <ul>
+        <li><strong>주문 입력 수집</strong>: 고객이 제품·옵션·수량·납기·고객정보를 입력할 수 있는 폼 제공</li>
+        <li><strong>입력 검증</strong>: 클라이언트 측 즉시 검증 (최소/최대 값, 필수 항목)</li>
+        <li><strong>견적 계산</strong>: 실시간 예상 합계 금액 표시</li>
+        <li><strong>주문 상태 조회</strong>: 고객이 과거 주문 상태를 열람</li>
+        <li><strong>사무실 검토</strong>: 직원이 접수된 주문을 검토하고 승인/반려 결정</li>
+      </ul>
+
+      <h3>2.2 범위 밖 (Out of Scope)</h3>
+      <ul>
+        <li>생산 개시 버튼 — <a href="03_factory_manager_ui.html">Factory Manager UI</a>가 담당</li>
+        <li>우선순위 계산 — <a href="04_work_order_scheduler.html">Work Order Scheduler</a> 담당</li>
+        <li>DB 직접 접근 — 반드시 <a href="02_order_api_db.html">Order API</a> 경유 (Interface Layer 규칙)</li>
+        <li>로봇/설비 제어 — 별도 계층</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2>③ 화면 구성</h2>
+
+      <h3>3.1 라우트 구조 (Next.js App Router)</h3>
+      <table>
+        <thead>
+          <tr><th>라우트</th><th>용도</th><th>레이아웃</th><th>사용자</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/customer</code></td><td>신규 발주 (5단계 폼)</td><td>독립</td><td>고객</td></tr>
+          <tr><td><code>/customer/orders</code></td><td>고객 주문 목록·상세</td><td>독립</td><td>고객</td></tr>
+          <tr><td><code>/orders</code></td><td>전체 주문 관리 (승인/반려)</td><td>관리자 사이드바</td><td>사무실 직원</td></tr>
+          <tr><td><code>/</code></td><td>대시보드 (요약/알림)</td><td>관리자</td><td>사무실 직원</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 /orders 페이지 레이아웃 (좌 380px + 우 상세)</h3>
+      <div class="ascii">┌────────────────────────────────────────────────────┐
+│ [전체] [신규] [검토중] [승인] [생산중] [완료]       │  ← 상태 탭
+├────────────┬───────────────────────────────────────┤
+│            │  선택된 주문 상세                     │
+│ 주문 카드   │                                       │
+│ 리스트     │   제품 정보 · 고객 정보 · 납기 · 금액  │
+│ (380px)    │                                       │
+│            │   [승인] [수정요청] [반려]             │
+│            │                                       │
+│            │   주문 이력 (상태 변화 로그)           │
+└────────────┴───────────────────────────────────────┘</div>
+    </section>
+
+    <section id="s4">
+      <h2>④ 5단계 발주 폼 (<code>/customer</code>)</h2>
+
+      <p>SR-ORD-01-06 "주문 절차는 최대 5단계 이내" 요구사항 준수.</p>
+
+      <table>
+        <thead>
+          <tr><th>Step</th><th>화면</th><th>입력 필드</th><th>검증</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>제품 선택</td>
+            <td>카테고리 필터 + 제품 카드 (이미지/이름/재질/기본 가격)</td>
+            <td>제품 1개 선택 필수</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>규격 입력</td>
+            <td>직경, 두께, 하중 등급, 재질</td>
+            <td>최소/최대 범위 실시간 검증 (SR-ORD-01-04)</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>후처리 / 견적</td>
+            <td>아이콘 카드 (버 제거, 그라인딩) + 디자인 시안 + 자동 견적</td>
+            <td>예상 금액 실시간 계산</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>고객 정보</td>
+            <td>회사명, 담당자, 연락처, 이메일, 배송지, 희망 납기, 비고</td>
+            <td>모든 필드 필수 (SR-ORD-01-06)</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>주문 완료</td>
+            <td>전체 요약 미리보기 → 최종 제출</td>
+            <td>주문 ID 부여 후 상태 <code>received</code>로 저장</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 주문 상태 전이 (6단계)</h2>
+
+      <p>SR-ORD-02 "6단계 상태" 요구사항. Office UI는 <strong>received → reviewing → approved/rejected</strong> 구간을 담당합니다.</p>
+
+      <div class="ascii">[고객]                  [사무실 직원]              [공장 관리자]
+  │                        │                          │
+  ▼                        ▼                          ▼
+received ─────────► reviewing ───► approved ────► in_production
+  │                        │            │              │
+  │                        │            │              ▼
+  │                        │            │         ready_to_ship
+  │                        │            │              │
+  │                        │            │              ▼
+  │                        │            │          completed
+  │                        │            │
+  │                        └──► rejected
+  │
+  └─── (고객은 received~reviewing 상태 조회만 가능)</div>
+
+      <div class="note info">
+        <strong>상태 전이 규칙</strong>:
+        <ul style="margin:4px 0 0 16px">
+          <li><code>received</code>: 고객 제출 시 자동</li>
+          <li><code>reviewing</code>: 직원이 검토 시작하면 전환</li>
+          <li><code>approved</code>: 직원 승인 → <em>Office UI 역할 종료</em>, 이후 Factory Manager UI로 넘어감</li>
+          <li><code>rejected</code>: 직원 반려 → 고객에게 알림</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ API 연동</h2>
+
+      <p>Office UI가 호출하는 REST API (<a href="02_order_api_db.html">Order API</a> 참조):</p>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Endpoint</th><th>용도</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/products</code></td><td>제품 마스터 목록 (Step 1)</td></tr>
+          <tr><td>POST</td><td><code>/api/orders</code></td><td>신규 주문 생성 (Step 5 제출)</td></tr>
+          <tr><td>GET</td><td><code>/api/orders</code></td><td>전체 주문 목록 (상태 탭 필터링)</td></tr>
+          <tr><td>GET</td><td><code>/api/orders/{id}/details</code></td><td>주문 상세 조회</td></tr>
+          <tr><td>PATCH</td><td><code>/api/orders/{id}/status</code></td><td>승인/반려 (직원)</td></tr>
+          <tr><td>PATCH</td><td><code>/api/orders/{id}</code></td><td>견적/납기 수정 (직원)</td></tr>
+          <tr><td>GET</td><td><code>/api/alerts</code></td><td>알림 배너용</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 코드 스케치</h2>
+
+      <h3>7.1 5단계 폼 컴포넌트 (단순화)</h3>
+      <pre><span class="comment">// src/app/customer/page.tsx</span>
+<span class="kw">"use client"</span>;
+<span class="kw">import</span> { useState } <span class="kw">from</span> <span class="str">"react"</span>;
+
+<span class="kw">type</span> OrderDraft = {
+  product_id: number | <span class="kw">null</span>;
+  diameter: number;
+  thickness: number;
+  load_grade: string;
+  material: string;
+  post_processing: string[];
+  quantity: number;
+  company_name: string;
+  manager_name: string;
+  phone: string;
+  email: string;
+  shipping_address: string;
+  requested_due_date: string;
+  memo: string;
+};
+
+<span class="kw">export default function</span> CustomerOrderPage() {
+  <span class="kw">const</span> [step, setStep] = useState<span class="str">&lt;1|2|3|4|5&gt;</span>(<span class="num">1</span>);
+  <span class="kw">const</span> [draft, setDraft] = useState<span class="str">&lt;OrderDraft&gt;</span>(initialDraft);
+  <span class="kw">const</span> [estimatedPrice, setEstimatedPrice] = useState(<span class="num">0</span>);
+
+  <span class="kw">const</span> handleSubmit = <span class="kw">async</span> () =&gt; {
+    <span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">"/api/orders"</span>, {
+      method: <span class="str">"POST"</span>,
+      headers: { <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span> },
+      body: JSON.stringify(draft),
+    });
+    <span class="kw">if</span> (res.ok) {
+      <span class="kw">const</span> { order_id } = <span class="kw">await</span> res.json();
+      router.push(<span class="str">`/customer/orders?created=${order_id}`</span>);
+    }
+  };
+
+  <span class="kw">return</span> (
+    &lt;div&gt;
+      &lt;StepIndicator current={step} total={<span class="num">5</span>} /&gt;
+      {step === <span class="num">1</span> && &lt;ProductSelect onNext={() =&gt; setStep(<span class="num">2</span>)} ... /&gt;}
+      {step === <span class="num">2</span> && &lt;SpecInput onNext={() =&gt; setStep(<span class="num">3</span>)} ... /&gt;}
+      {step === <span class="num">3</span> && &lt;PostProcess onNext={() =&gt; setStep(<span class="num">4</span>)} ... /&gt;}
+      {step === <span class="num">4</span> && &lt;CustomerInfo onNext={() =&gt; setStep(<span class="num">5</span>)} ... /&gt;}
+      {step === <span class="num">5</span> && &lt;ReviewSubmit onSubmit={handleSubmit} ... /&gt;}
+    &lt;/div&gt;
+  );
+}</pre>
+
+      <h3>7.2 사무실 직원 승인 액션</h3>
+      <pre><span class="comment">// src/app/orders/page.tsx (간략)</span>
+<span class="kw">async function</span> approveOrder(orderId: string, confirmedPrice: number) {
+  <span class="kw">await</span> fetch(<span class="str">`/api/orders/${orderId}/status`</span>, {
+    method: <span class="str">"PATCH"</span>,
+    headers: { <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span> },
+    body: JSON.stringify({
+      order_status: <span class="str">"approved"</span>,
+      total_confirmed_price: confirmedPrice,
+    }),
+  });
+  <span class="comment">// → Order API가 상태 전이 검증 후 DB 저장</span>
+  <span class="comment">// → Factory Manager UI에서 조회 가능해짐</span>
+}</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ NFR 요구사항</h2>
+      <table>
+        <thead><tr><th>항목</th><th>기준</th><th>근거</th></tr></thead>
+        <tbody>
+          <tr><td>발주 절차 단계 수</td><td>≤ 5단계</td><td>SR-ORD-01-06</td></tr>
+          <tr><td>입력 유효성 피드백</td><td>실시간 (키 입력 시)</td><td>SR-ORD-01-04</td></tr>
+          <tr><td>주문 제출 응답</td><td>≤ 2초</td><td>사용자 체감</td></tr>
+          <tr><td>주문 목록 로딩</td><td>≤ 1초 (100건 기준)</td><td>관리자 UX</td></tr>
+          <tr><td>고객 정보 보안</td><td>HTTPS + DB 암호화</td><td>SR-ORD-03 비기능</td></tr>
+          <tr><td>권한 분리</td><td>고객/직원 독립 세션</td><td>SR-ORD-03 비기능</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s9">
+      <h2>⑨ 통합 포인트</h2>
+
+      <h3>상류 (Upstream)</h3>
+      <ul>
+        <li><strong>고객</strong>: 웹 브라우저를 통해 직접 사용</li>
+        <li><strong>사무실 직원</strong>: 사이드바 네비게이션에서 /orders 접근</li>
+      </ul>
+
+      <h3>하류 (Downstream)</h3>
+      <ul>
+        <li><a href="02_order_api_db.html"><strong>Order API / DB</strong></a>: 모든 데이터 영속화</li>
+        <li><a href="03_factory_manager_ui.html"><strong>Factory Manager UI</strong></a>: 승인 후 release 단계로 넘김 (간접 연결, DB 경유)</li>
+      </ul>
+
+      <h3>상태 소유권</h3>
+      <div class="note info">
+        Office UI는 <strong>주문 상태를 소유하지 않음</strong>. 항상 API 호출로 상태를 변경하고, 로컬은 표시용 캐시만 보유. <code>received → reviewing → approved/rejected</code> 전이는 DB 레벨에서 검증됨.
+      </div>
+
+      <div class="cross-links">
+        <a href="index.html">
+          <div class="label">← 인덱스</div>
+          <div class="name">Architecture Index</div>
+        </a>
+        <a href="02_order_api_db.html">
+          <div class="label">다음 (하류) →</div>
+          <div class="name">02. Order API / DB</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      Casting Factory Architecture · 01. Office UI · 2026-04-08
+    </footer>
+  </div>
+</body>
+</html>

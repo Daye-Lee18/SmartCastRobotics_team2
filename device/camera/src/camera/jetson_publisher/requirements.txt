@@ -1,0 +1,10 @@
+# Jetson Orin NX (JetPack R35.5 / Python 3.8 / aarch64) 용
+# opencv-python 은 시스템 패키지 권장: sudo apt install python3-opencv
+# 불가 시 pip 로 설치 (빌드 시간 오래 걸림).
+# protobuf 버전은 backend/management/requirements.txt (gencode 6.31.1) 과 일치 필수.
+grpcio>=1.60.0,<2.0
+protobuf>=6.30.0,<7.0
+numpy>=1.20,<2.0
+# pyserial — EspBridge 가 /dev/ttyUSB0 통신에 사용. Jetson 에 sudo apt install python3-serial 또는 pip 설치.
+pyserial>=3.5,<4.0
+# opencv-python  # apt 설치를 우선 권장

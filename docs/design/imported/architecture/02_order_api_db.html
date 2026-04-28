@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02. Order API / DB — 설계</title>
+  <style>
+    :root{--bg:#0b1020;--panel:#121933;--panel-lt:#1a2344;--border:#2a365c;
+      --text:#e6ecff;--text-dim:#9aa6c7;--accent:#60a5fa;--accent-2:#a855f7;
+      --good:#34d399;--warn:#fbbf24;--danger:#f87171;--code-bg:#0d1429}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+      font-size:14px;line-height:1.65}
+    .wrap{max-width:1100px;margin:0 auto;padding:40px 28px 80px}
+    header{border-bottom:2px solid var(--border);padding-bottom:22px;margin-bottom:30px}
+    header .breadcrumb{font-size:11px;color:var(--text-dim);margin-bottom:8px}
+    header .breadcrumb a{color:var(--accent);text-decoration:none}
+    header h1{font-size:24px;margin:0 0 6px;
+      background:linear-gradient(135deg,#60a5fa,#a855f7);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    header .subtitle{font-size:13px;color:var(--text-dim)}
+    header .badge{display:inline-block;padding:3px 10px;border-radius:10px;
+      font-size:10.5px;font-weight:700;background:#831843;color:#fbcfe8;
+      margin-left:8px;vertical-align:middle}
+    nav.toc{background:var(--panel);border:1px solid var(--border);
+      border-radius:10px;padding:18px 22px;margin-bottom:30px}
+    nav.toc h2{font-size:12px;margin:0 0 10px;color:var(--text-dim);
+      letter-spacing:0.05em;text-transform:uppercase}
+    nav.toc ol{columns:2;margin:0;padding-left:20px;font-size:13px}
+    nav.toc li{margin:4px 0;break-inside:avoid}
+    nav.toc a{color:var(--accent);text-decoration:none}
+    section{background:var(--panel);border:1px solid var(--border);
+      border-radius:12px;padding:24px 26px;margin-bottom:20px}
+    section h2{font-size:18px;margin:0 0 14px;padding-bottom:10px;
+      border-bottom:1px solid var(--border);color:var(--accent)}
+    section h3{font-size:14px;margin:18px 0 8px;color:var(--accent-2)}
+    section h4{font-size:12px;margin:12px 0 6px;color:var(--good);
+      text-transform:uppercase;letter-spacing:0.04em}
+    p{margin:8px 0 12px}
+    code{font-family:"SF Mono",Menlo,monospace;background:var(--code-bg);
+      color:#a3e4ff;padding:1.5px 6px;border-radius:4px;font-size:12.5px}
+    pre{background:var(--code-bg);border:1px solid var(--border);
+      border-radius:8px;padding:16px 18px;overflow-x:auto;
+      font-family:"SF Mono",Menlo,monospace;font-size:12.5px;
+      line-height:1.55;color:#d6e4ff}
+    pre code{background:none;padding:0;color:inherit}
+    .comment{color:#6b7699;font-style:italic}
+    .kw{color:#f472b6}
+    .str{color:#a3e4ff}
+    .num{color:#fbbf24}
+    table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+    th,td{border:1px solid var(--border);padding:7px 11px;text-align:left;vertical-align:top}
+    th{background:var(--panel-lt);color:var(--accent);font-weight:600}
+    tbody tr:nth-child(even){background:rgba(255,255,255,0.015)}
+    .ascii{background:var(--code-bg);border:1px solid var(--border);
+      border-radius:6px;padding:14px 18px;font-family:"SF Mono",Menlo,monospace;
+      font-size:12px;color:var(--text-dim);white-space:pre;
+      overflow-x:auto;line-height:1.4}
+    .note{padding:12px 16px;border-radius:6px;margin:12px 0;font-size:12.5px}
+    .note.info{background:rgba(96,165,250,0.08);border-left:3px solid var(--accent)}
+    .note.warn{background:rgba(251,191,36,0.08);border-left:3px solid var(--warn)}
+    .note.danger{background:rgba(248,113,113,0.08);border-left:3px solid var(--danger)}
+    .note.good{background:rgba(52,211,153,0.08);border-left:3px solid var(--good)}
+    ul,ol{padding-left:22px}
+    li{margin:4px 0}
+    .cross-links{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+    .cross-links a{background:var(--panel-lt);border:1px solid var(--border);
+      border-radius:8px;padding:14px 16px;text-decoration:none;color:var(--text);
+      transition:border-color 0.2s}
+    .cross-links a:hover{border-color:var(--accent)}
+    .cross-links .label{font-size:10px;color:var(--text-dim);text-transform:uppercase}
+    .cross-links .name{font-size:13px;color:var(--accent);margin-top:4px}
+    footer{text-align:center;color:var(--text-dim);font-size:11.5px;
+      margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Architecture Index</a> / API &amp; Persistence Layer</div>
+      <h1>02. Order API / DB — FastAPI + PostgreSQL<span class="badge">API/DB</span></h1>
+      <div class="subtitle">
+        주문 생명주기의 단일 진실 원천 · 상태 머신 · 17개 테이블 · WebSocket 브로드캐스트
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">상태 머신 (work_order)</a></li>
+        <li><a href="#s3">DB 스키마 (17 테이블)</a></li>
+        <li><a href="#s4">REST API (27개 + WS)</a></li>
+        <li><a href="#s5">상태 전이 로직</a></li>
+        <li><a href="#s6">Release 개념</a></li>
+        <li><a href="#s7">구현 스케치 (FastAPI)</a></li>
+        <li><a href="#s8">NFR & 트랜잭션</a></li>
+        <li><a href="#s9">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Order API / DB</strong>는 주문의 전 생명주기를 <strong>단일 진실 원천(Single Source of Truth)</strong>으로 관리합니다. 모든 UI는 이 계층을 통해서만 주문 데이터를 변경할 수 있으며, 상태 머신의 규칙을 API가 강제합니다.</p>
+
+      <h3>1.1 기술 스택</h3>
+      <ul>
+        <li><strong>Framework</strong>: FastAPI (Python 3.11)</li>
+        <li><strong>Database</strong>: PostgreSQL 16 + TimescaleDB (시계열 로그용)</li>
+        <li><strong>ORM</strong>: SQLAlchemy 2.0</li>
+        <li><strong>Migration</strong>: Alembic</li>
+        <li><strong>WebSocket</strong>: 5초 주기 대시보드 브로드캐스트</li>
+      </ul>
+
+      <h3>1.2 코드베이스 위치</h3>
+      <ul>
+        <li><code>backend/app/main.py</code> — FastAPI 엔트리</li>
+        <li><code>backend/app/database.py</code> — DB 연결, 세션</li>
+        <li><code>backend/app/models/models.py</code> — SQLAlchemy 모델</li>
+        <li><code>backend/app/routes/</code> — 8개 라우터 모듈</li>
+        <li><code>backend/app/schemas/</code> — Pydantic 스키마</li>
+        <li><code>backend/app/seed.py</code> — 시드 데이터</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 상태 머신 (work_order)</h2>
+
+      <p>아키텍처의 핵심은 <strong>work_order의 명확한 상태 전이</strong>입니다. 사용자 요청 다이어그램에서 명시된 4가지 내부 상태(<code>approved/released/queued/running</code>)를 <code>work_status</code> 컬럼에 반영합니다.</p>
+
+      <h3>2.1 전이도</h3>
+      <div class="ascii">                    [고객]                 [사무실 직원]       [공장 관리자]
+                      │                          │                    │
+                      ▼                          ▼                    ▼
+customer_order:   received ────► reviewing ─► approved          (release 버튼)
+                                                 │                    │
+                                                 └─ rejected           │
+                                                                       │
+work_order:                                   waiting ─── released ───►queued ──► running ──► completed
+                                                                                     │              │
+                                                                                     └── failed ─────┘</div>
+
+      <h3>2.2 work_order 상태 정의</h3>
+      <table>
+        <thead><tr><th>상태</th><th>의미</th><th>진입 조건</th><th>다음 상태</th></tr></thead>
+        <tbody>
+          <tr><td><code>waiting</code></td><td>주문 승인 후 생산 대기</td><td>customer_order.status = approved</td><td>released</td></tr>
+          <tr><td><code>released</code></td><td>공장 관리자가 생산 개시 허가</td><td>Factory Manager UI 버튼 클릭</td><td>queued</td></tr>
+          <tr><td><code>queued</code></td><td>Scheduler가 lane 큐에 삽입</td><td>Work Order Scheduler가 승격</td><td>running / released(취소)</td></tr>
+          <tr><td><code>running</code></td><td>공정 실행 중</td><td>lane active 선정</td><td>completed / failed</td></tr>
+          <tr><td><code>completed</code></td><td>모든 공정 완료</td><td>마지막 task 성공</td><td>(종료)</td></tr>
+          <tr><td><code>failed</code></td><td>복구 불가 실패</td><td>Execution Monitor 판단</td><td>(종료 또는 수동 재시도)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>핵심</strong>: <code>approved → released</code>는 <strong>자동 승격 아님</strong>. 공장 관리자가 <em>명시적으로</em> 버튼을 눌러야 release 전이. 이는 현장 준비 상태(자재/패턴/로봇 가용성)를 사람이 판단하기 위함.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2>③ DB 스키마 (17개 테이블)</h2>
+
+      <p>Confluence DB 페이지(<code>page/5898574</code>)의 17개 테이블 기준. 상세는 <code>docs/CONFLUENCE_FACTS.md §4.4</code> 참조.</p>
+
+      <h3>3.1 주요 테이블 그룹</h3>
+      <table>
+        <thead><tr><th>그룹</th><th>테이블</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr>
+            <td rowspan="4"><strong>기준 정보</strong></td>
+            <td>company</td><td>고객사</td>
+          </tr>
+          <tr><td>user_account</td><td>사용자 + 권한 (customer/admin/operator)</td></tr>
+          <tr><td>product</td><td>표준 제품 마스터</td></tr>
+          <tr><td>product_option</td><td>제품 옵션 (직경/두께/재질/후처리/로고)</td></tr>
+          <tr>
+            <td><strong>주문</strong></td>
+            <td>customer_order</td>
+            <td>주문서 (6+1 상태)</td>
+          </tr>
+          <tr>
+            <td rowspan="2"><strong>생산</strong></td>
+            <td>work_order</td>
+            <td>작업지시 (이 문서의 상태 머신 대상)</td>
+          </tr>
+          <tr><td>production_process_log</td><td>공정별 실행 이력 (material_input/melting/.../demolding)</td></tr>
+          <tr>
+            <td rowspan="2"><strong>설비</strong></td>
+            <td>equipment</td>
+            <td>설비 마스터 (furnace/molding_machine/.../sorter)</td>
+          </tr>
+          <tr><td>equipment_status_history</td><td>상태 전이 이력</td></tr>
+          <tr>
+            <td rowspan="3"><strong>이송</strong></td>
+            <td>transport_resource</td>
+            <td>AMR 등 자원 (idle/working/charging/unavailable)</td>
+          </tr>
+          <tr><td>transport_request</td><td>이송 요청 (9단계 상태)</td></tr>
+          <tr><td>transport_task</td><td>실제 수행 (4단계 상태)</td></tr>
+          <tr>
+            <td><strong>품질</strong></td>
+            <td>inspection_result</td>
+            <td>pass/fail + 수량</td>
+          </tr>
+          <tr>
+            <td rowspan="2"><strong>적재</strong></td>
+            <td>storage_zone</td>
+            <td>구역 마스터</td>
+          </tr>
+          <tr><td>storage_location</td><td>개별 위치 (empty/occupied/reserved)</td></tr>
+          <tr>
+            <td><strong>출고</strong></td>
+            <td>shipment_order</td>
+            <td>출고 지시서</td>
+          </tr>
+          <tr>
+            <td><strong>알림</strong></td>
+            <td>notification</td>
+            <td>사용자 알림</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 work_order 핵심 컬럼</h3>
+      <pre><span class="kw">CREATE TABLE</span> work_order (
+    work_order_id     <span class="kw">SERIAL PRIMARY KEY</span>,
+    order_item_id     <span class="kw">INT REFERENCES</span> order_item(order_item_id),
+    priority_score    <span class="kw">INT</span>,                    <span class="comment">-- Scheduler가 채움</span>
+    priority_rank     <span class="kw">INT</span>,                    <span class="comment">-- lane 내 순위</span>
+    queue_order       <span class="kw">INT</span>,                    <span class="comment">-- 큐 삽입 순서</span>
+    lane              <span class="kw">VARCHAR</span>(<span class="num">20</span>),             <span class="comment">-- 'production' | 'shipment'</span>
+    work_status       <span class="kw">VARCHAR</span>(<span class="num">20</span>) <span class="kw">NOT NULL</span>,
+    due_date          <span class="kw">DATE</span>,
+    released_at       <span class="kw">TIMESTAMP</span>,              <span class="comment">-- 관리자 버튼 클릭 시점</span>
+    planned_start_at  <span class="kw">TIMESTAMP</span>,
+    actual_start_at   <span class="kw">TIMESTAMP</span>,
+    actual_end_at     <span class="kw">TIMESTAMP</span>,
+    assigned_to       <span class="kw">VARCHAR</span>(<span class="num">50</span>)              <span class="comment">-- 로봇/설비 ID</span>
+);
+
+<span class="kw">CREATE INDEX</span> idx_work_order_lane_status <span class="kw">ON</span> work_order(lane, work_status);
+<span class="kw">CREATE INDEX</span> idx_work_order_due_date <span class="kw">ON</span> work_order(due_date);</pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ REST API (27개 + WebSocket)</h2>
+
+      <p>전체 목록은 <code>docs/CONFLUENCE_FACTS.md §4.5</code> 또는 <code>backend/app/routes/</code> 참조. 이 섹션은 이 문서와 관련된 핵심 엔드포인트만.</p>
+
+      <h3>4.1 주문 생명주기 API</h3>
+      <table>
+        <thead><tr><th>Method</th><th>Endpoint</th><th>사용자</th><th>결과 상태</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td><code>/api/orders</code></td><td>고객</td><td>customer_order.received</td></tr>
+          <tr><td>GET</td><td><code>/api/orders</code></td><td>직원/관리자</td><td>(조회)</td></tr>
+          <tr><td>PATCH</td><td><code>/api/orders/{id}/status</code></td><td>직원</td><td>reviewing/approved/rejected</td></tr>
+          <tr><td>PATCH</td><td><code>/api/orders/{id}</code></td><td>직원</td><td>견적/납기 수정</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 생산 계획 API (release / scheduler 연동)</h3>
+      <table>
+        <thead><tr><th>Method</th><th>Endpoint</th><th>역할</th></tr></thead>
+        <tbody>
+          <tr><td>POST</td><td><code>/api/production/schedule/calculate</code></td><td>7요소 우선순위 계산 (dry-run)</td></tr>
+          <tr><td>POST</td><td><code>/api/production/schedule/start</code></td><td>release → queued 전이</td></tr>
+          <tr><td>GET</td><td><code>/api/production/schedule/jobs</code></td><td>queued/running 목록</td></tr>
+          <tr><td>POST</td><td><code>/api/production/schedule/priority-log</code></td><td>수동 순서 변경 기록</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.3 WebSocket</h3>
+      <p><code>ws://localhost:8000/ws/dashboard</code> — 5초 주기로 대시보드 KPI 브로드캐스트. 모든 UI가 구독.</p>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 상태 전이 로직</h2>
+
+      <p>API 레벨에서 전이 규칙을 강제하여 잘못된 상태 이동을 차단합니다.</p>
+
+      <pre><span class="comment"># backend/app/services/work_order_service.py (sketch)</span>
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> WorkStatus(str, Enum):
+    WAITING = <span class="str">"waiting"</span>
+    RELEASED = <span class="str">"released"</span>
+    QUEUED = <span class="str">"queued"</span>
+    RUNNING = <span class="str">"running"</span>
+    COMPLETED = <span class="str">"completed"</span>
+    FAILED = <span class="str">"failed"</span>
+
+<span class="comment"># 허용된 전이 그래프</span>
+ALLOWED_TRANSITIONS = {
+    WorkStatus.WAITING:   {WorkStatus.RELEASED},
+    WorkStatus.RELEASED:  {WorkStatus.QUEUED, WorkStatus.WAITING},  <span class="comment"># 취소 허용</span>
+    WorkStatus.QUEUED:    {WorkStatus.RUNNING, WorkStatus.RELEASED}, <span class="comment"># 재배치</span>
+    WorkStatus.RUNNING:   {WorkStatus.COMPLETED, WorkStatus.FAILED},
+    WorkStatus.COMPLETED: set(),
+    WorkStatus.FAILED:    {WorkStatus.QUEUED},  <span class="comment"># 수동 재시도</span>
+}
+
+<span class="kw">def</span> transition(work_order, new_status: WorkStatus, actor: str, reason: str = <span class="str">""</span>):
+    current = WorkStatus(work_order.work_status)
+    <span class="kw">if</span> new_status <span class="kw">not in</span> ALLOWED_TRANSITIONS[current]:
+        <span class="kw">raise</span> HTTPException(
+            <span class="num">409</span>,
+            f<span class="str">"Invalid transition {current} → {new_status}"</span>,
+        )
+
+    old = work_order.work_status
+    work_order.work_status = new_status.value
+
+    <span class="comment"># 타임스탬프 자동 기록</span>
+    now = datetime.utcnow()
+    <span class="kw">if</span> new_status == WorkStatus.RELEASED:
+        work_order.released_at = now
+    <span class="kw">elif</span> new_status == WorkStatus.RUNNING:
+        work_order.actual_start_at = now
+    <span class="kw">elif</span> new_status <span class="kw">in</span> (WorkStatus.COMPLETED, WorkStatus.FAILED):
+        work_order.actual_end_at = now
+
+    <span class="comment"># 이력 기록</span>
+    db.add(PriorityChangeLog(
+        work_order_id=work_order.work_order_id,
+        old_status=old,
+        new_status=new_status.value,
+        reason=reason,
+        changed_by=actor,
+        changed_at=now,
+    ))
+    db.commit()
+
+    <span class="comment"># WebSocket 브로드캐스트 트리거</span>
+    broadcast_work_order_update(work_order)</pre>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ Release 개념</h2>
+
+      <p>사용자 다이어그램에서 명시된 "release" 단계는 이 프로젝트의 <strong>사람-기계 경계선</strong>입니다.</p>
+
+      <div class="note good">
+        <strong>Release가 필요한 이유</strong>: 사무실에서 주문을 승인해도(<code>approved</code>), 공장 현장이 준비되지 않았을 수 있음. 자재 수급, 패턴 준비, 로봇 가용성 등을 <strong>사람이 최종 판단</strong>하고 "이제 실제로 생산해도 된다"는 신호를 보내는 것이 release.
+      </div>
+
+      <h3>6.1 Release 시점 검증 (API 측)</h3>
+      <p>사용자가 release 버튼을 누르면 API가 다음을 검증합니다:</p>
+      <ul>
+        <li>customer_order.status == <code>approved</code></li>
+        <li>work_order 생성 여부 확인 (자동 생성 or 수동)</li>
+        <li>예약 중복 방지 (이미 released면 409)</li>
+        <li>타임스탬프 <code>released_at</code> 기록</li>
+      </ul>
+
+      <h3>6.2 대응 엔드포인트</h3>
+      <pre><span class="kw">POST</span> /api/production/schedule/start
+Body: {
+  <span class="str">"order_ids"</span>: [<span class="str">"ORD-2026-007"</span>, <span class="str">"ORD-2026-003"</span>],
+  <span class="str">"lane"</span>: <span class="str">"production"</span>
+}
+
+Response <span class="num">200</span>:
+{
+  <span class="str">"released_count"</span>: <span class="num">2</span>,
+  <span class="str">"work_orders"</span>: [
+    {<span class="str">"work_order_id"</span>: <span class="num">101</span>, <span class="str">"status"</span>: <span class="str">"released"</span>},
+    {<span class="str">"work_order_id"</span>: <span class="num">102</span>, <span class="str">"status"</span>: <span class="str">"released"</span>}
+  ]
+}</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치 (FastAPI)</h2>
+
+      <pre><span class="comment"># backend/app/routes/schedule.py (excerpt)</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, HTTPException
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> Session
+
+router = APIRouter(prefix=<span class="str">"/api/production/schedule"</span>)
+
+@router.post(<span class="str">"/start"</span>)
+<span class="kw">def</span> start_production(
+    req: StartProductionRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_operator),
+):
+    <span class="str">"""
+    공장 관리자 release 버튼 처리.
+    approved 상태의 customer_order들을 work_order로 변환하고
+    work_status를 released로 전이.
+    """</span>
+    results = []
+    <span class="kw">for</span> order_id <span class="kw">in</span> req.order_ids:
+        order = db.query(CustomerOrder).filter_by(order_id=order_id).first()
+        <span class="kw">if</span> <span class="kw">not</span> order:
+            <span class="kw">raise</span> HTTPException(<span class="num">404</span>, f<span class="str">"Order {order_id} not found"</span>)
+        <span class="kw">if</span> order.order_status != <span class="str">"approved"</span>:
+            <span class="kw">raise</span> HTTPException(
+                <span class="num">409</span>,
+                f<span class="str">"Order {order_id} not approved"</span>,
+            )
+
+        <span class="comment"># work_order 생성 또는 조회</span>
+        wo = db.query(WorkOrder).filter_by(
+            order_item_id=order.order_item_id
+        ).first()
+        <span class="kw">if</span> <span class="kw">not</span> wo:
+            wo = WorkOrder(
+                order_item_id=order.order_item_id,
+                work_status=<span class="str">"waiting"</span>,
+                lane=req.lane,
+            )
+            db.add(wo)
+            db.flush()
+
+        <span class="comment"># 상태 전이</span>
+        transition(wo, WorkStatus.RELEASED, actor=user.user_name,
+                   reason=<span class="str">"manager_release"</span>)
+
+        results.append({
+            <span class="str">"work_order_id"</span>: wo.work_order_id,
+            <span class="str">"status"</span>: wo.work_status,
+        })
+
+    db.commit()
+    <span class="kw">return</span> {<span class="str">"released_count"</span>: len(results), <span class="str">"work_orders"</span>: results}</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ NFR & 트랜잭션</h2>
+      <table>
+        <thead><tr><th>항목</th><th>기준</th></tr></thead>
+        <tbody>
+          <tr><td>API 응답 시간 (단일 조회)</td><td>p95 ≤ 200ms</td></tr>
+          <tr><td>상태 전이 원자성</td><td>DB 트랜잭션 보장 (READ COMMITTED 이상)</td></tr>
+          <tr><td>동시 release 경쟁</td><td>SELECT FOR UPDATE로 work_order 락</td></tr>
+          <tr><td>WebSocket 브로드캐스트</td><td>5초 주기 (폴링 기반), 실시간 필요 시 즉시 push</td></tr>
+          <tr><td>DB 백업</td><td>일 1회 pg_dump + TimescaleDB 압축</td></tr>
+          <tr><td>마이그레이션</td><td>Alembic, down-revision 포함</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn">
+        <strong>주의</strong>: 이전 설계에서 SQLite를 명시한 문서가 일부 있으나, 실제 코드베이스는 <strong>PostgreSQL 16 + TimescaleDB</strong>로 마이그레이션 완료/진행 중. Confluence GUI 페이지 하단의 "SQLite" 기재는 <strong>오래된 정보</strong> (<code>docs/CONFLUENCE_FACTS.md</code> 불일치 표 참조).
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2>⑨ 통합 포인트</h2>
+
+      <h3>상류 (API 호출자)</h3>
+      <ul>
+        <li><a href="01_office_ui.html"><strong>01 Office UI</strong></a>: 주문 CRUD</li>
+        <li><a href="03_factory_manager_ui.html"><strong>03 Factory Manager UI</strong></a>: release 버튼, 조회</li>
+      </ul>
+
+      <h3>하류 (DB 감시자)</h3>
+      <ul>
+        <li><a href="04_work_order_scheduler.html"><strong>04 Work Order Scheduler</strong></a>: approved+released 레코드 감시하여 우선순위 계산</li>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: 실행 결과를 work_status에 반영</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="01_office_ui.html">
+          <div class="label">← 이전 (상류)</div>
+          <div class="name">01. Office UI</div>
+        </a>
+        <a href="03_factory_manager_ui.html">
+          <div class="label">다음 →</div>
+          <div class="name">03. Factory Manager UI</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      Casting Factory Architecture · 02. Order API / DB · 2026-04-08
+    </footer>
+  </div>
+</body>
+</html>

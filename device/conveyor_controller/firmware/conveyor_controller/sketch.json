@@ -1,0 +1,7 @@
+{
+  "cpu": {
+    "fqbn": "esp32:esp32:esp32doit-devkit-v1",
+    "name": "DOIT ESP32 DEVKIT V1",
+    "port": ""
+  }
+}

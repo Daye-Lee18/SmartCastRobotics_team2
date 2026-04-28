@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09. Global Task Allocator</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Allocation Layer</div>
+      <h1>09. Global Task Allocator<span class="badge allocation">Alloc</span></h1>
+      <div class="subtitle">
+        task ↔ 로봇/설비 매칭 엔진 · 거리 · 우선순위 · 배터리 · capability 종합 평가
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">매칭 문제 정의</a></li>
+        <li><a href="#s3">평가 함수</a></li>
+        <li><a href="#s4">매칭 알고리즘</a></li>
+        <li><a href="#s5">배터리 & 충전 관리</a></li>
+        <li><a href="#s6">구현 스케치</a></li>
+        <li><a href="#s7">실패 처리</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Global Task Allocator</strong>는 <a href="08_ready_task_pool.html">Ready Task Pool</a>의 task를 실제 로봇/설비에 배정하는 의사결정 엔진입니다. 생산 lane과 출고 lane의 task를 <strong>함께</strong> 보고 최적 배정을 수행합니다.</p>
+
+      <h3>1.1 핵심 책임</h3>
+      <ul>
+        <li>사용 가능한 로봇/설비 목록 유지</li>
+        <li>각 task에 대해 <strong>후보 executor 평가</strong></li>
+        <li>점수가 가장 높은 (robot, task) 쌍 선택</li>
+        <li>자원 예약(<a href="10_resource_reservation_manager.html">Reservation Manager</a>)과 경로 예약(Traffic Manager) 검증</li>
+      </ul>
+
+      <h3>1.2 범위 밖</h3>
+      <ul>
+        <li>실제 명령 송출 — <a href="11_robot_cell_executors.html">Robot/Cell Executors</a></li>
+        <li>Station 점유 관리 — <a href="10_resource_reservation_manager.html">Reservation Manager</a></li>
+        <li>AMR 경로 충돌 — Traffic Manager</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 매칭 문제 정의</h2>
+
+      <p>이 문제는 Assignment Problem의 간소화 버전입니다:</p>
+
+      <div class="ascii">Task Pool              로봇 Pool
+  ┌─ T1 (AMR)          ┌─ AMR-01 (idle, 배터리 78%, 위치 A)
+  ├─ T2 (AMR)          ├─ AMR-02 (idle, 배터리 45%, 위치 B)
+  ├─ T3 (Cobot pour)   ├─ AMR-03 (working)
+  ├─ T4 (Cobot demold) ├─ Cobot-01 (idle, pouring-capable)
+  └─ T5 (vision)       └─ Cobot-02 (idle, demolding-capable)
+
+→ 최적 매칭:
+    T1 → AMR-01  (가깝고 배터리 충분)
+    T2 → AMR-02  (배터리 45%, 여유 있음)
+    T3 → Cobot-01
+    T4 → Cobot-02
+    T5 → Jetson  (별도 큐)</div>
+    </section>
+
+    <section id="s3">
+      <h2>③ 평가 함수</h2>
+
+      <p>(robot, task) 쌍의 적합도를 0~100 점수로 계산:</p>
+
+      <pre><span class="kw">def</span> score(robot: Robot, task: Task) -&gt; float:
+    <span class="kw">if</span> <span class="kw">not</span> robot.can_handle(task):
+        <span class="kw">return</span> -math.inf  <span class="comment"># 자격 미달</span>
+
+    s = <span class="num">0.0</span>
+
+    <span class="comment"># 1) 거리 (40점) — 가까울수록 높음</span>
+    distance = euclidean(robot.position, task.origin)
+    s += max(<span class="num">0</span>, <span class="num">40</span> - distance * <span class="num">10</span>)  <span class="comment"># 4m 이내는 만점</span>
+
+    <span class="comment"># 2) Task 우선순위 (30점)</span>
+    s += (task.priority_score / <span class="num">100</span>) * <span class="num">30</span>
+
+    <span class="comment"># 3) 배터리 여유 (20점) — task 수행 후 20% 이상 남을 것</span>
+    estimated_consumption = estimate_battery(task)
+    after_battery = robot.battery - estimated_consumption
+    <span class="kw">if</span> after_battery &gt;= <span class="num">20</span>:
+        s += <span class="num">20</span>
+    <span class="kw">elif</span> after_battery &gt;= <span class="num">10</span>:
+        s += <span class="num">10</span>
+    <span class="kw">else</span>:
+        s += <span class="num">0</span>  <span class="comment"># 위험</span>
+
+    <span class="comment"># 4) Capability 특화 (10점) — 정확히 요구 스킬 가진 로봇 우대</span>
+    <span class="kw">if</span> set(task.required_capability) == set(robot.capabilities):
+        s += <span class="num">10</span>
+    <span class="kw">elif</span> set(task.required_capability).issubset(robot.capabilities):
+        s += <span class="num">5</span>
+
+    <span class="kw">return</span> s</pre>
+
+      <div class="note info">
+        <strong>가중치 조정</strong>: 위 값들은 기본값. 현장 특성에 따라 environment variable로 조정 가능. 예: <code>ALLOCATOR_DISTANCE_WEIGHT=30</code>, <code>ALLOCATOR_BATTERY_WEIGHT=25</code>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2>④ 매칭 알고리즘</h2>
+
+      <h3>4.1 단순 Greedy (현재 구현)</h3>
+      <pre><span class="kw">def</span> allocate_tick():
+    idle_robots = get_idle_robots()
+    ready_tasks = ready_pool.size_by_capability()
+
+    <span class="kw">if</span> <span class="kw">not</span> idle_robots <span class="kw">or</span> <span class="kw">not</span> ready_tasks:
+        <span class="kw">return</span>
+
+    <span class="comment"># 각 idle robot에 대해 최적 task 탐색</span>
+    <span class="kw">for</span> robot <span class="kw">in</span> idle_robots:
+        best_task = <span class="kw">None</span>
+        best_score = -math.inf
+
+        <span class="kw">for</span> cap <span class="kw">in</span> robot.capabilities:
+            task = ready_pool.peek_for(cap)
+            <span class="kw">if</span> task <span class="kw">and</span> score(robot, task) &gt; best_score:
+                best_score = score(robot, task)
+                best_task = task
+
+        <span class="kw">if</span> best_task:
+            claimed = ready_pool.claim(best_task.task_id)
+            <span class="kw">if</span> claimed:
+                assign_robot_to_task(robot, claimed)</pre>
+
+      <h3>4.2 Hungarian Algorithm (향후 개선)</h3>
+      <p>N개 robot, M개 task가 있을 때 이론적으로 최적 매칭 (O(N³)). 3대 AMR 규모에서는 Greedy로 충분. 7대+ 확장 시 검토.</p>
+
+      <h3>4.3 Reservation 검증</h3>
+      <p>매칭 결정 후, 실제 assign 전에 자원/경로 확보 확인:</p>
+      <pre><span class="kw">def</span> assign_robot_to_task(robot, task):
+    <span class="comment"># Step 1: Resource Reservation 확인</span>
+    <span class="kw">if</span> task.requires_station:
+        <span class="kw">if</span> <span class="kw">not</span> resource_mgr.reserve(task.station_id, robot.id):
+            <span class="kw">return</span> <span class="kw">False</span>  <span class="comment"># 나중에 재시도</span>
+
+    <span class="comment"># Step 2: Traffic Manager 경로 예약</span>
+    <span class="kw">if</span> robot.type == <span class="str">"amr"</span>:
+        path = traffic_mgr.compute_safe_path(robot.position, task.destination)
+        <span class="kw">if</span> path <span class="kw">is</span> <span class="kw">None</span>:
+            resource_mgr.release(task.station_id, robot.id)
+            <span class="kw">return</span> <span class="kw">False</span>
+
+    <span class="comment"># Step 3: 실제 assign</span>
+    task.state = TaskState.ASSIGNED
+    task.assigned_to = robot.id
+    robot.current_task_id = task.task_id
+    db.commit()
+
+    <span class="comment"># Step 4: Executor에게 명령 송출</span>
+    executor.dispatch(robot, task)
+    <span class="kw">return</span> <span class="kw">True</span></pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 배터리 & 충전 관리</h2>
+
+      <p>AMR의 배터리는 매우 중요한 제약:</p>
+
+      <table>
+        <thead><tr><th>배터리 레벨</th><th>상태</th><th>Allocator 동작</th></tr></thead>
+        <tbody>
+          <tr><td>&gt; 60%</td><td>정상</td><td>모든 task 배정 가능</td></tr>
+          <tr><td>30~60%</td><td>주의</td><td>긴 경로 task 피함</td></tr>
+          <tr><td>&lt; 30%</td><td>충전 필요</td><td>자동으로 "충전소 복귀" task 삽입 (최고 우선순위)</td></tr>
+          <tr><td>&lt; 15%</td><td>위험</td><td>모든 task 거부, 즉시 충전</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.1 충전 task 생성</h3>
+      <pre><span class="kw">def</span> check_battery_levels():
+    <span class="kw">for</span> robot <span class="kw">in</span> amr_fleet:
+        <span class="kw">if</span> robot.battery &lt; <span class="num">30</span> <span class="kw">and</span> robot.state == <span class="str">"idle"</span>:
+            task = Task(
+                task_id=f<span class="str">"CHARGE-{robot.id}-{now()}"</span>,
+                type=TaskType.CHARGING,
+                required_capability=[<span class="str">"amr"</span>],
+                priority_score=<span class="num">1000</span>,  <span class="comment"># boost (Traffic Yield 우선순위)</span>
+                payload={<span class="str">"target_station"</span>: find_charging_station(robot)},
+            )
+            ready_pool.insert(task)</pre>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> GlobalTaskAllocator:
+    TICK_HZ = <span class="num">2</span>  <span class="comment"># 500ms 주기</span>
+
+    <span class="kw">def</span> __init__(self, ready_pool, resource_mgr, traffic_mgr, fleet):
+        self.ready_pool = ready_pool
+        self.resource_mgr = resource_mgr
+        self.traffic_mgr = traffic_mgr
+        self.fleet = fleet  <span class="comment"># 모든 로봇/설비</span>
+
+    <span class="kw">def</span> tick(self):
+        <span class="comment"># 1) 배터리 체크</span>
+        self._check_battery()
+
+        <span class="comment"># 2) idle 로봇 나열</span>
+        idle = [r <span class="kw">for</span> r <span class="kw">in</span> self.fleet <span class="kw">if</span> r.state == <span class="str">"idle"</span>]
+        <span class="kw">if</span> <span class="kw">not</span> idle:
+            <span class="kw">return</span>
+
+        <span class="comment"># 3) 각 로봇에 최적 task 탐색</span>
+        assignments = []
+        claimed_ids = set()
+        <span class="kw">for</span> robot <span class="kw">in</span> sorted(idle, key=<span class="kw">lambda</span> r: -r.priority_bonus):
+            best = self._find_best_task(robot, exclude=claimed_ids)
+            <span class="kw">if</span> best:
+                assignments.append((robot, best))
+                claimed_ids.add(best.task_id)
+
+        <span class="comment"># 4) 실제 assign</span>
+        <span class="kw">for</span> robot, task <span class="kw">in</span> assignments:
+            self._try_assign(robot, task)
+
+    <span class="kw">def</span> _find_best_task(self, robot, exclude):
+        best_task = <span class="kw">None</span>
+        best_score = -math.inf
+        <span class="kw">for</span> cap <span class="kw">in</span> robot.capabilities:
+            task = self.ready_pool.peek_for(cap)
+            <span class="kw">if</span> task <span class="kw">and</span> task.task_id <span class="kw">not in</span> exclude:
+                s = self._score(robot, task)
+                <span class="kw">if</span> s &gt; best_score:
+                    best_score = s
+                    best_task = task
+        <span class="kw">return</span> best_task
+
+    <span class="kw">def</span> _try_assign(self, robot, task):
+        <span class="comment"># reservation + traffic 검증</span>
+        <span class="kw">if</span> <span class="kw">not</span> self._reserve_resources(robot, task):
+            <span class="kw">return</span> <span class="kw">False</span>
+        claimed = self.ready_pool.claim(task.task_id)
+        <span class="kw">if</span> claimed <span class="kw">is</span> <span class="kw">None</span>:
+            self._release_resources(robot, task)
+            <span class="kw">return</span> <span class="kw">False</span>
+        claimed.state = TaskState.ASSIGNED
+        claimed.assigned_to = robot.id
+        emit_event(<span class="str">"task.assigned"</span>, task_id=claimed.task_id, robot_id=robot.id)
+        <span class="kw">return</span> <span class="kw">True</span></pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 실패 처리</h2>
+      <table>
+        <thead><tr><th>실패 원인</th><th>복구 동작</th></tr></thead>
+        <tbody>
+          <tr><td>Reservation 실패</td><td>task를 Pool에 반환, 다음 tick에서 재시도</td></tr>
+          <tr><td>Traffic path 없음</td><td>10초 후 재시도, 반복 실패 시 Monitor에 escalate</td></tr>
+          <tr><td>Executor 실행 실패</td><td>task.state = FAILED, Workflow에 알림 (재시도 판단)</td></tr>
+          <tr><td>Robot 통신 두절</td><td>robot.state = <code>unavailable</code>, task를 Pool 반환</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="08_ready_task_pool.html"><strong>08 Ready Task Pool</strong></a>: task 소스</li>
+      </ul>
+      <h3>병렬</h3>
+      <ul>
+        <li><a href="10_resource_reservation_manager.html"><strong>10 Resource Reservation Manager</strong></a>: station 확보</li>
+        <li><a href="../fleet_traffic_management.html"><strong>Traffic Manager</strong></a>: AMR 경로 확보</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="11_robot_cell_executors.html"><strong>11 Robot / Cell Executors</strong></a>: 실제 명령 전달</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="08_ready_task_pool.html">
+          <div class="label">← 이전</div>
+          <div class="name">08. Ready Task Pool</div>
+        </a>
+        <a href="10_resource_reservation_manager.html">
+          <div class="label">다음 →</div>
+          <div class="name">10. Resource Reservation Manager</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 09. Global Task Allocator · 2026-04-08</footer>
+  </div>
+</body>
+</html>

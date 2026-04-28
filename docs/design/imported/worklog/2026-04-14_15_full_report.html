@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>V6 Full Report · 2026-04-14 → 2026-04-15</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg:#0e1116; --panel:#161b22; --line:#30363d; --ink:#e6edf3; --mute:#8b949e;
+    --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; --bad:#f85149; --purple:#d2a8ff;
+    --code:#0d1117; --chip:#1f6feb33;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:14px/1.65 -apple-system,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .layout{display:grid;grid-template-columns:240px 1fr;max-width:1320px;margin:0 auto}
+  nav.side{position:sticky;top:0;align-self:start;padding:24px 12px 24px 20px;border-right:1px solid var(--line);height:100vh;overflow-y:auto;font-size:12.5px}
+  nav.side h3{font-size:11px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;margin:16px 0 6px}
+  nav.side h3:first-child{margin-top:0}
+  nav.side a{display:block;color:#c9d1d9;text-decoration:none;padding:3px 0;border-left:2px solid transparent;padding-left:8px;margin-left:-8px}
+  nav.side a:hover{color:var(--accent)}
+  nav.side a.section{font-weight:600;color:#e6edf3}
+  main{padding:40px 40px 120px}
+  header.top{border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:28px}
+  header.top .crumb{color:var(--mute);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  h1{font:700 28px/1.3 -apple-system,"SF Pro Display",Inter;margin:6px 0 10px}
+  h2{font:700 21px/1.4 inherit;margin:40px 0 12px;padding-top:16px;border-top:2px solid var(--line);color:#e6edf3}
+  h2::before{content:"§ ";color:var(--accent);font-weight:400}
+  h3{font:600 16px/1.4 inherit;margin:22px 0 8px;color:#c9d1d9}
+  h4{font:600 14px/1.4 inherit;margin:14px 0 4px;color:#c9d1d9}
+  p{margin:8px 0}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  code{background:#1f252e;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+  .muted{color:var(--mute)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--chip);color:#79c0ff;font-size:11.5px;margin-right:4px}
+  .chip.ok{background:#1f6b2d33;color:#7ee787}
+  .chip.warn{background:#bb800933;color:#e3b341}
+  .chip.bad{background:#8e232933;color:#ffa198}
+  .chip.pur{background:#68389533;color:#d2a8ff}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#171d25;font-weight:600}
+  tr:nth-child(even) td{background:#12161d}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:12px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .card h4{margin:0 0 6px;font-size:13.5px;color:#c9d1d9}
+  .kvs{list-style:none;padding:0;margin:0;font-size:13px}
+  .kvs li{padding:3px 0;border-bottom:1px dotted var(--line)}
+  .kvs li:last-child{border:none}
+  .kvs b{color:#c9d1d9;margin-right:6px;font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--mute);margin-right:4px}
+  .ascii{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:14px;font-size:12px;white-space:pre;overflow-x:auto;color:#c9d1d9}
+  .note{background:#112538;border-left:3px solid var(--accent);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .warn-box{background:#2a2010;border-left:3px solid var(--warn);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .bad-box{background:#2d1416;border-left:3px solid var(--bad);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .commit{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;margin:14px 0}
+  .commit .hash{font-family:"SF Mono",monospace;color:var(--purple);font-size:12px}
+  .commit .time{color:var(--mute);font-size:12px;margin-left:10px}
+  .commit h4{margin:4px 0 8px;color:#e6edf3;font-size:15px}
+  .commit ul{margin:4px 0 0 18px;padding:0}
+  .commit li{margin:2px 0;font-size:13px}
+  hr{border:none;border-top:1px dashed var(--line);margin:24px 0}
+  footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .toc-num{color:var(--mute);margin-right:6px;font-variant-numeric:tabular-nums}
+  @media (max-width: 900px){
+    .layout{grid-template-columns:1fr}
+    nav.side{display:none}
+    main{padding:24px 20px 96px}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="side">
+  <h3>문서</h3>
+  <a href="#overview" class="section">Overview</a>
+  <a href="#timeline">타임라인</a>
+  <a href="#environment">환경</a>
+
+  <h3>Day 1 · 2026-04-14</h3>
+  <a href="#day1-catalog">제품 카탈로그</a>
+  <a href="#day1-pyqt">PyQt UX 개선</a>
+  <a href="#day1-v6-phase1-4">V6 Phase 1~4</a>
+  <a href="#day1-v6-phase5">Phase 5 어댑터</a>
+  <a href="#day1-v6-phase6">Phase 6 Traffic</a>
+  <a href="#day1-v6-phase7">Phase 7 ExecMonitor</a>
+  <a href="#day1-v6-phase8">Phase 8 WebSocket 단종</a>
+  <a href="#day1-review">Review 조치</a>
+
+  <h3>Day 2 · 2026-04-15</h3>
+  <a href="#day2-seed">Seed 데이터 확장</a>
+  <a href="#day2-incident">SLA 폭주 사고</a>
+  <a href="#day2-ai">AI Server 연동</a>
+  <a href="#day2-pipeline">이미지 파이프라인</a>
+  <a href="#day2-jetson">Jetson 실배포</a>
+  <a href="#day2-troubleshoot">해결한 이슈</a>
+  <a href="#day2-e2e">E2E 검증</a>
+
+  <h3>부록</h3>
+  <a href="#architecture">아키텍처</a>
+  <a href="#env-vars">환경변수 전체</a>
+  <a href="#commits">커밋 인덱스</a>
+  <a href="#pending">대기 항목</a>
+</nav>
+
+<main>
+<header class="top" id="overview">
+<div class="crumb">Casting Factory · V6 Full Report</div>
+<h1>2026-04-14 → 2026-04-15 · V6 Architecture Migration 전 구간 상세 보고</h1>
+<p class="muted">이틀간 28개 commit 으로 V6 Management Service 분리, PostgreSQL 단독 전환, HW 통신 어댑터화, Traffic Manager, Execution Monitor, WebSocket 단종, Review 5개 조치, AI Server SSH 업로드, Jetson 실기 이미지 파이프라인까지 완성했다. 본 문서는 모든 결정, 코드 위치, 검증 절차, 장애/사고 이력을 담는다.</p>
+<p><span class="chip pur">28 commits</span><span class="chip">신규 모듈 26+</span><span class="chip ok">E2E PASS</span><span class="chip">TRUST 5 통과</span><span class="chip warn">MQTT 체인 대기</span></p>
+</header>
+
+<!-- ========== TIMELINE ========== -->
+<h2 id="timeline">타임라인</h2>
+<div class="ascii">
+04-14  09:07  Confluence 자동 동기화
+       11:37  customer 제품 카탈로그 30종 도입
+       12:00  카탈로그 30 → 9 축소 (UI 간소화)
+       16:50  PyQt UX + 성능 최적화
+       20:01  V6 Phase 1~4 (gRPC 분리, PG 단독, PyQt 직결)
+       20:38  Phase 5 정정 (ROS2/MQTT/gRPC 어댑터 분리)
+       20:48  Phase 6 Traffic Manager (Waypoint+Dijkstra+Yield)
+       20:56  Phase 7 ExecutionMonitor (SLA + alerts)
+       21:04  Phase 8 WebSocket 단종 (WatchAlerts gRPC)
+       21:08  docs sync (product/structure/tech)
+       21:15  codemaps 5종
+       21:20  @MX 태그 35개
+       21:25  pytest 30 pass
+       21:28  review v6_review.md 12 findings
+       21:31  UX-001 critical 모달
+       21:38  Q-002 PyQt 비동기 RPC
+       21:41  S-001 gRPC mTLS
+       21:45  S-002 MQTT 인증
+       21:51  P-001 adaptive polling
+
+04-15  09:07  Confluence 자동 동기화
+       10:21  seed_realistic.sql 확장 (862 items, 20 alerts)
+       10:30  mfg_at SLA 폭주 사고 정정
+       11:40  AI Server SSH 업로드 클라이언트 (Phase 1)
+       12:08  Jetson env 슬롯 추가
+       12:26  image_forwarder + execution_monitor 훅 + Jetson publisher
+       13:43  Jetson 실배포 + snapshot dedup + proto 호환
+       14:07  worklog HTML 2 파일
+       <span class="accent">이후   full_report.html (본 문서)</span>
+</div>
+
+<!-- ========== ENVIRONMENT ========== -->
+<h2 id="environment">환경 스냅샷 (2026-04-15 오후)</h2>
+<div class="grid">
+  <div class="card"><h4>Development Mac</h4>
+    <ul class="kvs">
+      <li><b>Host:</b> IBui-MacBookPro.local</li>
+      <li><b>Tailscale:</b> 100.77.239.25</li>
+      <li><b>Python:</b> 3.12.9 (Homebrew)</li>
+      <li><b>역할:</b> Mgmt Server, PyQt monitoring</li>
+      <li><b>프로세스:</b> <code>server.py</code> PID 39553</li>
+    </ul>
+  </div>
+  <div class="card"><h4>PostgreSQL (원격)</h4>
+    <ul class="kvs">
+      <li><b>Host:</b> 100.107.120.14:5432</li>
+      <li><b>Tenant:</b> yejin-laptop (addineduteam2@)</li>
+      <li><b>DB/Role:</b> smartcast_robotics / team2</li>
+      <li><b>확장:</b> TimescaleDB</li>
+    </ul>
+  </div>
+  <div class="card"><h4>AI Server (원격)</h4>
+    <ul class="kvs">
+      <li><b>Host:</b> 100.66.177.119</li>
+      <li><b>User:</b> team2</li>
+      <li><b>Path:</b> /home/team2/datasets/inspection/</li>
+      <li><b>용도:</b> 검사 이미지 학습 데이터셋</li>
+    </ul>
+  </div>
+  <div class="card"><h4>Jetson Orin NX (원격)</h4>
+    <ul class="kvs">
+      <li><b>Host:</b> 100.77.62.67</li>
+      <li><b>OS:</b> JetPack R35.5 (Ubuntu 20.04 aarch64)</li>
+      <li><b>Python:</b> 3.8, grpcio 1.59.5, protobuf 5.29</li>
+      <li><b>카메라:</b> Logitech HD Pro C920 /dev/video0</li>
+      <li><b>systemd:</b> casting-image-publisher.service</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- DAY 1                                                             -->
+<!-- ================================================================ -->
+<h2 id="day1-catalog">Day 1 · 제품 카탈로그 재편 <span class="chip">customer</span></h2>
+
+<div class="commit">
+  <span class="hash">fcfa15d</span><span class="time">04-14 11:37</span>
+  <h4>맨홀뚜껑 제품군 30종 + 카테고리별 이미지</h4>
+  <ul>
+    <li>카테고리 버튼: 전체 / 원형 / 사각 / 타원형 4개</li>
+    <li>원형 10 + 사각 10 + 타원형 10 = 30종 (KS 규격)</li>
+    <li>샘플: 원형 맨홀뚜껑 KS D-450 (75,000원)</li>
+    <li>대표 이미지 <code>round.jpg / square.jpg / oval.jpg</code>, 배경 <code>bg-white</code></li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">403e189</span><span class="time">04-14 11:39</span>
+  <h4>docs(sync): product.md + workflow 설정 + state diagram 추적</h4>
+  <ul>
+    <li><code>.moai/project/product.md</code> — 고객 발주 포털을 <b>5단계</b> + 제품 카탈로그 30종으로 갱신</li>
+    <li><code>.moai/config/sections/workflow.yaml</code> — team 모드 + cg_mode 추적 설정 추가</li>
+    <li><code>docs/manhole_state_diagram.html</code> — 맨홀 상태 다이어그램 추적 시작</li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">474c4fa</span><span class="time">04-14 12:00</span>
+  <h4>제품 카탈로그 30종 → 9종 축소 (각 카테고리 3종)</h4>
+  <p class="muted">사용자 결정: UI 복잡도 감소. 9종 코드:</p>
+  <ul>
+    <li>원형: R-D450, R-D500, R-D550</li>
+    <li>사각: S-400, S-450, S-500</li>
+    <li>타원: O-450, O-500, O-550</li>
+  </ul>
+</div>
+
+<h2 id="day1-pyqt">Day 1 · PyQt UX 개선 & 성능 최적화 <span class="chip">monitoring</span></h2>
+
+<div class="commit">
+  <span class="hash">3c8e6ec</span><span class="time">04-14 16:50</span>
+  <h4>사이드바 토글 / 아이템 진행 테이블 / 생산 시작 버튼 / 성능 최적화</h4>
+  <h4>UX</h4>
+  <ul>
+    <li>좌측 사이드바 숨김 토글 (<kbd>Ctrl+B</kbd>)</li>
+    <li>생산 모니터링 — 공정 단계 테이블 3컬럼 축소 (단계 / 상태 / 담당 설비)</li>
+    <li>주문별 Item 단위 실시간 공정 위치 테이블 신규</li>
+    <li>생산 계획 — 우선순위 각 행에 <b>▶ 생산 시작</b> 버튼 (ready 상태만 활성)</li>
+    <li>다중 선택 <b>선택 주문 생산 시작</b> 녹색 버튼 결과 테이블 하단 배치</li>
+    <li><code>QScrollArea</code> 적용 + 주문 풀 하단 계산/선택해제 버튼 이동</li>
+  </ul>
+  <h4>성능 (페이지 전환 GUI 프리즈 해결)</h4>
+  <ul>
+    <li>WebSocket 메시지는 현재 보이는 페이지에만 전달 (비가시 refresh 제거)</li>
+    <li>refresh 중복 실행 가드 <code>_refreshing</code> 플래그</li>
+    <li>API 기본 timeout 3.0s → <b>1.0s</b></li>
+    <li><code>RequestException</code> 60s TTL 캐시로 반복 재시도 차단</li>
+    <li><code>REFRESH_INTERVAL_MS</code> 3000 → <b>8000</b></li>
+  </ul>
+  <h4>Docs</h4>
+  <ul>
+    <li><code>docs/db-ui-audit.md</code> — DB↔UI 필드 정합성 감사 (삭제 후보 0건 결론)</li>
+  </ul>
+</div>
+
+<!-- ================================================================ -->
+<!-- Day 1 V6 Phases                                                   -->
+<!-- ================================================================ -->
+<h2 id="day1-v6-phase1-4">Day 1 · V6 Phase 1~4 (gRPC 분리 + PG 단독) <span class="chip pur">V6</span></h2>
+
+<h3>설계 결정 (2026-04-14 결정)</h3>
+<div class="note">
+<b>문제:</b> FastAPI Interface Service 가 공장 가동의 SPOF 였다. 장애·AWS 이관 시 공장이 멈춘다.<br>
+<b>해결:</b> Management Service 를 <b>별도 프로세스(gRPC :50051)</b> 로 분리, Factory Operator PC(PyQt) 가 gRPC 로 직결. Admin/Customer PC 는 기존 HTTP 유지.<br>
+<b>원칙:</b> 두 서비스 모두 같은 PostgreSQL 을 공유하지만, 프로세스는 독립. Interface 가 죽어도 공장은 계속 돌아간다.
+</div>
+
+<div class="ascii">
+┌────────────────┐    gRPC :50051       ┌──────────────────────┐
+│ Factory Op PC  │ ───────────────────▶ │ Management Service   │
+│ (PyQt)         │                      │  (backend/management)│
+└────────────────┘                      └──────────┬───────────┘
+                                                   │
+                                          PostgreSQL 16 (공유)
+                                                   │
+┌────────────────┐    HTTP :8000        ┌──────────▼───────────┐
+│ Admin/Cust Web │ ───────────────────▶ │ Interface Service    │
+│ (Next.js)      │                      │  (backend/app, FastAPI)
+└────────────────┘                      └──────────────────────┘
+</div>
+
+<div class="commit">
+  <span class="hash">87d5274</span><span class="time">04-14 20:01</span>
+  <h4>Phase 1~4 일괄 (gRPC 서버 기동 → StartProduction → WatchItems → PyQt 전환)</h4>
+
+  <h4>Phase 1 — gRPC 서버 기동</h4>
+  <ul>
+    <li><code>backend/management/</code> 신규 (server.py, proto/, services/, Makefile, README)</li>
+    <li><code>proto/management.proto</code>: <b>ManagementService 7 RPC</b> + WorkOrder/Item/ItemEvent</li>
+    <li><code>ItemStage</code> 8단계: QUE / MM / DM / TR_PP / PP / IP / TR_LD / SH — Confluence DB v47 준수</li>
+    <li><code>WorkOrderStatus</code> 4단계: QUE / PROC / SUCC / FAIL</li>
+    <li>Python 3.12 전용 venv, grpcio 1.80 + protobuf 6.33</li>
+  </ul>
+
+  <h4>Phase 2 — StartProduction 실구현</h4>
+  <ul>
+    <li>SQLAlchemy: <code>WorkOrder(work_orders)</code>, <code>Item(items)</code></li>
+    <li><code>task_manager.start_production</code>: orders → work_order + items×qty 분해</li>
+    <li>중복 시작 방지, <code>orders.status='in_production'</code> 자동 전환</li>
+    <li><code>db_session.py</code>: Mgmt 전용 PG 세션 (<code>.env.local</code> 공유)</li>
+  </ul>
+
+  <h4>Phase 3 — WatchItems server streaming</h4>
+  <ul>
+    <li><code>ExecutionMonitor.stream</code>: 1초 DB 스냅샷 diff → <code>ItemEvent</code> emit</li>
+    <li><code>monitoring/app/workers/item_stream_worker.py</code>: QThread 자동 재연결 클라이언트</li>
+    <li><code>production.py</code>: 스트림 이벤트로 셀 단건 즉시 갱신, 폴링도 gRPC <code>list_items</code> 로</li>
+    <li>V6 코드(MM/DM/PP/IP/TR_LD) ↔ PyQt 한국어 라벨(주탕/탈형/후처리/검사/적재) 매핑</li>
+  </ul>
+
+  <h4>Phase 4 — PyQt → gRPC 전환</h4>
+  <ul>
+    <li><code>monitoring/app/management_client.py</code>: ManagementClient (Health/Start/List/Watch)</li>
+    <li><code>monitoring/app/generated/</code>: protoc 산출물 (relative import 패치)</li>
+    <li><code>monitoring/scripts/gen_proto.sh</code>: proto 재컴파일 자동화</li>
+    <li><code>schedule.py._do_start</code>: HTTP <code>/api/production/schedule/start</code> → gRPC <code>StartProduction</code></li>
+  </ul>
+
+  <h4>PostgreSQL 단독 정책</h4>
+  <ul>
+    <li>SQLite 폴백 완전 제거 (<code>database.py</code> fail-fast, <code>casting_factory.db</code> 삭제)</li>
+    <li><code>migrate_sqlite_to_pg.py</code> 삭제</li>
+    <li>운영/개발 모두 <code>100.107.120.14:5432 / smartcast_robotics</code></li>
+  </ul>
+
+  <h4>검증</h4>
+  <ul>
+    <li>StartProduction → 3 work_orders, 150 items 생성</li>
+    <li>WatchItems streaming → 첫 스냅샷 + 라이브 변경 감지 (UPDATE 후 1s)</li>
+    <li>PyQt ▶ 생산 시작 버튼 gRPC 호출 동작</li>
+  </ul>
+</div>
+
+<h2 id="day1-v6-phase5">Day 1 · Phase 5 정정 · HW 통신 어댑터 분리 <span class="chip pur">V6</span></h2>
+
+<div class="bad-box">
+<b>이전 오류:</b> RobotExecutor 가 모든 robot 을 MQTT 로 publish → V6 이미지 위반.<br>
+<b>V6 표준:</b> AMR/Cobot 은 ROS2 DDS, ESP32 만 MQTT, Image Publisher 는 TCP/gRPC.
+</div>
+
+<div class="commit">
+  <span class="hash">33a7f6f</span><span class="time">04-14 20:38</span>
+  <h4>Phase 5 정정 — 어댑터 패턴 + Image Publishing Service</h4>
+
+  <h4>Adapter 패턴</h4>
+  <p><code>services/adapters/</code>:</p>
+  <ul>
+    <li><code>select_adapter(robot_id)</code> — <b>prefix 기반 단일 진실</b> 라우터</li>
+    <li><code>ros2_adapter.py</code> — <code>AMR-*</code> / <code>ARM-*</code> 전용 (<code>MGMT_ROS2_ENABLED</code> gate)
+      <ul>
+        <li>Mac 개발: 명시적 <code>ros2_not_available</code> 응답</li>
+        <li>RPi 배포: rclpy publisher / action client 활성</li>
+      </ul>
+    </li>
+    <li><code>mqtt_adapter.py</code> — <code>CONV-*</code> / <code>ESP-*</code> 전용, 토픽 <code>casting/esp/{id}/cmd</code>
+      <ul>
+        <li>레거시 <code>conveyor/{id}/cmd</code> 호환 옵션 (<code>MGMT_MQTT_LEGACY_CONVEYOR=1</code>)</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h4>RobotExecutor 슬림화</h4>
+  <ul>
+    <li>어댑터 라우팅만 수행 (~30 LOC)</li>
+    <li><code>UNKNOWN</code> prefix 명시적 거부 (안전성)</li>
+  </ul>
+
+  <h4>Image Publishing Service</h4>
+  <ul>
+    <li>proto: <code>ImageFrame{camera_id, captured_at, encoding, width, height, data, sequence}</code></li>
+    <li>service: <code>ImagePublisherService.PublishFrames(stream)</code> → <code>ImageAck</code></li>
+    <li><code>services/image_sink.py</code>: 카메라별 최신 1프레임 메모리 보관</li>
+    <li>ROS2 image transport 부담 회피 근거: 1080p RGB raw 186 MB/s vs gRPC+JPEG</li>
+  </ul>
+
+  <h4>V6 통신 채널 매트릭스</h4>
+  <table>
+    <thead><tr><th>robot_id</th><th>어댑터</th><th>채널</th><th>대상</th></tr></thead>
+    <tbody>
+      <tr><td><code>AMR-*</code></td><td>ros2</td><td>ROS2 DDS</td><td>Transport (RPi4)</td></tr>
+      <tr><td><code>ARM-*</code></td><td>ros2</td><td>ROS2 DDS</td><td>Manufacturing (RPi5)</td></tr>
+      <tr><td><code>CONV-*</code> / <code>ESP-*</code></td><td>mqtt</td><td>MQTT</td><td>HW Control (ESP32)</td></tr>
+      <tr><td>(이미지)</td><td>—</td><td>gRPC streaming</td><td>Jetson Image Publisher</td></tr>
+    </tbody>
+  </table>
+
+  <h4>검증</h4>
+  <ul>
+    <li><code>AMR-001</code>/<code>ARM-001</code> → ros2 어댑터 → 명시적 미구현 응답 ✅</li>
+    <li><code>CONV-001</code>/<code>ESP-001</code> → mqtt → <code>casting/esp/{id}/cmd</code> publish ✅</li>
+    <li><code>UNKNOWN-X</code> → <code>unknown_robot_prefix</code> 거부 ✅</li>
+    <li>ImagePublisher 3프레임 streaming → <code>ack accepted=true sequence=3</code></li>
+    <li>mosquitto subscribe 로 토픽 형식 확인</li>
+  </ul>
+</div>
+
+<h2 id="day1-v6-phase6">Day 1 · Phase 6 · Traffic Manager <span class="chip pur">V6</span> <span class="chip ok">97% cov</span></h2>
+
+<div class="commit">
+  <span class="hash">df0ec7c</span><span class="time">04-14 20:48</span>
+  <h4>Waypoint + Dijkstra + Backtrack Yield (340 LOC, 22 tests)</h4>
+
+  <h4>알고리즘 스택</h4>
+  <ol>
+    <li><b>Waypoint 그래프</b> — 1m × 2m 맵, 8 노드 / 8 양방향 edges
+      <ul>
+        <li>HOME, JUNCT_A/B, POST, INSP_IN/OUT, LOAD, SHIP</li>
+      </ul>
+    </li>
+    <li><b>Dijkstra 최단 경로</b> — heapq 기반, <code>exclude_edge</code> 옵션</li>
+    <li><b>Edge time-window 예약</b> — 스레드 안전</li>
+    <li><b>Backtrack Yield 3단계</b>
+      <ol>
+        <li>단순 reservation 시도 (priority 비교로 강제 회수 가능)</li>
+        <li>차단 edge 회피 우회 경로</li>
+        <li>출발 시각 지연 (충돌 종료 후 + safety margin)</li>
+      </ol>
+    </li>
+  </ol>
+  <p class="muted"><b>priority 규약:</b> 작은 숫자 = 우선. 자기보다 priority 큰(낮은) 기존 예약은 강제 양보.</p>
+
+  <h4>검증 (22/22 pass)</h4>
+  <ul>
+    <li>① HOME→SHIP Dijkstra: 5점 4edges 6.83s</li>
+    <li>② 2대 동일 경로: 후순위가 7.8s 대기 양보</li>
+    <li>③ higher priority → 기존 점유 강제 회수</li>
+    <li>④ 3대 동시 (HOME→SHIP / HOME→LOAD / POST→SHIP): 충돌 0</li>
+    <li>⑤ JUNCT_A↔JUNCT_B 차단 시 POST 경유 우회</li>
+    <li>⑥ gRPC PlanRoute RPC E2E</li>
+  </ul>
+</div>
+
+<h2 id="day1-v6-phase7">Day 1 · Phase 7 · Execution Monitor (SLA + alerts) <span class="chip pur">V6</span></h2>
+
+<div class="commit">
+  <span class="hash">39b482f</span><span class="time">04-14 20:56</span>
+  <h4>stage 별 SLA + alerts 자동 + dedup + 백그라운드 polling</h4>
+
+  <h4>SLA 기본값</h4>
+  <table>
+    <tr><th>stage</th><th>SLA (s)</th><th>비고</th></tr>
+    <tr><td>QUE / SH</td><td>0</td><td>무한 (정상 대기/출고)</td></tr>
+    <tr><td>MM</td><td>300</td><td>주형 제작 + 주탕</td></tr>
+    <tr><td>DM</td><td>60</td><td>탈형</td></tr>
+    <tr><td>TR_PP / TR_LD</td><td>60</td><td>이송</td></tr>
+    <tr><td>PP</td><td>600</td><td>후처리</td></tr>
+    <tr><td>IP</td><td>30</td><td>검사</td></tr>
+  </table>
+  <p class="muted">환경변수 <code>MGMT_SLA_{stage}=N</code> 로 override (예: 테스트용 <code>MGMT_SLA_IP=3</code>).</p>
+
+  <h4>위반 시 동작</h4>
+  <ul>
+    <li>alerts INSERT — severity=warning, type=stage_timeout, error_code=<code>SLA_{stage}</code></li>
+    <li><code>logger.warning</code> 기록</li>
+    <li><code>ItemEvent.message="sla_timeout:{sla}s"</code> 로 stream 푸시</li>
+  </ul>
+
+  <h4>중복 dedup</h4>
+  <ul>
+    <li>동일 <code>(item_id, stage)</code> 은 <code>ALERT_DEDUP_TTL_SEC</code> 내 1건만 INSERT</li>
+    <li>기본 TTL 300s (<code>MGMT_ALERT_DEDUP_TTL_SEC</code>)</li>
+  </ul>
+
+  <h4>백그라운드 thread</h4>
+  <ul>
+    <li>ExecutionMonitor 생성 시 daemon thread 자동 시작</li>
+    <li>클라이언트 stream 연결 없어도 SLA 감시 + alerts 발행</li>
+    <li><code>_tick()</code> 공통 루프 — stream() + _background_loop() 모두 호출</li>
+  </ul>
+</div>
+
+<h2 id="day1-v6-phase8">Day 1 · Phase 8 · WebSocket 단종 <span class="chip pur">V6</span></h2>
+
+<div class="commit">
+  <span class="hash">4056a7f</span><span class="time">04-14 21:04</span>
+  <h4>WatchAlerts gRPC streaming + PyQt AlertStreamWorker</h4>
+  <ul>
+    <li>proto: <code>WatchAlerts</code> RPC + <code>AlertEvent</code> 메시지 (severity filter)</li>
+    <li><code>ExecutionMonitor.stream_alerts</code>: seen_ids 셋 기반 신규 감지 (timestamp 의존 제거)
+      <ul>
+        <li>first_pass — 최근 200건 기록 + 최신 1건만 emit (UI sync)</li>
+        <li>이후 — seen_ids 미포함 row 전량 emit, <code>SEEN_CAP=1000</code></li>
+      </ul>
+    </li>
+    <li><code>monitoring/app/workers/alert_stream_worker.py</code> (QThread, 3s backoff)</li>
+    <li><code>CASTING_WS_ENABLED=0</code> 기본 — WebSocket 미기동</li>
+    <li>백엔드 <code>/ws/dashboard</code> 는 유지 (Admin/Customer 영향 없음)</li>
+  </ul>
+</div>
+
+<h3>Phase 0~8 완료 — V6 로드맵 전체</h3>
+<table>
+  <tr><th>Phase</th><th>Commit</th><th>핵심</th></tr>
+  <tr><td>1</td><td><code>87d5274</code></td><td>gRPC Health :50051, Python 3.12 venv</td></tr>
+  <tr><td>2</td><td><code>87d5274</code></td><td>StartProduction DB 분해</td></tr>
+  <tr><td>3</td><td><code>87d5274</code></td><td>WatchItems streaming + PyQt 셀 갱신</td></tr>
+  <tr><td>4</td><td><code>87d5274</code></td><td>PyQt schedule.py gRPC 직결</td></tr>
+  <tr><td>5</td><td><code>33a7f6f</code></td><td>어댑터 분리 + Image gRPC</td></tr>
+  <tr><td>6</td><td><code>df0ec7c</code></td><td>Traffic Manager</td></tr>
+  <tr><td>7</td><td><code>39b482f</code></td><td>Execution Monitor SLA</td></tr>
+  <tr><td>8</td><td><code>4056a7f</code></td><td>WebSocket 단종</td></tr>
+</table>
+
+<h3>sync / docs</h3>
+<ul>
+  <li><code>9108bc0</code> <b>docs(sync)</b>: product/structure/tech 일관 정리 (4채널 매트릭스, 8 RPC)</li>
+  <li><code>36ea6d0</code> <b>codemaps</b>: V6 Management Service 흐름·모듈·엔트리·의존성 5종</li>
+  <li><code>2991e9d</code> <b>@MX</b>: V6 모듈 진입점 ANCHOR/NOTE 보강 (35개)</li>
+  <li><code>d4783ac</code> <b>test</b>: pytest 인프라 + 30/30 pass</li>
+  <li><code>0dcbc9b</code> <b>chore</b>: gitignore coverage artifacts</li>
+  <li><code>aec0b93</code> <b>review</b>: v6_review.md Security/Performance/Quality/UX 12 findings</li>
+</ul>
+
+<h2 id="day1-review">Day 1 · Review 조치 5건 <span class="chip ok">5/6 완료</span></h2>
+
+<div class="commit">
+  <span class="hash">091fa10</span><span class="time">04-14 21:31</span>
+  <h4>UX-001 — critical alert 모달 분기</h4>
+  <ul>
+    <li><code>_on_alert_event</code>: <code>severity=="critical"</code> → <code>QMessageBox.critical</code> 모달 (사용자 ack 보장)</li>
+    <li>그 외(warning/info) → 기존 토스트</li>
+    <li>같은 <code>alert_id</code> 는 1회만 모달 (set 캐시 200건 cap)</li>
+    <li>서버 severity filter 제거 — 모든 severity 수신 후 클라이언트 분기</li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">5a9dff3</span><span class="time">04-14 21:38</span>
+  <h4>Q-002 — PyQt StartProduction 비동기 (UI 프리즈 해결)</h4>
+  <ul>
+    <li>문제: <code>_do_start</code> 가 메인 스레드에서 gRPC 동기 호출 → 5s UI 프리즈</li>
+    <li>해결: <code>StartProductionWorker</code> (QObject + 3 signal) + <code>StartProductionThread</code> (1회용 QThread)</li>
+    <li>signals: <code>succeeded</code> / <code>failed(kind,msg)</code> / <code>finished</code></li>
+    <li><code>_start_thread_active</code> 플래그로 연속 클릭 방지</li>
+  </ul>
+  <p class="muted">검증: spawn 직후 0.000s 반환, 96ms 후 succeeded emit</p>
+</div>
+
+<div class="commit">
+  <span class="hash">d554758</span><span class="time">04-14 21:41</span>
+  <h4>S-001 — gRPC mTLS 옵션화</h4>
+  <ul>
+    <li><code>scripts/gen_certs.sh</code>: openssl 자체 CA + 서버/클라이언트 cert (4096-bit RSA, 10년)</li>
+    <li><code>_load_tls_credentials()</code>: <code>MGMT_GRPC_TLS_ENABLED=1</code> 시 <code>ssl_server_credentials</code></li>
+    <li><code>MGMT_TLS_REQUIRE_CLIENT_CERT</code>: 1=mTLS, 0=server-only</li>
+    <li>클라이언트 (<code>management_client.py</code>) 동일 env 로 secure_channel 분기</li>
+    <li>certs 디렉터리 <code>.gitignore</code> 처리</li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">ddc514e</span><span class="time">04-14 21:45</span>
+  <h4>S-002 — MQTT 인증 (mosquitto + username/password)</h4>
+  <ul>
+    <li><code>scripts/setup_mosquitto_auth.sh</code>: 16자 랜덤 비밀번호 발급 + passwd 파일</li>
+    <li><code>mosquitto.conf</code>: <code>allow_anonymous false</code> + <code>password_file</code></li>
+    <li><code>mqtt_adapter._connect()</code>: <code>MQTT_USER</code> 있으면 <code>username_pw_set()</code></li>
+    <li>익명 pub 거부 / 인증 pub 성공 검증</li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">c7f23f6</span><span class="time">04-14 21:51</span>
+  <h4>P-001 — ExecutionMonitor adaptive polling</h4>
+  <ul>
+    <li>base 1s → quiet 누적 5 사이클 → ×2 → ×2 → ×2 (max 8s)</li>
+    <li>activity 발생 시 즉시 base 복귀</li>
+    <li>max cap = min(<code>MGMT_MAX_POLL_INTERVAL_SEC</code>, SLA 최단값/2) — 감지 정확도 보호</li>
+    <li>검증: base 0.5s quiet 2 factor 2 max 4 → 0.5 → 1.0 → 2.0 확인</li>
+  </ul>
+</div>
+
+<p class="muted">남은 권장: <b>S-003 PG 비밀번호 vault</b> (개발 평문 정책에 따라 프로덕션 배포 직전 일괄 처리 예정).</p>
+
+<!-- ================================================================ -->
+<!-- DAY 2                                                             -->
+<!-- ================================================================ -->
+<h2 id="day2-seed">Day 2 · Seed 데이터 확장 <span class="chip">seed</span></h2>
+
+<div class="commit">
+  <span class="hash">39cfb80</span><span class="time">04-15 10:21</span>
+  <h4>실제 주물공장 시나리오 mock 데이터 (UI 9종 기준)</h4>
+  <h4>products 9종 (option_pricing_json 포함)</h4>
+  <ul>
+    <li>원형 R-D450/500/550, 사각 S-400/450/500, 타원 O-450/500/550</li>
+    <li>두께(25~40mm) + 하중등급(B125~F900) 가격표</li>
+  </ul>
+
+  <h4>orders +20건 (실현장 스토리)</h4>
+  <ul>
+    <li>공공기관 12 — LH / 한국전력 / 한국수자원 / 한국도로 / KT / 인천공항 / 부산항만 / 한강유역환경청</li>
+    <li>건설사 8 — 현대 / GS / 삼성물산 / 포스코 / DL이앤씨 / 대우 / SK에코플랜트 / 광원 · 세우 · 제일 · 한소</li>
+    <li>상태: approved 9, in_production 6, production_completed 2, completed 1, pending 1 (+기존 23)</li>
+  </ul>
+
+  <h4>order_details +20건</h4>
+  <ul>
+    <li>material: FC200/FC250/GCD450/GCD500</li>
+    <li>하중등급: EN124 B125~F900</li>
+    <li>후처리 조합: 표면 연마 / 방청 코팅 / 아연 도금 / 로고 각인</li>
+  </ul>
+
+  <h4>work_orders +6건 · items +712건</h4>
+  <ul>
+    <li>cur_stage 분포: QUE 30% → MM/DM/TR_PP/PP/IP/TR_LD/SH 다양</li>
+    <li>curr_res: ARM-001~003 / AMR-001~003 무작위</li>
+  </ul>
+
+  <h4>transport_tasks +10 · outbound_orders +5 · alerts 교체</h4>
+  <ul>
+    <li>alerts 삭제 162건 (PHASE8-*, UX1-*, ALT-* SLA 테스트)</li>
+    <li>alerts 신규 20건 (실현장: 용해로 온도/가스압, AMR 배터리/도킹, Cobot 통신/토크, 카메라 blur/packet loss)</li>
+  </ul>
+
+  <h4>안전장치</h4>
+  <ul>
+    <li>git tag <code>pre-seed-20260415-0917</code> (롤백 기준점)</li>
+    <li>PG dump <code>/tmp/casting-bak/pre_seed_20260415_0917.dump</code></li>
+    <li>단일 BEGIN/COMMIT 트랜잭션 (실패 시 자동 롤백)</li>
+    <li><code>ON CONFLICT DO NOTHING</code> (멱등 재실행)</li>
+  </ul>
+
+  <h4>최종 DB 상태</h4>
+  <table>
+    <tr><th>테이블</th><th>건수</th><th>변화</th></tr>
+    <tr><td>products</td><td>13</td><td>UI 9 + 기존 manhole/grating 4</td></tr>
+    <tr><td>orders</td><td>43</td><td>+20</td></tr>
+    <tr><td>order_details</td><td>43</td><td>+20</td></tr>
+    <tr><td>work_orders</td><td>9</td><td>+6</td></tr>
+    <tr><td>items</td><td>862</td><td>+712</td></tr>
+    <tr><td>transport_tasks</td><td>15</td><td>+10</td></tr>
+    <tr><td>outbound_orders</td><td>10</td><td>+5</td></tr>
+    <tr><td>alerts</td><td>25</td><td>-162 테스트 + 20 신규</td></tr>
+  </table>
+
+  <h4>복원 방법</h4>
+  <pre>pg_restore -d "$DATABASE_URL" --clean --if-exists \
+  /tmp/casting-bak/pre_seed_20260415_0917.dump
+# 또는
+git checkout pre-seed-20260415-0917</pre>
+</div>
+
+<h2 id="day2-incident">Day 2 · SLA 폭주 사고 & 정정 <span class="chip bad">Incident</span></h2>
+
+<div class="bad-box">
+<b>증상:</b> PyQt 앱 CPU 98.6%, 마우스 프로그레스 계속 돌아감<br>
+<b>원인:</b> seed 의 <code>items.mfg_at</code> 을 <code>NOW() - random() * 48h</code> 로 설정 → 605 item 전량 SLA 초과 상태<br>
+<b>연쇄 효과:</b> 매 1s polling 마다 수백 alerts INSERT → AlertStreamWorker 가 수백 이벤트 PyQt 에 push → 토스트/모달/셀 갱신 폭주 → GUI 스레드 포화
+</div>
+
+<div class="commit">
+  <span class="hash">5732579</span><span class="time">04-15 10:30</span>
+  <h4>긴급 조치 + 재발 방지</h4>
+  <h4>긴급</h4>
+  <ul>
+    <li><code>UPDATE items SET mfg_at = NOW() - random() * INTERVAL '30 seconds'</code> (605건)</li>
+    <li>alerts 660건 stage_timeout DELETE</li>
+    <li>PyQt PID 12172 kill + 재기동 → CPU 2.5% 정상화</li>
+    <li>Mgmt 서버 재기동 (<code>_stage_started_mono</code> 캐시 리셋)</li>
+  </ul>
+  <h4>재발 방지</h4>
+  <ul>
+    <li><code>seed_realistic.sql</code> 수정: NOW() ± 30초 랜덤으로 변경</li>
+    <li>주석에 <span class="warn">⚠️</span> 경고 추가 (과거 시각 금지 + 사고 참조)</li>
+    <li>메모리 <code>feedback_seed_mfg_at.md</code> 등록 (재발 방지 규칙)</li>
+  </ul>
+</div>
+
+<h2 id="day2-ai">Day 2 · AI Server SSH 업로드 (Phase 1) <span class="chip">mgmt</span></h2>
+
+<div class="note">
+사용자 입력: <b>AI Server 100.66.177.119 / team2 / 환경변수 비밀번호</b>. 용도 = 검사 카메라 이미지 학습.
+</div>
+
+<div class="commit">
+  <span class="hash">c72af97</span><span class="time">04-15 11:40</span>
+  <h4>services/ai_client.py (AIUploader, paramiko lazy)</h4>
+  <ul>
+    <li><code>AIServerConfig.from_env()</code>: <code>MGMT_AI_HOST/USER/PASS/SSH_KEY/PORT/REMOTE_DIR</code></li>
+    <li><code>AIUploader</code>: SSH 키 우선 → 없으면 password. paramiko 미설치 환경에서도 import 가능 (lazy)</li>
+    <li><code>upload_image(local, remote_subdir, remote_filename)</code>: <code>mkdir -p</code> + sftp.put</li>
+    <li><code>health_check()</code>: <code>echo ok</code> 왕복 — 진단 용도</li>
+    <li><code>tests/test_ai_client.py</code>: 6 tests</li>
+    <li>검증: <code>health=True</code>, <code>_probe/20260415/hello_from_mgmt.jpg</code> 업로드 성공</li>
+  </ul>
+</div>
+
+<div class="commit">
+  <span class="hash">8b03177</span><span class="time">04-15 12:08</span>
+  <h4>Jetson Orin NX SSH env 슬롯</h4>
+  <ul>
+    <li><code>MGMT_JETSON_HOST/USER/PORT/PASS/SSH_KEY</code> 문서화</li>
+    <li>Image Publishing 은 gRPC push 이므로 SSH 는 배포/진단용</li>
+    <li>접속 검증: <code>jetson@100.77.62.67</code> JetPack R35.5 (Ubuntu 20.04 aarch64), Python 3.8</li>
+  </ul>
+</div>
+
+<h2 id="day2-pipeline">Day 2 · 이미지 파이프라인 구현 <span class="chip">image-pipeline</span></h2>
+
+<h3>설계 결정 (Q1~Q3)</h3>
+<table>
+  <tr><th>#</th><th>쟁점</th><th>선택</th><th>근거</th></tr>
+  <tr><td>Q1</td><td>캡처 트리거</td><td>이벤트 기반 (IP 전이 시)</td><td>학습 라벨링 정확도, 불필요 업로드 제거</td></tr>
+  <tr><td>Q2</td><td>업로드 선별</td><td>전량 전송</td><td>초기 데이터셋 구축 단계</td></tr>
+  <tr><td>Q3</td><td>전송 타이밍</td><td>배치 (10~30s)</td><td>네트워크 효율 + 장애 복원</td></tr>
+</table>
+
+<h3>최종 데이터 플로우</h3>
+<div class="ascii">
+[Jetson C920]                      [Mgmt Server]                    [AI Server]
+ 1280x720 JPEG @ 2Hz ──gRPC──▶  image_sink.push (latest 1 frame)
+                                       │
+                   items PP→IP 전이 감지│ execution_monitor._tick
+                                       ▼
+                            image_forwarder.snapshot()
+                            /tmp/casting-image-spool/*.jpg+json
+                                       │ batch flush (10s)
+                                       ▼
+                            AIUploader.upload_image() ──SSH/SCP──▶ /home/team2/datasets/
+                                                                    inspection/CAM-INSP-01/
+                                                                    {YYYY-MM-DD}/*.jpg
+</div>
+
+<div class="commit">
+  <span class="hash">fd40071</span><span class="time">04-15 12:26</span>
+  <h4>Jetson publisher + image_forwarder + execution_monitor 훅</h4>
+
+  <h4>Jetson publisher (신규 <code>jetson_publisher/</code>)</h4>
+  <ul>
+    <li><code>publisher.py</code> — OpenCV <code>VideoCapture(0, CAP_V4L2)</code> + JPEG 인코딩 + gRPC client streaming</li>
+    <li>exponential backoff 재연결 (1 → 30s)</li>
+    <li><code>requirements.txt</code>: grpcio 1.48~1.60, protobuf 3.20.3~5, numpy</li>
+    <li><code>env.example</code>: JETSON_CAMERA_ID/INDEX/WIDTH/HEIGHT/FPS/JPEG_QUALITY + MANAGEMENT_GRPC_*</li>
+    <li><code>systemd/casting-image-publisher.service</code> (User=jetson, Restart=always)</li>
+  </ul>
+
+  <h4>image_forwarder (신규 <code>services/image_forwarder.py</code>)</h4>
+  <ul>
+    <li><code>ForwarderConfig.from_env()</code> — spool_dir / batch_interval / batch_max / spool_max</li>
+    <li><code>snapshot(item_id, stage, camera_id)</code> — sink.latest → JPEG + JSON 메타 작성</li>
+    <li>파일명 스키마: <code>{cam}_{stage}_item{id}_{iso}_seq{n}.jpg</code></li>
+    <li><code>flush()</code> — AIUploader 로 업로드, 성공 시 로컬 파일 삭제</li>
+    <li>백그라운드 thread — <code>batch_interval_sec</code> 주기 flush</li>
+    <li>스풀 한도 초과 시 oldest drop, 업로드 실패는 스풀 보존 (재시도)</li>
+    <li><code>tests/test_image_forwarder.py</code>: 8 tests (fake sink/uploader)</li>
+  </ul>
+
+  <h4>execution_monitor 훅</h4>
+  <ul>
+    <li><code>ExecutionMonitor(image_forwarder=...)</code> 인자 추가</li>
+    <li>stage 전이 중 → IP 로 변경 시 <code>image_forwarder.snapshot()</code> 호출</li>
+  </ul>
+
+  <h4>server.py wiring</h4>
+  <ul>
+    <li><code>_build_image_forwarder()</code> — AI env 있을 때만 활성, 없으면 None (비활성 모드 기동)</li>
+  </ul>
+
+  <h4>신규 환경변수</h4>
+  <pre>MGMT_IMAGE_SPOOL_DIR=/tmp/casting-image-spool
+MGMT_IMAGE_BATCH_SEC=30
+MGMT_IMAGE_BATCH_MAX=50
+MGMT_IMAGE_SPOOL_MAX_FILES=5000
+MGMT_IP_CAMERA_ID=CAM-INSP-01</pre>
+</div>
+
+<h2 id="day2-jetson">Day 2 · Jetson 실배포 <span class="chip ok">active</span></h2>
+
+<h3>배포 스크립트 <code>deploy.py</code></h3>
+<p>sshpass (Homebrew tap 제거) 의존을 피하기 위해 paramiko 기반 Python 배포 스크립트로 대체.</p>
+<ul>
+  <li>SSH 키 또는 평문 비밀번호 env 분기</li>
+  <li>SFTP 로 디렉터리 재귀 업로드 (__pycache__, deploy.py 제외)</li>
+  <li><code>--install</code> 옵션: env.example→env 복사, pip 의존성 설치, systemd 유닛 등록·enable</li>
+  <li><code>--restart</code> 옵션: 서비스 재시작 + 상태 확인</li>
+</ul>
+
+<h3>배포 결과</h3>
+<pre>&gt; python3 jetson_publisher/deploy.py --install
+connecting jetson@100.77.62.67:22 (password)
+$ mkdir -p /home/jetson/casting-image-publisher
+  → README.md, env.example, publisher.py, requirements.txt,
+    systemd/..., generated/management_pb2.py, generated/management_pb2_grpc.py
+$ pip install --user -r requirements.txt
+  → grpcio 1.59.5, protobuf 4.25.9 installed
+$ python3 -c "import cv2" → HAVE_CV2 (python3-opencv apt 이미 있음)
+$ sudo cp systemd/casting-image-publisher.service /etc/systemd/system/
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable casting-image-publisher.service ✅</pre>
+
+<h3>Jetson 측 env 자동 설정</h3>
+<pre>sed -i 's|^MANAGEMENT_GRPC_HOST=.*|MANAGEMENT_GRPC_HOST=100.77.239.25|' ~/casting-image-publisher/env</pre>
+
+<h3>USB 카메라 확인</h3>
+<pre>$ ls /dev/video*
+crw-rw----+ /dev/video0, /dev/video1
+
+$ lsusb
+Logitech, Inc. OrbiCam (046d:0892)    # HD Pro Webcam C920
+
+$ v4l2-ctl --list-devices
+HD Pro Webcam C920 (usb-3610000.xhci-2.1):
+  /dev/video0
+
+$ python3 -c "import cv2; cap=cv2.VideoCapture(0, cv2.CAP_V4L2); \
+              print(cap.isOpened(), cap.read()[0], cap.read()[1].shape)"
+True True (480, 640, 3)</pre>
+
+<h2 id="day2-troubleshoot">Day 2 · 해결한 이슈 6건</h2>
+<table>
+  <thead><tr><th>#</th><th>증상</th><th>원인</th><th>조치</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>PyQt CPU 98%</td><td>seed mfg_at 48h 과거 → SLA 전량 초과</td><td>NOW()±30s 로 수정 (<code>5732579</code>)</td></tr>
+    <tr><td>2</td><td>Jetson ImportError <code>runtime_version</code></td><td>pb2 gencode 6.31 / runtime 4.25 불일치</td><td>protobuf 5.29 업그레이드</td></tr>
+    <tr><td>3</td><td>runtime VersionError 6.31.1 / 5.29.6</td><td>protobuf 6 은 Python 3.8 미지원</td><td>grpcio-tools 1.67 로 재생성 (gencode 5.x)</td></tr>
+    <tr><td>4</td><td>grpcio&gt;=1.69 요구 에러</td><td>최신 grpcio-tools 산출물이 런타임 버전 검사</td><td><b>grpcio-tools 1.59.3</b> 고정 재생성</td></tr>
+    <tr><td>5</td><td>snapshot 2건 중복</td><td>서버 인스턴스 2개 동시 실행 + (초기) dedup 부재</td><td>(item_id, stage) lock+TTL 60s dedup 도입 + 잔류 프로세스 kill</td></tr>
+    <tr><td>6</td><td>sshpass 미설치 (brew tap 제거)</td><td>homebrew tap 소실</td><td>paramiko 기반 <code>deploy.py</code> 로 전환</td></tr>
+  </tbody>
+</table>
+
+<h3>고정된 의존성 조합 (Jetson)</h3>
+<div class="warn-box">
+<b>proto 재생성 시 반드시 <code>grpcio-tools 1.59.3</code> 사용.</b><br>
+Jetson (aarch64 Python 3.8) 은 grpcio 1.59.5 가 wheel 최신. 1.67+ 로 생성하면 gencode 런타임 버전 검사 실패.
+</div>
+<pre># 재생성 전용 venv (1회만)
+python3.12 -m venv /tmp/protogen_venv
+/tmp/protogen_venv/bin/pip install 'setuptools&lt;81' 'grpcio-tools==1.59.3' 'protobuf&gt;=4.21.6,&lt;5'
+
+# 산출물 + relative import 패치 + 배포
+/tmp/protogen_venv/bin/python -m grpc_tools.protoc -I proto \
+  --python_out=/tmp/pbout --grpc_python_out=/tmp/pbout proto/management.proto
+sed -i '' 's/^import management_pb2 as management__pb2/from . import management_pb2 as management__pb2/' \
+  /tmp/pbout/management_pb2_grpc.py
+cp /tmp/pbout/*.py jetson_publisher/generated/
+python3 jetson_publisher/deploy.py --restart</pre>
+
+<h2 id="day2-e2e">Day 2 · End-to-End 검증</h2>
+
+<div class="commit">
+  <span class="hash">b30a517</span><span class="time">04-15 13:43</span>
+  <h4>Jetson 실배포 완료 + snapshot dedup + proto 호환</h4>
+</div>
+
+<h3>E2E 타임라인 (item 156)</h3>
+<table>
+  <tr><th>시각</th><th>이벤트</th></tr>
+  <tr><td>13:24:52.232</td><td>snapshot ok — <code>CAM-INSP-01_IP_item156_20260415T042452.176793+0000_seq103.jpg</code> (84,454 B)</td></tr>
+  <tr><td>13:24:56.564</td><td>AI upload ok → team2@100.66.177.119:/home/team2/datasets/inspection/CAM-INSP-01/2026-04-15/...seq103.jpg</td></tr>
+  <tr><td>13:24:56.906</td><td>flush ok: 2 uploaded, 스풀 비움</td></tr>
+</table>
+
+<h3>E2E 타임라인 (dedup 검증 — item 158)</h3>
+<table>
+  <tr><th>시각</th><th>이벤트</th></tr>
+  <tr><td>13:43:04.580</td><td>snapshot ok — item158 IP seq34 (125,333 B) <b>— 1회만 발생</b></td></tr>
+</table>
+<p class="muted">Dedup 전 item 156 은 2회 (bg+stream 각각) → dedup 도입 후 item 158 은 1회만 발생. 검증 완료.</p>
+
+<h3>AI Server 디스크 확인</h3>
+<pre>$ ssh team2@100.66.177.119 "ls -la /home/team2/datasets/inspection/CAM-INSP-01/2026-04-15/"
+-rw-rw-r-- 1 team2 team2 84454 Apr 15 13:24 CAM-INSP-01_IP_item156_...seq103.jpg
+-rw-rw-r-- 1 team2 team2 84426 Apr 15 13:24 CAM-INSP-01_IP_item156_...seq104.jpg
+-rw-rw-r-- 1 team2 team2 125333 Apr 15 13:43 CAM-INSP-01_IP_item158_...seq34.jpg</pre>
+
+<!-- ================================================================ -->
+<!-- APPENDIX                                                          -->
+<!-- ================================================================ -->
+<h2 id="architecture">부록 A · 최종 아키텍처</h2>
+<div class="ascii">
+                          ┌────────────────────────────┐
+                          │ PostgreSQL 16 + TimescaleDB│
+                          │    100.107.120.14:5432     │
+                          │   smartcast_robotics/team2 │
+                          └──────────┬─────────────────┘
+                                     │
+                 ┌───────────────────┼────────────────────────┐
+                 │ (공유 DB)                                    │
+   ┌─────────────▼────────────┐              ┌────────────────▼─────────────┐
+   │ Management Service       │              │ Interface Service (FastAPI)   │
+   │ backend/management       │              │ backend/app                   │
+   │ Mac 100.77.239.25:50051  │              │ Mac 100.77.239.25:8000        │
+   │ gRPC + mTLS (opt)        │              │ HTTP/REST + /ws/dashboard     │
+   │                          │              │                               │
+   │ services/                │              │ Admin/Customer 웹 전용          │
+   │  ├ task_manager          │              └───────────────────────────────┘
+   │  ├ task_allocator                                       ▲
+   │  ├ traffic_manager (Dijkstra+Yield)                    │
+   │  ├ execution_monitor (SLA+alerts+adaptive)              │ HTTP
+   │  ├ robot_executor → adapters/                           │
+   │  │   ├ ros2_adapter   (AMR-*/ARM-*)                    │
+   │  │   └ mqtt_adapter   (CONV-*/ESP-*)                   │
+   │  ├ image_sink (latest frame)                           │
+   │  ├ image_forwarder (spool + batch upload)             ┌─▼────┐
+   │  └ ai_client (SSH/SCP)                                │ 웹 UI │
+   └────────┬─────────────────────────────────────────────┘└──────┘
+            │ gRPC                       ┌────────────────▶   │
+            │ :50051                     │ SSH/SCP            │
+   ┌────────▼──────────┐          ┌─────▼────────────┐        │
+   │ PyQt Monitoring   │          │ AI Server        │        │
+   │ monitoring/       │          │ 100.66.177.119   │        │
+   │ Mac (개발) +      │          │ team2 · /home/.. │        │
+   │ Factory Op PC(prod)│          │ inspection/      │        │
+   └─────┬─────────────┘          └──────────────────┘        │
+         │  ItemStreamWorker                                   │
+         │  AlertStreamWorker                                  │
+         │  StartProductionWorker                              │
+         │  management_client (gRPC)                           │
+         │                                                     │
+         │                                                     │
+         │                     ┌──────────────────────────┐   │
+         │         ┌────MQTT───│ HW Control (ESP32 conv.)  │   │
+         │         │            └──────────────────────────┘   │
+         │         │                                            │
+         │   ┌─────▼──────────────────────────────────────┐    │
+         │   │ mosquitto (인증 모드 · S-002)                │    │
+         │   └───────────────────────────────────────────┬┘    │
+         │                                              │      │
+         │                                              ▼      │
+         │                     ┌──────────────────────────┐   │
+         │         ┌───ROS2────│ AMR-* RPi4                │   │
+         │         │            ├──────────────────────────┤   │
+         │         │            │ ARM-* RPi5                │   │
+         │         │            └──────────────────────────┘   │
+         │         │                                            │
+         ▼         ▼                                            │
+   ┌──────────────────────────────────────────────────────────┤
+   │ Jetson Orin NX 100.77.62.67                              │
+   │ jetson_publisher/ (systemd)                              │
+   │   USB Webcam C920 → JPEG @ 2Hz → gRPC PublishFrames ─────┘
+   └──────────────────────────────────────────────────────────┘
+</div>
+
+<h2 id="env-vars">부록 B · 환경변수 전체표</h2>
+<table>
+  <thead><tr><th>변수</th><th>기본</th><th>용도</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATABASE_URL</code></td><td>(필수)</td><td>PG 연결 URL. 없으면 fail-fast</td></tr>
+    <tr><td><code>MANAGEMENT_GRPC_HOST</code></td><td><code>0.0.0.0</code></td><td>gRPC bind</td></tr>
+    <tr><td><code>MANAGEMENT_GRPC_PORT</code></td><td><code>50051</code></td><td>gRPC port</td></tr>
+    <tr><td><code>MGMT_GRPC_TLS_ENABLED</code></td><td><code>0</code></td><td>1 = mTLS 활성 (S-001)</td></tr>
+    <tr><td><code>MGMT_TLS_CERT_DIR</code></td><td><code>./certs</code></td><td>cert 디렉터리</td></tr>
+    <tr><td><code>MGMT_TLS_REQUIRE_CLIENT_CERT</code></td><td><code>1</code></td><td>0 = server-only TLS</td></tr>
+    <tr><td><code>MGMT_MQTT_HOST/PORT/QOS</code></td><td>localhost/1883/1</td><td>mosquitto</td></tr>
+    <tr><td><code>MGMT_MQTT_USER/PASS</code></td><td>(미설정)</td><td>S-002 인증</td></tr>
+    <tr><td><code>MGMT_MQTT_LEGACY_CONVEYOR</code></td><td><code>0</code></td><td>1 = <code>conveyor/{id}/cmd</code> 동시 publish</td></tr>
+    <tr><td><code>MGMT_ROS2_ENABLED</code></td><td><code>0</code></td><td>RPi 배포 시 1</td></tr>
+    <tr><td><code>MGMT_ADAPTIVE_POLLING</code></td><td><code>1</code></td><td>P-001 adaptive interval</td></tr>
+    <tr><td><code>MGMT_POLL_QUIET_CYCLES</code></td><td><code>5</code></td><td>backoff 트리거</td></tr>
+    <tr><td><code>MGMT_POLL_BACKOFF_FACTOR</code></td><td><code>2.0</code></td><td>×2 증가</td></tr>
+    <tr><td><code>MGMT_MAX_POLL_INTERVAL_SEC</code></td><td><code>8.0</code></td><td>interval 상한</td></tr>
+    <tr><td><code>MGMT_SLA_{stage}</code></td><td>(기본값표 참조)</td><td>stage 별 SLA override</td></tr>
+    <tr><td><code>MGMT_ALERT_DEDUP_TTL_SEC</code></td><td><code>300</code></td><td>SLA alert dedup</td></tr>
+    <tr><td><code>MGMT_AI_HOST/USER/PORT</code></td><td>22</td><td>AI Server SSH 대상</td></tr>
+    <tr><td><code>MGMT_AI_PASS / SSH_KEY</code></td><td>(.env.local)</td><td>인증 수단</td></tr>
+    <tr><td><code>MGMT_AI_REMOTE_DIR</code></td><td>/home/team2/datasets/inspection</td><td>업로드 베이스</td></tr>
+    <tr><td><code>MGMT_JETSON_HOST/USER/PORT/PASS/SSH_KEY</code></td><td></td><td>Jetson 배포·진단용</td></tr>
+    <tr><td><code>MGMT_IMAGE_SPOOL_DIR</code></td><td>/tmp/casting-image-spool</td><td>스풀</td></tr>
+    <tr><td><code>MGMT_IMAGE_BATCH_SEC</code></td><td><code>30</code></td><td>flush 주기</td></tr>
+    <tr><td><code>MGMT_IMAGE_BATCH_MAX</code></td><td><code>50</code></td><td>1회 flush 한도</td></tr>
+    <tr><td><code>MGMT_IMAGE_SPOOL_MAX_FILES</code></td><td><code>5000</code></td><td>스풀 한도</td></tr>
+    <tr><td><code>MGMT_IP_CAMERA_ID</code></td><td><code>CAM-INSP-01</code></td><td>IP 스냅샷 대상</td></tr>
+    <tr><td><code>CASTING_WS_ENABLED</code></td><td><code>0</code></td><td>PyQt WebSocket 미사용 (V6)</td></tr>
+  </tbody>
+</table>
+
+<h2 id="commits">부록 C · 전체 커밋 인덱스 (28건)</h2>
+<h3>2026-04-14 (21)</h3>
+<table>
+  <tr><th>Hash</th><th>제목</th></tr>
+  <tr><td><code>b50fb5c</code></td><td>Confluence 팩트 자동 동기화 (2026-04-14)</td></tr>
+  <tr><td><code>fcfa15d</code></td><td>맨홀뚜껑 제품군 30종 + 카테고리별 이미지</td></tr>
+  <tr><td><code>403e189</code></td><td>product.md + workflow + state diagram</td></tr>
+  <tr><td><code>474c4fa</code></td><td>제품 카탈로그 30종 → 9종 축소</td></tr>
+  <tr><td><code>3c8e6ec</code></td><td>PyQt UX + 생산 개시 버튼 + 성능 최적화</td></tr>
+  <tr><td><code>87d5274</code></td><td>V6 Phase 1~4 (gRPC 분리 + PG 단독)</td></tr>
+  <tr><td><code>33a7f6f</code></td><td>Phase 5 어댑터 분리 + Image Publisher</td></tr>
+  <tr><td><code>df0ec7c</code></td><td>Phase 6 Traffic Manager</td></tr>
+  <tr><td><code>39b482f</code></td><td>Phase 7 Execution Monitor (SLA + alerts)</td></tr>
+  <tr><td><code>4056a7f</code></td><td>Phase 8 WebSocket 단종</td></tr>
+  <tr><td><code>9108bc0</code></td><td>docs sync (product/structure/tech)</td></tr>
+  <tr><td><code>36ea6d0</code></td><td>codemaps 5종</td></tr>
+  <tr><td><code>2991e9d</code></td><td>@MX 태그 35개</td></tr>
+  <tr><td><code>d4783ac</code></td><td>pytest 30/30 pass</td></tr>
+  <tr><td><code>0dcbc9b</code></td><td>gitignore pytest artifacts</td></tr>
+  <tr><td><code>aec0b93</code></td><td>v6_review.md 12 findings</td></tr>
+  <tr><td><code>091fa10</code></td><td>UX-001 critical 모달</td></tr>
+  <tr><td><code>5a9dff3</code></td><td>Q-002 PyQt 비동기 RPC</td></tr>
+  <tr><td><code>d554758</code></td><td>S-001 gRPC mTLS</td></tr>
+  <tr><td><code>ddc514e</code></td><td>S-002 MQTT 인증</td></tr>
+  <tr><td><code>c7f23f6</code></td><td>P-001 adaptive polling</td></tr>
+</table>
+
+<h3>2026-04-15 (7+)</h3>
+<table>
+  <tr><th>Hash</th><th>제목</th></tr>
+  <tr><td><code>9629612</code></td><td>Confluence 자동 동기화 (2026-04-15)</td></tr>
+  <tr><td><code>39cfb80</code></td><td>실 주물공장 mock 데이터 (9종 + 862 items)</td></tr>
+  <tr><td><code>5732579</code></td><td>items.mfg_at SLA 폭주 사고 정정</td></tr>
+  <tr><td><code>c72af97</code></td><td>AI Server SSH 업로드 클라이언트 (Phase 1)</td></tr>
+  <tr><td><code>8b03177</code></td><td>Jetson Orin NX SSH env 슬롯</td></tr>
+  <tr><td><code>fd40071</code></td><td>Jetson → Server → AI Server 파이프라인</td></tr>
+  <tr><td><code>b30a517</code></td><td>Jetson 실배포 완료 + dedup + proto 호환</td></tr>
+  <tr><td><code>dc7617d</code></td><td>worklog HTML 2 파일</td></tr>
+</table>
+
+<h2 id="pending">부록 D · 대기/예정 항목</h2>
+
+<div class="warn-box">
+<b>HW MQTT 체인 (대기)</b><br>
+Management Service → HW Control (Conveyor ESP32) → Image Publishing (Jetson) 을 MQTT 로 엮는 안은 아직 확정 전. 현재 Jetson 은 <b>gRPC client streaming</b> 만 사용. 사용자 확정 전까지 아키텍처·코드 변경 제안 없음.
+</div>
+
+<h3>기타 대기 항목</h3>
+<ul>
+  <li><b>S-003 PG 비밀번호 vault</b> (개발 중 평문 허용 정책, 프로덕션 배포 직전 일괄)</li>
+  <li><b>Phase 2 AI 추론 gRPC 클라이언트</b> (AI Server 엔드포인트 확정 후)</li>
+  <li><b>Management Service 배치 PC 확정</b> — 현재는 Mac 에서 실행, 프로덕션은 Factory Operator PC 또는 별도 Linux 소형 서버</li>
+  <li><b>ROS2 어댑터 활성화</b> — RPi4/RPi5 배포 + <code>rclpy</code> 설치 + <code>MGMT_ROS2_ENABLED=1</code></li>
+  <li><b>Coverage 보강</b> — task_manager / execution_monitor / mqtt_adapter / image_sink / robot_executor</li>
+</ul>
+
+<footer>
+작성: 2026-04-15 · 커밋 범위 b50fb5c → dc7617d · 작업자: ibkim · Claude Code 지원<br>
+경로: <code>docs/worklog/2026-04-14_15_full_report.html</code> · <a href="./index.html">인덱스</a> · <a href="./2026-04-14_v6_migration.html">요약(Day1)</a> · <a href="./2026-04-15_image_pipeline.html">요약(Day2)</a>
+</footer>
+
+</main>
+</div>
+</body>
+</html>

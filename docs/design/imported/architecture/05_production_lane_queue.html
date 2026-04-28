@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05. Production Lane Queue</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Queue Layer</div>
+      <h1>05. Production Lane Queue — 생산 Lane Queue<span class="badge queue">Queue</span></h1>
+      <div class="subtitle">
+        capacity = 1 · 순차 처리 · 우선순위 동일 시 FIFO · 1개 완료 후 다음 진입
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">왜 capacity=1인가</a></li>
+        <li><a href="#s3">자료구조</a></li>
+        <li><a href="#s4">Priority Queue 알고리즘</a></li>
+        <li><a href="#s5">상태 전이</a></li>
+        <li><a href="#s6">구현 스케치</a></li>
+        <li><a href="#s7">동시성 처리</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Production Lane Queue</strong>는 신규 주조 생산이 필요한 work_order들의 대기열입니다. <strong>한 번에 하나의 주조만</strong> 진행 가능하므로 엄격한 순차 큐로 관리됩니다.</p>
+
+      <h3>1.1 역할</h3>
+      <ul>
+        <li>Scheduler에서 넘어온 생산 작업을 <strong>우선순위 + FIFO</strong> 순서로 정렬</li>
+        <li>한 번에 정확히 <strong>1개</strong>만 active (capacity=1)</li>
+        <li>현재 진행 중인 작업이 완료/실패되어야 다음으로 승격</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 왜 capacity=1인가</h2>
+      <p>공장에 <strong>용해로 1기, 조형기 1기, 주탕 로봇 1대</strong>만 있으면 동시에 2개 주조 불가능. 물리 제약 = capacity 1.</p>
+
+      <div class="note info">
+        <strong>만약 용해로 2기라면?</strong> capacity=2로 증가 가능. 이 경우 lane을 여러 개 운영 (production_A, production_B) 또는 capacity를 parametrize.
+      </div>
+
+      <h3>2.1 물리 자원 분석</h3>
+      <table>
+        <thead><tr><th>자원</th><th>수량</th><th>동시 사용?</th></tr></thead>
+        <tbody>
+          <tr><td>용해로 (Furnace)</td><td>1</td><td>불가 (1개 주조가 용해~주탕 점유)</td></tr>
+          <tr><td>조형기</td><td>1</td><td>불가</td></tr>
+          <tr><td>MyCobot280 (주탕)</td><td>1</td><td>불가 (용탕 공급 1곳)</td></tr>
+          <tr><td>냉각 영역</td><td>N (병렬)</td><td>가능 (여러 주물 동시 냉각)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn">
+        <strong>주의</strong>: <strong>냉각은 병렬이지만 주조 자체는 직렬</strong>입니다. Lane Queue의 capacity=1은 "주조 공정 진입"에 대한 것. 냉각 이후 단계는 별도 관리.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2>③ 자료구조</h2>
+
+      <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+<span class="kw">from</span> heapq <span class="kw">import</span> heappush, heappop
+
+@dataclass(order=<span class="kw">True</span>)
+<span class="kw">class</span> QueueEntry:
+    <span class="comment"># 낮은 값이 앞 (heapq는 min-heap)</span>
+    sort_key: tuple  <span class="comment"># (-priority_score, released_at, work_order_id)</span>
+    work_order_id: int = field(compare=<span class="kw">False</span>)
+    priority_score: int = field(compare=<span class="kw">False</span>)
+    released_at: datetime = field(compare=<span class="kw">False</span>)
+    lane: str = field(default=<span class="str">"production"</span>, compare=<span class="kw">False</span>)
+
+@dataclass
+<span class="kw">class</span> ProductionLaneQueue:
+    capacity: int = <span class="num">1</span>
+    queue: list = field(default_factory=list)  <span class="comment"># heapq</span>
+    active: QueueEntry | <span class="kw">None</span> = <span class="kw">None</span></pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ Priority Queue 알고리즘</h2>
+
+      <h3>4.1 Sort Key 구성</h3>
+      <p>heapq 삽입 시 튜플 <code>(-priority_score, released_at, work_order_id)</code>:</p>
+      <ul>
+        <li><strong>-priority_score</strong>: 점수 높을수록 앞 (음수 부호로 역전)</li>
+        <li><strong>released_at</strong>: 동점 시 먼저 release된 쪽 우선 (FIFO)</li>
+        <li><strong>work_order_id</strong>: 완전 동시인 경우 결정론적 tiebreak</li>
+      </ul>
+
+      <h3>4.2 동작 예시</h3>
+      <div class="ascii">Queue 상태 (높은 우선순위 → 낮은 우선순위):
+┌─────────────────────────────────────┐
+│ WO-103  score=78  released 10:15    │ ← front (pop 대상)
+│ WO-105  score=78  released 10:22    │ ← 동점이지만 나중에 released
+│ WO-101  score=62  released 09:50    │
+│ WO-107  score=45  released 11:00    │
+└─────────────────────────────────────┘
+
+active: WO-099 (running)
+
+WO-099 완료 → pop WO-103 → active
+Queue:
+┌─────────────────────────────────────┐
+│ WO-105  score=78                    │
+│ WO-101  score=62                    │
+│ WO-107  score=45                    │
+└─────────────────────────────────────┘</div>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 상태 전이</h2>
+      <div class="ascii">work_order.work_status 흐름:
+
+[Scheduler 결정]
+     │
+     ▼
+  released ──────► queued ──────► running ──────► completed / failed
+                    │                ▲                │
+                    │                │                │
+                    │          pop & activate         │
+                    │                │                │
+                    └─ (lane queue enqueue) ──────────┘</div>
+
+      <h3>5.1 전이 규칙</h3>
+      <ul>
+        <li><code>released → queued</code>: Scheduler의 <code>apply</code> 단계에서 lane 큐 삽입</li>
+        <li><code>queued → running</code>: active가 비면 pop + 승격</li>
+        <li><code>running → completed</code>: 모든 task 성공</li>
+        <li><code>running → failed</code>: 복구 불가, Execution Monitor 판단</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> ProductionLaneQueue:
+    CAPACITY = <span class="num">1</span>
+
+    <span class="kw">def</span> __init__(self, db_session):
+        self.db = db_session
+        self._heap: list[QueueEntry] = []
+        self._active: QueueEntry | <span class="kw">None</span> = <span class="kw">None</span>
+        self._lock = threading.RLock()
+
+    <span class="kw">def</span> enqueue(self, work_order) -&gt; <span class="kw">None</span>:
+        <span class="str">"""Scheduler가 우선순위 계산 후 호출."""</span>
+        <span class="kw">with</span> self._lock:
+            entry = QueueEntry(
+                sort_key=(
+                    -work_order.priority_score,
+                    work_order.released_at,
+                    work_order.work_order_id,
+                ),
+                work_order_id=work_order.work_order_id,
+                priority_score=work_order.priority_score,
+                released_at=work_order.released_at,
+            )
+            heappush(self._heap, entry)
+
+            <span class="comment"># DB 상태: released → queued</span>
+            work_order.work_status = <span class="str">"queued"</span>
+            work_order.queue_order = len(self._heap)
+            self.db.commit()
+
+            <span class="comment"># 즉시 activate 시도</span>
+            self._try_activate()
+
+    <span class="kw">def</span> _try_activate(self) -&gt; <span class="kw">None</span>:
+        <span class="str">"""active가 비어있으면 queue front를 올림."""</span>
+        <span class="kw">if</span> self._active <span class="kw">is not</span> <span class="kw">None</span>:
+            <span class="kw">return</span>  <span class="comment"># 이미 running 중</span>
+        <span class="kw">if</span> <span class="kw">not</span> self._heap:
+            <span class="kw">return</span>  <span class="comment"># 큐 비었음</span>
+
+        entry = heappop(self._heap)
+        self._active = entry
+
+        wo = self.db.query(WorkOrder).get(entry.work_order_id)
+        wo.work_status = <span class="str">"running"</span>
+        wo.actual_start_at = datetime.utcnow()
+        self.db.commit()
+
+        <span class="comment"># Workflow/Task Manager에게 task 분해 요청</span>
+        emit_event(<span class="str">"work_order.activated"</span>, work_order_id=wo.work_order_id)
+
+    <span class="kw">def</span> complete_active(self, success: bool) -&gt; <span class="kw">None</span>:
+        <span class="str">"""Execution Monitor가 호출."""</span>
+        <span class="kw">with</span> self._lock:
+            <span class="kw">if</span> self._active <span class="kw">is</span> <span class="kw">None</span>:
+                <span class="kw">return</span>
+            wo = self.db.query(WorkOrder).get(self._active.work_order_id)
+            wo.work_status = <span class="str">"completed"</span> <span class="kw">if</span> success <span class="kw">else</span> <span class="str">"failed"</span>
+            wo.actual_end_at = datetime.utcnow()
+            self.db.commit()
+            self._active = <span class="kw">None</span>
+            self._try_activate()  <span class="comment"># 다음 work_order 승격</span>
+
+    <span class="kw">def</span> peek(self) -&gt; list[dict]:
+        <span class="str">"""UI 조회용. 큐 스냅샷."""</span>
+        <span class="kw">with</span> self._lock:
+            <span class="kw">return</span> [
+                {
+                    <span class="str">"work_order_id"</span>: e.work_order_id,
+                    <span class="str">"priority_score"</span>: e.priority_score,
+                    <span class="str">"position"</span>: i + <span class="num">1</span>,
+                }
+                <span class="kw">for</span> i, e <span class="kw">in</span> enumerate(sorted(self._heap))
+            ]</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 동시성 처리</h2>
+
+      <h3>7.1 경쟁 조건</h3>
+      <ul>
+        <li><strong>동시 enqueue</strong>: 여러 release가 거의 동시 → lock으로 직렬화</li>
+        <li><strong>active 중 enqueue</strong>: 새 고우선순위 주문이 왔을 때 active를 중단할 것인가? → <strong>아니오</strong>. 진행 중 작업은 완료까지 보호 (preemption 금지)</li>
+        <li><strong>서버 재시작</strong>: DB에서 <code>queued</code>/<code>running</code> 레코드를 읽어 heap 재구성</li>
+      </ul>
+
+      <h3>7.2 영속성</h3>
+      <p>in-memory heap은 보조 인덱스일 뿐, <strong>진실 원천은 DB</strong>. 서버 재시작 시:</p>
+
+      <pre><span class="kw">def</span> recover_from_db(self):
+    self._heap.clear()
+    self._active = <span class="kw">None</span>
+
+    <span class="comment"># running 복구</span>
+    running = self.db.query(WorkOrder).filter_by(
+        lane=<span class="str">"production"</span>,
+        work_status=<span class="str">"running"</span>,
+    ).first()
+    <span class="kw">if</span> running:
+        self._active = QueueEntry(...)
+
+    <span class="comment"># queued 복구</span>
+    queued = self.db.query(WorkOrder).filter_by(
+        lane=<span class="str">"production"</span>,
+        work_status=<span class="str">"queued"</span>,
+    ).order_by(WorkOrder.queue_order).all()
+
+    <span class="kw">for</span> wo <span class="kw">in</span> queued:
+        heappush(self._heap, QueueEntry(...))</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="04_work_order_scheduler.html"><strong>04 Scheduler</strong></a>: enqueue 호출</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="07_workflow_task_manager.html"><strong>07 Workflow / Task Manager</strong></a>: active work_order 이벤트 수신 후 task 분해</li>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: <code>complete_active()</code> 호출</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="04_work_order_scheduler.html">
+          <div class="label">← 이전</div>
+          <div class="name">04. Work Order Scheduler</div>
+        </a>
+        <a href="06_shipment_lane_queue.html">
+          <div class="label">다음 →</div>
+          <div class="name">06. Shipment Lane Queue</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 05. Production Lane Queue · 2026-04-08</footer>
+  </div>
+</body>
+</html>

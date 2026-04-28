@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>04. DEVELOPMENT — SmartCast Robotics 프로젝트 문서</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2229;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --accent-2: #f0883e;
+  --ok: #56d364;
+  --warn: #d29922;
+  --ng: #f85149;
+  --purple: #bc8cff;
+  --cyan: #79c0ff;
+  --code-bg: #0d1117;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo",
+               "Noto Sans KR", "Segoe UI", sans-serif;
+  line-height: 1.7;
+  padding: 2rem 1rem 6rem;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 3rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.nav {
+  max-width: 1080px;
+  margin: 0 auto 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.nav a:hover { background: #24292f; }
+.nav a.current {
+  background: #1f6feb;
+  color: #fff;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #f0f6fc;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2rem; margin-top: 0; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; border-bottom: none; }
+h4 { font-size: 1.05rem; border-bottom: none; color: var(--cyan); }
+h5 { font-size: 0.98rem; border-bottom: none; color: var(--purple); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p { margin: 0.8em 0; }
+
+blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1.2em;
+  border-left: 4px solid var(--accent-2);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p { margin: 0.3em 0; }
+
+ul, ol {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+li { margin: 0.3em 0; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+
+code {
+  background: #24292f;
+  color: var(--cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.88em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+pre code {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.codehilite {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.1em 0;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.codehilite pre {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0.9em 1.2em;
+}
+
+/* pygments inline tokens (monokai-ish) */
+.codehilite .k, .codehilite .kd, .codehilite .kr { color: #ff7b72; }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sb,
+.codehilite .sc, .codehilite .se, .codehilite .si, .codehilite .sx { color: #a5d6ff; }
+.codehilite .c, .codehilite .c1, .codehilite .cm, .codehilite .cs { color: #8b949e; font-style: italic; }
+.codehilite .nf, .codehilite .nc, .codehilite .nt { color: #d2a8ff; }
+.codehilite .nb, .codehilite .bp { color: #79c0ff; }
+.codehilite .m, .codehilite .mi, .codehilite .mf { color: #f0883e; }
+.codehilite .o, .codehilite .ow { color: #ff7b72; }
+
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+
+table thead { background: var(--panel-2); }
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.55em 0.85em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #f0f6fc;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td { background: rgba(177, 186, 196, 0.04); }
+
+img { max-width: 100%; height: auto; border-radius: 6px; }
+
+strong { color: #f0f6fc; }
+
+.footer {
+  max-width: 1080px;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .container { padding: 1.5rem 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  table { font-size: 0.85em; }
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<a class="" href="README.html">00. 문서 인덱스</a>
+<a class="" href="01_PRD.html">01. PRD</a>
+<a class="" href="02_DESIGN.html">02. DESIGN</a>
+<a class="" href="03_PROCESS.html">03. PROCESS</a>
+<a class="current" href="04_DEVELOPMENT.html">04. DEVELOPMENT</a>
+<a class="" href="05_TRAINING.html">05. TRAINING</a>
+<a class="" href="06_MANUAL.html">06. MANUAL</a>
+</div>
+<main class="container">
+<h1 id="04">04. 개발 문서</h1>
+<blockquote>
+<p><strong>버전</strong>: V6 (2026-04-24)<br>
+<strong>대상 독자</strong>: 개발자 (프론트엔드 / 백엔드 / 펌웨어 / 데이터)<br>
+<strong>관련</strong>: <a href="./01_PRD.html">01_PRD.md</a>, <a href="./02_DESIGN.html">02_DESIGN.md</a></p>
+</blockquote>
+<hr>
+<h2 id="1">1. 기술 스택</h2>
+<h3 id="11-frontend-src">1.1 Frontend (<code>src/</code>)</h3>
+<ul>
+<li>Next.js <strong>16</strong> (App Router)</li>
+<li>React 19, TypeScript (strict mode 필수)</li>
+<li>Tailwind + shadcn/ui</li>
+<li>Three.js (3D 렌더 맵, 실험 단계)</li>
+<li>package manager: <code>pnpm</code> 또는 <code>npm</code></li>
+</ul>
+<h3 id="12-backend">1.2 Backend</h3>
+<ul>
+<li><strong>Interface Service</strong> (<code>backend/app/</code>): FastAPI + SQLAlchemy 2.0 + Pydantic</li>
+<li><strong>Management Service</strong> (<code>backend/management/</code>): grpcio + SQLAlchemy + asyncio</li>
+<li>Python <strong>3.12</strong> 강제 (PyQt5/grpcio macOS Apple Silicon 호환)</li>
+</ul>
+<h3 id="13-monitoring">1.3 Monitoring</h3>
+<ul>
+<li><code>monitoring/</code>: PyQt5 + grpcio + pg8000/psycopg2</li>
+<li>Python 3.12 venv 전용</li>
+</ul>
+<h3 id="14-firmware">1.4 Firmware</h3>
+<ul>
+<li><code>firmware/</code>: ESP32-S3 / ESP32 (Arduino framework)</li>
+<li>Arduino CLI 1.4.1 + ESP32 core 3.3.7</li>
+<li><code>micro_ros_arduino</code> (라이브러리 선택 사항)</li>
+</ul>
+<h3 id="15-jetson-publisher">1.5 Jetson Publisher</h3>
+<ul>
+<li><code>jetson_publisher/</code>: Python 3.x on Jetson Orin NX</li>
+<li>grpcio-tools 1.59.5 (protobuf 4.25.9 매칭)</li>
+<li>python-evdev (바코드 HID)</li>
+<li>ROS2 Jazzy</li>
+</ul>
+<h3 id="16-infra-tooling">1.6 Infra / Tooling</h3>
+<ul>
+<li>PostgreSQL 16 (로컬) / 18.3 (AWS RDS)</li>
+<li>Tailscale 메시 네트워크</li>
+<li>DBeaver Community (GUI)</li>
+<li>Docker (로컬 실험 한정)</li>
+<li>launchd (Confluence 동기화)</li>
+</ul>
+<hr>
+<h2 id="2">2. 개발 환경 준비</h2>
+<h3 id="21-macos-apple-silicon">2.1 macOS (Apple Silicon) 권장 설정</h3>
+<ol>
+<li><strong>Homebrew</strong>: <code>brew install node python@3.12 postgresql@16 tailscale</code></li>
+<li><strong>pnpm</strong>: <code>npm install -g pnpm</code></li>
+<li><strong>Tailscale 로그인</strong>: addineduteam2@ tailnet</li>
+<li><strong>DBeaver 설치</strong>: <code>brew install --cask dbeaver-community</code></li>
+</ol>
+<h3 id="22-python-312-venv">2.2 Python 3.12 venv</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backend/management
+python3.12<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="nb">cd</span><span class="w"> </span>../../monitoring
+python3.12<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</code></pre></div>
+
+<p><strong>주의</strong>: Python 3.14는 PyQt5 / grpcio 휠 미제공 → 3.12 고정.</p>
+<h3 id="23">2.3 프런트엔드</h3>
+<div class="codehilite"><pre><span></span><code>pnpm<span class="w"> </span>install
+cp<span class="w"> </span>.env.local.example<span class="w"> </span>.env.local<span class="w">  </span><span class="c1"># API_BASE 등</span>
+pnpm<span class="w"> </span>dev
+</code></pre></div>
+
+<h3 id="24-db">2.4 DB 접속 설정</h3>
+<p><code>backend/.env.local</code>:</p>
+<div class="codehilite"><pre><span></span><code>DATABASE_URL=postgresql+psycopg://team2:Addteam2!@100.107.120.14:5432/smartcast_robotics
+</code></pre></div>
+
+<p>AWS RDS 접속 (특별 요청 시):</p>
+<div class="codehilite"><pre><span></span><code>DATABASE_URL=postgresql+psycopg://postgres:team21234@teamdb.ct4cesagstqf.ap-northeast-2.rds.amazonaws.com:5432/Casting?sslmode=verify-full&amp;sslrootcert=/Users/ibkim/Downloads/dbeaver-drivers/global-bundle.pem
+</code></pre></div>
+
+<hr>
+<h2 id="3">3. 워크플로우</h2>
+<h3 id="31">3.1 브랜치 전략</h3>
+<ul>
+<li><code>main</code>: 안정 (프로덕션 배포 대상)</li>
+<li><code>feat/&lt;scope&gt;-&lt;desc&gt;</code>: 기능 브랜치 (예: <code>feat/v6-phase-c2-proxy</code>)</li>
+<li><code>fix/&lt;scope&gt;</code>: 버그 수정</li>
+<li><code>chore/&lt;scope&gt;</code>: 빌드/설정</li>
+<li><code>docs/&lt;scope&gt;</code>: 문서 전용</li>
+</ul>
+<h3 id="32-conventional-commits">3.2 Conventional Commits</h3>
+<div class="codehilite"><pre><span></span><code>&lt;type&gt;(&lt;scope&gt;): &lt;subject&gt;
+
+본문 (선택)
+
+Co-Authored-By: Claude Opus 4.7 (1M context) &lt;noreply@anthropic.com&gt;
+</code></pre></div>
+
+<p>Types: <code>feat</code>, <code>fix</code>, <code>refactor</code>, <code>perf</code>, <code>docs</code>, <code>test</code>, <code>chore</code>, <code>i18n</code><br>
+Scopes 예: <code>mgmt</code>, <code>bridge</code>, <code>amr</code>, <code>handoff</code>, <code>barcode</code>, <code>docs</code>, <code>tools</code>, <code>session</code></p>
+<h3 id="33">3.3 커밋 규칙</h3>
+<ul>
+<li><strong>기능 완료 시점</strong>에 자동 커밋 (feature/bugfix/refactor 완료 시)</li>
+<li><strong>Auto-push 금지</strong> — 사용자가 결정</li>
+<li>Atomic commits: 한 커밋은 한 목적만</li>
+<li>리팩토링과 기능 개발 분리</li>
+</ul>
+<h3 id="34-pr">3.4 PR 흐름</h3>
+<ol>
+<li>브랜치 생성 (예: <code>feat/xxx</code>)</li>
+<li>로컬 테스트 + lint + typecheck</li>
+<li>커밋 (conventional)</li>
+<li>Push → PR 생성 (gh CLI 권장)</li>
+<li>리뷰 + CI 통과 확인</li>
+<li>Squash-merge 기본</li>
+</ol>
+<h3 id="35-pr-squash">3.5 PR 체인 squash 패턴 (실전 경험)</h3>
+<p>base 의존 PR 체인 머지 시 자동 close → cherry-pick rebase + 새 PR 발급 패턴 (2026-04-19 DB v2 마이그레이션 경험).</p>
+<h3 id="36-moai-adk">3.6 MoAI-ADK 워크플로우</h3>
+<p>SPEC → Plan → Run → Sync:<br>
+- <code>/moai plan "설명"</code> → <code>manager-spec</code> 에이전트가 EARS 포맷 SPEC 생성<br>
+- <code>/moai run SPEC-XXX</code> → <code>manager-ddd</code> 또는 <code>manager-tdd</code> 가 구현<br>
+- <code>/moai sync SPEC-XXX</code> → <code>manager-docs</code> 가 문서 동기화</p>
+<p>자동 파이프라인 실행 예: <code>/moai</code> (자연어 라우팅) 또는 <code>/ultrareview</code> (교정 루프).</p>
+<hr>
+<h2 id="4-db">4. DB 운영 룰</h2>
+<h3 id="41-2026-04-24">4.1 2026-04-24 확정 정책</h3>
+<ul>
+<li><strong>평소 개발</strong>: 로컬 Tailscale <code>100.107.120.14:5432 / smartcast_robotics</code>, role <code>team2</code> (<code>Addteam2!</code>), 스키마 <code>public</code> (v2, 22 테이블)</li>
+<li><strong>특별 요청 시만</strong>: AWS RDS <code>teamdb.ct4cesagstqf.ap-northeast-2.rds.amazonaws.com:5432 / Casting</code>, role <code>postgres</code> (<code>team21234</code>), SSL <code>verify-full</code> 필수</li>
+<li><strong>로컬 <code>smartcast</code> 스키마</strong> (31 테이블 ERP 복사본) — 참조/실험용</li>
+<li>두 DB 스키마 <strong>호환 불가</strong> — 코드 재사용 금지</li>
+</ul>
+<h3 id="42-database_url-fail-fast">4.2 DATABASE_URL fail-fast</h3>
+<ul>
+<li>미설정 시 <code>backend/app/database.py</code> 에서 RuntimeError raise</li>
+<li>SQLite 폴백 <strong>완전 제거</strong> (2026-04-14 결정, SPEC-C3)</li>
+</ul>
+<h3 id="43">4.3 마이그레이션</h3>
+<ul>
+<li>Alembic 기반 (backend/alembic/)</li>
+<li>신규 컬럼 추가는 additive (NOT NULL은 default 동반)</li>
+<li>파괴적 변경은 별도 SPEC + 백업 선행</li>
+</ul>
+<h3 id="44">4.4 시드 데이터</h3>
+<ul>
+<li>마스터 데이터는 <code>backend/scripts/</code> 에 재현 가능한 스크립트로</li>
+<li>과거 시각 넣으면 ExecutionMonitor SLA 폭주 주의 (2026-04-15 사고) — <code>items.mfg_at</code> 은 <code>now() ±30초</code>만</li>
+</ul>
+<hr>
+<h2 id="5">5. 로컬 실행</h2>
+<h3 id="51-interface-service">5.1 Interface Service</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backend
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+uvicorn<span class="w"> </span>app.main:app<span class="w"> </span>--reload<span class="w"> </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8000</span>
+</code></pre></div>
+
+<h3 id="52-management-service">5.2 Management Service</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backend/management
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+python<span class="w"> </span>server.py<span class="w">  </span><span class="c1"># 기본 :50051</span>
+</code></pre></div>
+
+<p>환경 변수:<br>
+- <code>MGMT_ROS2_ENABLED=1</code>: ROS2 DDS 활성화<br>
+- <code>INTERFACE_PROXY_START_PRODUCTION=1</code>: SPEC-C2 Interface proxy 활성화</p>
+<h3 id="53-frontend">5.3 Frontend</h3>
+<div class="codehilite"><pre><span></span><code>pnpm<span class="w"> </span>dev
+<span class="c1"># http://localhost:3000</span>
+</code></pre></div>
+
+<p><code>allowedDevOrigins</code> 는 Next.js 16에서 필수 (LAN 접근용).</p>
+<h3 id="54-monitoring-pyqt">5.4 Monitoring (PyQt)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>monitoring
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+python<span class="w"> </span>main.py
+</code></pre></div>
+
+<h3 id="55-jetson-publisher">5.5 Jetson Publisher (원격)</h3>
+<div class="codehilite"><pre><span></span><code>ssh<span class="w"> </span>jetson-conveyor<span class="w">  </span><span class="c1"># 100.77.62.67</span>
+<span class="nb">cd</span><span class="w"> </span>~/casting-factory/jetson_publisher
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+python<span class="w"> </span>image_publisher.py<span class="w"> </span><span class="p">&amp;</span>
+python<span class="w"> </span>esp_bridge.py<span class="w"> </span><span class="p">&amp;</span>
+</code></pre></div>
+
+<hr>
+<h2 id="6">6. 테스트 전략</h2>
+<h3 id="61-backend-pytest">6.1 Backend (pytest)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>backend
+python<span class="w"> </span>-m<span class="w"> </span>pytest
+<span class="c1"># 또는</span>
+<span class="nb">cd</span><span class="w"> </span>backend/management
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/
+</code></pre></div>
+
+<p>주요 테스트:<br>
+- <code>test_order_pipeline_4seq.py</code> — 4 스테이지 순차 주문 파이프라인<br>
+- <code>test_event_bridge.py</code> — EventBridge 20 테스트<br>
+- <code>test_interface_service_client.py</code>, <code>test_management_service_client.py</code> — 클라이언트 통합</p>
+<h3 id="62-frontend-jest-vitest">6.2 Frontend (Jest + Vitest)</h3>
+<div class="codehilite"><pre><span></span><code>pnpm<span class="w"> </span><span class="nb">test</span>
+pnpm<span class="w"> </span>test:e2e<span class="w">  </span><span class="c1"># Playwright</span>
+</code></pre></div>
+
+<h3 id="63-monitoring">6.3 Monitoring</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>monitoring
+python<span class="w"> </span>-m<span class="w"> </span>pytest
+</code></pre></div>
+
+<h3 id="64-firmware">6.4 Firmware</h3>
+<p>Arduino CLI:</p>
+<div class="codehilite"><pre><span></span><code>arduino-cli<span class="w"> </span>compile<span class="w"> </span>--fqbn<span class="w"> </span>esp32:esp32:esp32s3<span class="w"> </span>firmware/conveyor
+arduino-cli<span class="w"> </span>upload<span class="w"> </span>--port<span class="w"> </span>/dev/cu.usbserial-xxx<span class="w"> </span>--fqbn<span class="w"> </span>esp32:esp32:esp32s3<span class="w"> </span>firmware/conveyor
+</code></pre></div>
+
+<h3 id="65-e2e-lsp-ast">6.5 E2E (LSP + AST)</h3>
+<ul>
+<li><code>/moai loop</code> — Ralph 엔진 (LSP 진단 + AST grep + 자동 수정)</li>
+<li><code>/moai fix</code> — LSP 에러 자동 수정</li>
+<li><code>/moai coverage</code> — 커버리지 분석</li>
+</ul>
+<h3 id="66-lsp">6.6 품질 게이트 (LSP)</h3>
+<p><code>.moai/config/sections/quality.yaml</code>:<br>
+- plan 단계: LSP baseline 캡처<br>
+- run 단계: 에러 0, 타입 에러 0, 린트 에러 0 필수<br>
+- sync 단계: 에러 0, 경고 최대 10</p>
+<hr>
+<h2 id="7">7. 코드 컨벤션</h2>
+<h3 id="71-typescript-react">7.1 TypeScript / React</h3>
+<ul>
+<li><strong>strict mode 필수</strong>, <code>any</code> 금지</li>
+<li><strong>named exports 우선</strong> (default export 지양)</li>
+<li>작은 모듈 + 순수 함수 선호</li>
+<li>컴포넌트 단일 책임</li>
+<li><code>className</code> + Tailwind 유틸 클래스</li>
+<li><code>useEffect</code> 최소화 (파생 상태 우선)</li>
+</ul>
+<h3 id="72-python">7.2 Python</h3>
+<ul>
+<li>Python 3.12 고정</li>
+<li>ruff + black 포맷팅</li>
+<li>Pydantic v2 기반 모델</li>
+<li>SQLAlchemy 2.0 async 스타일</li>
+<li>f-string 권장</li>
+<li>타입 힌트 전부 표기</li>
+<li><code>async</code>/<code>await</code> 패턴 → 오류는 <code>async-await-coder</code> 스킬 활용</li>
+</ul>
+<h3 id="73-proto">7.3 Proto</h3>
+<ul>
+<li><code>management.proto</code> 단일 소스</li>
+<li>Monitoring 에서는 <code>monitoring/scripts/gen_proto.sh</code> 로 relative import 패치 필수</li>
+<li>Jetson 에서는 <code>grpcio-tools==1.59.5</code> 로 재생성</li>
+</ul>
+<h3 id="74">7.4 주석 규칙</h3>
+<ul>
+<li>주석은 <strong>Why</strong> 위주 (무엇이 아닌 왜)</li>
+<li>TODO 는 이슈 번호 함께</li>
+<li>작업 지시자가 명확해야 함 (<code>TODO(user):</code>)</li>
+</ul>
+<h3 id="75">7.5 파일 구조</h3>
+<ul>
+<li>AGENTS.md: 디렉토리별 AI 컨텍스트 (29개 파일, 2026-04-24 생성)</li>
+<li>CLAUDE.md: 프로젝트 루트 AI 지시</li>
+<li>.moai/specs/: SPEC 디렉터리</li>
+<li>docs/: 문서 루트</li>
+</ul>
+<hr>
+<h2 id="8">8. 배포</h2>
+<h3 id="81-phase">8.1 Phase 별 런북</h3>
+<ul>
+<li>Phase A → C3: <code>docs/DEPLOY-phase-a-to-c3.md</code></li>
+<li>Barcode 핸드오프: <code>docs/barcode_jetson_ready.md</code></li>
+</ul>
+<h3 id="82">8.2 배포 순서 (공장 환경)</h3>
+<ol>
+<li>DB 상태 확인 (Tailscale: <code>nc -zv 100.107.120.14 5432</code>)</li>
+<li>Management Service 기동</li>
+<li>Interface Service 기동</li>
+<li>Next.js (production build: <code>pnpm build &amp;&amp; pnpm start</code>)</li>
+<li>Jetson Publisher (image_publisher + esp_bridge)</li>
+<li>PyQt Monitoring</li>
+<li>기능 smoke test (주문 생성 → PyQt 표시 확인)</li>
+</ol>
+<h3 id="83-tailscale">8.3 Tailscale 이슈 대응</h3>
+<ul>
+<li>노드 unreachable 일시적 (yejin-laptop, 100.107.120.14)</li>
+<li>CLI: <code>/Applications/Tailscale.app/Contents/MacOS/Tailscale status</code></li>
+<li>DB 실패 시 자동 reconnect 로직 (Interface/Management 양쪽)</li>
+</ul>
+<h3 id="84-fastdds-amr">8.4 FastDDS (AMR)</h3>
+<ul>
+<li><code>deploy/fastdds/</code> 설정</li>
+<li>Tailscale 피어별 discovery 설정</li>
+</ul>
+<hr>
+<h2 id="9-cicd-ci">9. CI/CD (현재 로컬 중심, CI 도입 예정)</h2>
+<h3 id="91">9.1 로컬 검증</h3>
+<ul>
+<li><code>pnpm lint</code>, <code>pnpm typecheck</code>, <code>pnpm test</code></li>
+<li><code>ruff check backend/</code>, <code>pytest backend/</code></li>
+<li>커밋 전 훅 (pre-commit): ruff + black + eslint</li>
+</ul>
+<h3 id="92-confluence-launchd">9.2 Confluence 동기화 (launchd)</h3>
+<ul>
+<li>스크립트: <code>scripts/sync_confluence_facts.py</code></li>
+<li>스케줄: 매일 09:07 로컬 시각</li>
+<li>plist: <code>~/Library/LaunchAgents/com.casting-factory.confluence-sync.plist</code></li>
+<li>인증: macOS Keychain (<code>service=casting-factory-atlassian</code>)</li>
+</ul>
+<h3 id="93">9.3 문서 검증</h3>
+<ul>
+<li><code>/moai sync</code> 로 CLAUDE.md ↔ 코드 일관성 체크</li>
+<li>AGENTS.md 상위 참조 무결성 검증 (DeepInit 실행 시)</li>
+</ul>
+<hr>
+<h2 id="10-mcp-ai">10. MCP 및 AI 도구</h2>
+<h3 id="101-mcp">10.1 MCP 서버</h3>
+<ul>
+<li><strong>Atlassian</strong>: Confluence 조회·동기화</li>
+<li><strong>claude-context</strong>: 시맨틱 코드 검색 (645 파일 / 27,035 청크 인덱스 완료)</li>
+<li><strong>context7</strong>: 라이브러리 문서 조회</li>
+<li><strong>gemini-code-reviewer</strong>, <strong>gemini-web</strong>: 교차 검증</li>
+<li><strong>sequential-thinking</strong>: --deepthink 플래그 사용 시 구조적 분석</li>
+<li><strong>oh-my-claudecode</strong>: OMC 워크플로우</li>
+</ul>
+<h3 id="102-mcp-timeout">10.2 MCP 서버 timeout 이슈</h3>
+<p>claude-context의 Zilliz Milvus 15초 timeout 패치 필요:<br>
+- 파일: <code>~/.npm/_npx/&lt;HASH&gt;/node_modules/@zilliz/claude-context-core/dist/vectordb/milvus-vectordb.js</code><br>
+- 코드: <code>timeout: Number(process.env.MILVUS_CLIENT_TIMEOUT) || 120000</code> 추가<br>
+- 자세한 내용: 메모리 <code>reference_claude_context_timeout.md</code></p>
+<h3 id="103-confluence">10.3 Confluence 자동화 규칙</h3>
+<ul>
+<li><strong>READ-ONLY</strong> (사용자 명시 허락 없이 PUT/POST/DELETE 금지)</li>
+<li><code>docs/CONFLUENCE_FACTS.md</code> 로컬 동기화만 허용</li>
+</ul>
+<hr>
+<h2 id="11">11. 디버깅 패턴</h2>
+<h3 id="111-claude-code-utf-8">11.1 Claude Code UTF-8 크래시 방지</h3>
+<ul>
+<li>TodoWrite content/activeForm 은 <strong>영어만</strong> 사용</li>
+<li>한국어는 본문 대화만 허용</li>
+<li>크래시 시 복구: <code>~/.claude/todos/*.json</code> → <code>todos_backup/</code></li>
+</ul>
+<h3 id="112-pyqt-exit-134-sigabrt">11.2 PyQt 종료 exit 134 (SIGABRT)</h3>
+<ul>
+<li>원인: closeEvent 에서 QThread 정리 누락 (alert/stream/frame thread)</li>
+<li>해결: 각 thread <code>requestInterruption()</code> + <code>wait()</code> 후 종료</li>
+</ul>
+<h3 id="113-grpc-protobuf-mismatch">11.3 gRPC protobuf 버전 mismatch</h3>
+<ul>
+<li>증상: <code>VersionError</code> Jetson 기동 실패</li>
+<li>원인: Mac protoc 6.31 → Jetson protobuf 5.29 불일치</li>
+<li>해결: Jetson 에서 <code>grpcio-tools 1.59.5</code> 로 재생성</li>
+</ul>
+<h3 id="114-rc522-healthcheck">11.4 RC522 healthcheck 버그</h3>
+<ul>
+<li>증상: <code>PICC_IsNewCardPresent</code> 간섭으로 카드 감지 실패</li>
+<li>원인: 주기적 <code>VersionReg</code> 읽기</li>
+<li>해결: 펌웨어 v1.5.1 에서 제거</li>
+</ul>
+<h3 id="115-brownout-mac-usb">11.5 모터 brownout (Mac USB)</h3>
+<ul>
+<li>증상: L298N 모터 기동 전류로 Mac USB 전원 끊김</li>
+<li>해결: Jetson 직접 또는 외부 12V 전원 필수</li>
+</ul>
+<h3 id="116">11.6 디버깅 도구</h3>
+<ul>
+<li><code>/oh-my-claudecode:debug</code> — OMC 세션 진단</li>
+<li><code>/oh-my-claudecode:tracer</code> — 가설 기반 추적</li>
+<li><code>claude --debug "hooks,api,mcp"</code> — 전체 디버그</li>
+</ul>
+<hr>
+<h2 id="12-agentsmd">12. 프로젝트 메모리 / AGENTS.md</h2>
+<h3 id="121-claudemd">12.1 CLAUDE.md (프로젝트 루트)</h3>
+<p>MoAI 실행 지시 + V6 아키텍처 + DB 정책. 40,000자 이하 유지.</p>
+<h3 id="122-agentsmd">12.2 AGENTS.md (계층별)</h3>
+<p>2026-04-24 DeepInit로 29개 생성 (Level 0~4):<br>
+- Level 0: 루트 (프로젝트 전체)<br>
+- Level 1: 9개 디렉토리<br>
+- Level 2: 9개 핵심 서브디렉토리<br>
+- Level 3: 10개<br>
+- Level 4: 2개</p>
+<h3 id="123-claudeprojects-users-ibkim-project-casting-factorymemory">12.3 세션 메모리 (<code>~/.claude/projects/-Users-ibkim-Project-casting-factory/memory/</code>)</h3>
+<ul>
+<li>MEMORY.md: 엔트리 인덱스 (200줄 이내)</li>
+<li>개별 메모리: <code>&lt;type&gt;_&lt;topic&gt;.md</code></li>
+<li>타입: user / feedback / project / reference</li>
+</ul>
+<h3 id="124">12.4 중요 메모리 항목</h3>
+<ul>
+<li><code>project_v6_grpc_decision.md</code>, <code>project_v6_complete.md</code></li>
+<li><code>feedback_db_postgresql_only.md</code> (DB 운영 룰)</li>
+<li><code>reference_db_aws_rds_casting.md</code> (AWS RDS 연결)</li>
+<li><code>feedback_handoff_fsm_seed_test.md</code>, <code>project_spec_amr_001_wave3.md</code></li>
+<li><code>project_event_bridge_contract.md</code></li>
+<li><code>feedback_grpc_proto_version_match.md</code></li>
+</ul>
+<hr>
+<h2 id="13">13. 자주 하는 실수 / 주의</h2>
+<h3 id="131">13.1 일반</h3>
+<ul>
+<li>가상의 라이브러리/API 제안 금지 — 실제 존재하는 것만</li>
+<li>테스트 없이 "완료" 선언 금지</li>
+<li>존재하지 않는 함수 사용 금지</li>
+</ul>
+<h3 id="132">13.2 풀스택 통합</h3>
+<ul>
+<li><strong>Frontend↔Backend 필드명/경로/응답구조 양쪽 코드 대조 후 수정</strong> (가정 금지)</li>
+<li>환경변수는 <code>.trim()</code> 처리 (줄바꿈 가능)</li>
+<li>상태 전이 시 모든 관련 필드 업데이트 확인</li>
+<li>UI 스타일 작업 전 dark mode 지원 여부 확인</li>
+</ul>
+<h3 id="133-db">13.3 DB</h3>
+<ul>
+<li><code>models_legacy</code> 전체 import 시 <code>Base.metadata</code> 충돌 주의 (선별 파일 <code>models_mgmt.py</code> 사용)</li>
+<li>시드 스크립트에서 과거 시각 넣지 말 것 (SLA 폭주)</li>
+<li>Confluence 패트와 DB 스키마 불일치 시 코드 우선</li>
+</ul>
+<h3 id="134-git">13.4 Git</h3>
+<ul>
+<li><code>--no-verify</code> / <code>--no-gpg-sign</code> 사용자 명시 요청 없으면 금지</li>
+<li>force-push to main 절대 금지</li>
+<li>스쿼시 전 변경 이력 확인</li>
+</ul>
+<hr>
+<h2 id="14">14. 참고 자료</h2>
+<h3 id="141">14.1 내부</h3>
+<ul>
+<li><a href="./01_PRD.html">01_PRD.md</a> — 제품 요구사항</li>
+<li><a href="./02_DESIGN.html">02_DESIGN.md</a> — 시스템 설계</li>
+<li><a href="./03_PROCESS.html">03_PROCESS.md</a> — 공정 프로세스</li>
+<li><a href="./05_TRAINING.html">05_TRAINING.md</a> — 교육 자료</li>
+<li><a href="./06_MANUAL.html">06_MANUAL.md</a> — 사용자 매뉴얼</li>
+<li><a href="../SETUP.md"><code>../SETUP.md</code></a> — 셋업 가이드</li>
+<li><a href="../DEPLOY-phase-a-to-c3.md"><code>../DEPLOY-phase-a-to-c3.md</code></a> — 배포 런북</li>
+<li><a href="../../CLAUDE.md"><code>../../CLAUDE.md</code></a> — MoAI 실행 지시</li>
+<li><code>.claude/rules/</code> — 프로젝트 룰</li>
+</ul>
+<h3 id="142">14.2 외부</h3>
+<ul>
+<li>FastAPI docs: https://fastapi.tiangolo.com/</li>
+<li>SQLAlchemy 2.0: https://docs.sqlalchemy.org/en/20/</li>
+<li>Next.js 16: https://nextjs.org/docs</li>
+<li>gRPC Python: https://grpc.io/docs/languages/python/</li>
+<li>ROS2 Jazzy: https://docs.ros.org/en/jazzy/</li>
+<li>PyQt5: https://doc.qt.io/qtforpython-5/</li>
+</ul>
+<hr>
+<h2 id="_1">변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>일자</th>
+<th>버전</th>
+<th>변경 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-04-24</td>
+<td>V6</td>
+<td>초기 작성. 기술 스택 · 환경 셋업 · 테스트 · CI/CD · 디버깅 패턴 정리</td>
+</tr>
+</tbody>
+</table>
+</main>
+<div class="footer">
+  SmartCast Robotics 프로젝트 문서 · V6 (2026-04-24) ·
+  <a href="README.html">문서 인덱스</a>
+</div>
+</body>
+</html>

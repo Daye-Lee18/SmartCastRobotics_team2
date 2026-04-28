@@ -1,2 +1,7 @@
-pytest
-
+PyQt5==5.15.11
+PyQtChart==5.15.7
+requests==2.32.3
+# V6 canonical (Phase D 2026-04-20): MQTT 직접 구독 제거. Monitoring → Management (TCP/gRPC :50051) 단일 채널.
+grpcio>=1.80.0,<2.0
+grpcio-tools>=1.80.0,<2.0
+protobuf>=6.30.0,<7.0

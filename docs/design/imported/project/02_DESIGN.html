@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>02. DESIGN — SmartCast Robotics 프로젝트 문서</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2229;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --accent-2: #f0883e;
+  --ok: #56d364;
+  --warn: #d29922;
+  --ng: #f85149;
+  --purple: #bc8cff;
+  --cyan: #79c0ff;
+  --code-bg: #0d1117;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo",
+               "Noto Sans KR", "Segoe UI", sans-serif;
+  line-height: 1.7;
+  padding: 2rem 1rem 6rem;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 3rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.nav {
+  max-width: 1080px;
+  margin: 0 auto 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.nav a:hover { background: #24292f; }
+.nav a.current {
+  background: #1f6feb;
+  color: #fff;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #f0f6fc;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2rem; margin-top: 0; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; border-bottom: none; }
+h4 { font-size: 1.05rem; border-bottom: none; color: var(--cyan); }
+h5 { font-size: 0.98rem; border-bottom: none; color: var(--purple); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p { margin: 0.8em 0; }
+
+blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1.2em;
+  border-left: 4px solid var(--accent-2);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p { margin: 0.3em 0; }
+
+ul, ol {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+li { margin: 0.3em 0; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+
+code {
+  background: #24292f;
+  color: var(--cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.88em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+pre code {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.codehilite {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.1em 0;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.codehilite pre {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0.9em 1.2em;
+}
+
+/* pygments inline tokens (monokai-ish) */
+.codehilite .k, .codehilite .kd, .codehilite .kr { color: #ff7b72; }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sb,
+.codehilite .sc, .codehilite .se, .codehilite .si, .codehilite .sx { color: #a5d6ff; }
+.codehilite .c, .codehilite .c1, .codehilite .cm, .codehilite .cs { color: #8b949e; font-style: italic; }
+.codehilite .nf, .codehilite .nc, .codehilite .nt { color: #d2a8ff; }
+.codehilite .nb, .codehilite .bp { color: #79c0ff; }
+.codehilite .m, .codehilite .mi, .codehilite .mf { color: #f0883e; }
+.codehilite .o, .codehilite .ow { color: #ff7b72; }
+
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+
+table thead { background: var(--panel-2); }
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.55em 0.85em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #f0f6fc;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td { background: rgba(177, 186, 196, 0.04); }
+
+img { max-width: 100%; height: auto; border-radius: 6px; }
+
+strong { color: #f0f6fc; }
+
+.footer {
+  max-width: 1080px;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .container { padding: 1.5rem 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  table { font-size: 0.85em; }
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<a class="" href="README.html">00. 문서 인덱스</a>
+<a class="" href="01_PRD.html">01. PRD</a>
+<a class="current" href="02_DESIGN.html">02. DESIGN</a>
+<a class="" href="03_PROCESS.html">03. PROCESS</a>
+<a class="" href="04_DEVELOPMENT.html">04. DEVELOPMENT</a>
+<a class="" href="05_TRAINING.html">05. TRAINING</a>
+<a class="" href="06_MANUAL.html">06. MANUAL</a>
+</div>
+<main class="container">
+<h1 id="02">02. 시스템 설계 문서</h1>
+<blockquote>
+<p><strong>버전</strong>: V6 canonical (2026-04-24 기준)<br>
+<strong>대상 독자</strong>: 개발자, 아키텍트, 운영 담당자<br>
+<strong>상세 다이어그램</strong>: <code>docs/architecture/*.md</code> (12 component docs) + <code>docs/*.html</code> (interactive)</p>
+</blockquote>
+<hr>
+<h2 id="1">1. 설계 원칙</h2>
+<h3 id="11-v6-2026-04-14">1.1 V6 핵심 결정 (2026-04-14 확정)</h3>
+<ul>
+<li><strong>프로세스 이원화</strong>: Interface Service (FastAPI, HTTP) 와 Management Service (gRPC) 를 독립 프로세스로 분리</li>
+<li><strong>이유</strong>: Interface 장애 / AWS 이관 시에도 공장 가동 유지 (SPOF 제거)</li>
+<li><strong>DB 단독</strong>: PostgreSQL 16 + TimescaleDB (SQLite 폴백 완전 제거)</li>
+</ul>
+<h3 id="12-trust-5">1.2 설계 품질 프레임워크 (TRUST 5)</h3>
+<ul>
+<li><strong>T</strong>ested: 85%+ 커버리지, 특성화 테스트</li>
+<li><strong>R</strong>eadable: 명확한 명명, 영문 주석</li>
+<li><strong>U</strong>nified: 일관 스타일, ruff/black 포맷팅</li>
+<li><strong>S</strong>ecured: OWASP 준수, 입력 검증</li>
+<li><strong>T</strong>rackable: Conventional commits, 이슈 참조</li>
+</ul>
+<h3 id="13">1.3 설계 분리 원칙</h3>
+<ul>
+<li><strong>Interface</strong> ↔ <strong>Management</strong> 간 교차 호출은 <strong>명시적 RPC</strong>만 허용 (shared-memory / DB-coupling 금지)</li>
+<li>HW 도메인(ROS2 / Serial / Jetson) 은 Management 쪽에서만 접근</li>
+<li>Next.js (고객/관리자) 는 Interface HTTP, PyQt(공장 운영자) 는 Management gRPC 직결</li>
+</ul>
+<hr>
+<h2 id="2">2. 전체 아키텍처</h2>
+<div class="codehilite"><pre><span></span><code>┌─────────────────────┐       ┌─────────────────────┐
+│  Customer / Admin   │       │  Factory Operator   │
+│     (Next.js 16)    │       │      (PyQt5)        │
+└──────────┬──────────┘       └──────────┬──────────┘
+           │ HTTP                        │ gRPC (:50051)
+           ▼                             ▼
+┌─────────────────────┐       ┌─────────────────────┐
+│  Interface Service  │ gRPC  │ Management Service  │
+│   FastAPI :8000     │◀──────▶│     gRPC :50051    │
+│   (admin/customer)  │       │  (factory core)     │
+└──────────┬──────────┘       └──────────┬──────────┘
+           │                             │
+           │                             │ gRPC streaming + unary
+           │                             ├──────▶  Jetson (Vision/AI/Bridge)
+           │                             ├──────▶  ROS2 DDS  (AMR, Arm)
+           │                             └──────▶  Jetson Serial → ESP32 (Conveyor, RFID, Handoff)
+           │
+           ▼
+┌────────────────────────────────────────────────────┐
+│  PostgreSQL (Tailscale 100.107.120.14) + AWS RDS   │
+│  · 로컬 public (v2, 22 tables) — 평소 개발           │
+│  · 로컬 smartcast (ERP, 31 tables) — 참조용          │
+│  · AWS RDS Casting (29 tables, ERP) — 특별 요청     │
+└────────────────────────────────────────────────────┘
+</code></pre></div>
+
+<hr>
+<h2 id="3">3. 서비스 상세 설계</h2>
+<h3 id="31-interface-service-backendapp">3.1 Interface Service (<code>backend/app/</code>)</h3>
+<ul>
+<li><strong>프레임워크</strong>: FastAPI + SQLAlchemy + Pydantic</li>
+<li><strong>포트</strong>: 8000 (HTTP)</li>
+<li><strong>책임</strong>:</li>
+<li>REST API 제공 (admin / customer / order / product)</li>
+<li>WebSocket 푸시 (보조, Phase A 이후 PyQt 의존 제거)</li>
+<li>Management Service 프록시 (<code>/api/management/*</code>)</li>
+<li><strong>사용 스키마</strong>: 로컬 <code>public</code> (v2 스키마, 22 테이블)</li>
+<li><strong>문서</strong>: <code>docs/management_service_design.md</code>, <code>docs/interface_service_audit.html</code></li>
+</ul>
+<p>주요 서브모듈:<br>
+| 디렉토리 | 역할 |<br>
+|---|---|<br>
+| <code>app/routes/</code> | FastAPI 라우터 (orders, products, admin, management proxy 등) |<br>
+| <code>app/routes/legacy/</code> | 구버전 호환 라우트 |<br>
+| <code>app/models/</code> | SQLAlchemy ORM 모델 (<code>models_mgmt.py</code> 는 선별 import) |<br>
+| <code>app/services/</code> | 도메인 서비스 (주문 처리, 상태 전이 등) |<br>
+| <code>app/database.py</code> | DATABASE_URL fail-fast 로직 |</p>
+<h3 id="32-management-service-backendmanagement">3.2 Management Service (<code>backend/management/</code>)</h3>
+<ul>
+<li><strong>프레임워크</strong>: gRPC (<code>grpcio</code>) + SQLAlchemy</li>
+<li><strong>포트</strong>: 50051</li>
+<li><strong>책임</strong>:</li>
+<li>공정 실시간 제어 (주문 시작/중단, 장비 제어, AMR 배차)</li>
+<li>HW 이벤트 수집 (RFID, 바코드, Handoff, 이미지 프레임)</li>
+<li>EventBridge 라우팅</li>
+<li>TaskManager / OrderManager / Ordering Service</li>
+<li><strong>사용 스키마</strong>: 로컬 <code>public</code> (백엔드 코드 공용) + <code>smartcast</code> 스키마 (ERP 참조)</li>
+</ul>
+<p>주요 서브모듈:<br>
+| 디렉토리 | 역할 |<br>
+|---|---|<br>
+| <code>management/server.py</code> | gRPC 서버 엔트리 (핫 패스 중 하나, 20+ 참조) |<br>
+| <code>management/proto/</code> | <code>management.proto</code> — 단일 소스, monitoring/jetson에서 재생성 |<br>
+| <code>management/services/</code> | Ordering, Order Manager, Interface/Management 클라이언트, EventBridge |<br>
+| <code>management/services/adapters/</code> | ROS2, Jetson Serial, JetCobot 어댑터 |<br>
+| <code>management/tests/</code> | 통합 테스트 (order pipeline 4seq 포함) |</p>
+<h3 id="33-monitoring-app-monitoring">3.3 Monitoring App (<code>monitoring/</code>)</h3>
+<ul>
+<li><strong>프레임워크</strong>: PyQt5 (Python 3.12 고정)</li>
+<li><strong>책임</strong>: 공장 운영자용 실시간 대시보드</li>
+<li><strong>통신</strong>: Management gRPC 직결 (api_client WebSocket 은 보조)</li>
+<li><strong>핫 패스</strong>: <code>monitoring/app/main_window.py</code> (25+ 참조)</li>
+</ul>
+<p>주요 뷰:<br>
+| 뷰 | 역할 |<br>
+|---|---|<br>
+| 메인 대시보드 | 전체 공정·AMR·장비 상태 |<br>
+| 주문 관리 | PENDING 주문 확인, 생산 시작 버튼 |<br>
+| AMR 관리 | Repair 버튼, Handoff 버튼 지원 |<br>
+| 알람 | 실시간 에러/경고 |</p>
+<h3 id="34-jetson-publisher-jetson_publisher">3.4 Jetson Publisher (<code>jetson_publisher/</code>)</h3>
+<ul>
+<li><strong>HW</strong>: Jetson Orin NX + C920 카메라 + ESP32 브릿지</li>
+<li><strong>책임</strong>:</li>
+<li>이미지 프레임을 gRPC client streaming으로 Management에 전송</li>
+<li>ESP32 Serial bridge (RFID, Handoff, 바코드 HID)</li>
+<li>지수 백오프 재연결 (1~60s, 32 이벤트 버퍼)</li>
+<li><strong>네트워크</strong>: Tailscale <code>100.77.62.67</code> (SSH alias <code>jetson-conveyor</code>)</li>
+</ul>
+<h3 id="35-frontend-src">3.5 Frontend (<code>src/</code>)</h3>
+<ul>
+<li><strong>프레임워크</strong>: Next.js 16 (App Router) + React 19 + TypeScript strict</li>
+<li><strong>스타일</strong>: Tailwind + shadcn/ui</li>
+<li><strong>책임</strong>: 고객 / 관리자 웹 UI</li>
+</ul>
+<p>주요 라우트 (Confluence GUI 6389916 기준, 8개):<br>
+| 경로 | 역할 |<br>
+|---|---|<br>
+| <code>/</code> | 랜딩 (SmartCast Robotics 소개) |<br>
+| <code>/login</code> | 로그인 |<br>
+| <code>/customer/order/new</code> | 고객 주문 작성 |<br>
+| <code>/customer/orders</code> | 고객 주문 상태 조회 |<br>
+| <code>/admin/orders</code> | 관리자 주문 검토·승인 |<br>
+| <code>/admin/dashboard</code> | 관리자 공정 요약 |<br>
+| <code>/admin/equipment</code> | 장비 관리 |<br>
+| <code>/admin/analytics</code> | 분석 리포트 |</p>
+<hr>
+<h2 id="4">4. 컴포넌트 설계</h2>
+<h3 id="41-taskmanager-management">4.1 TaskManager (Management)</h3>
+<ul>
+<li><code>docs/architecture/task_manager.md</code>, <code>docs/task_manager_summary.html</code></li>
+<li>생산 작업의 큐잉·라우팅·상태 전이 담당</li>
+<li>의사결정 규칙 A/B/C (대기시간/병목/배치) 구현</li>
+</ul>
+<h3 id="42-ordermanager-orderingservice">4.2 OrderManager / OrderingService</h3>
+<ul>
+<li><code>backend/management/services/order_manager.py</code>, <code>ordering_service.py</code></li>
+<li>주문 접수 → 승인 → 생산 트리거 파이프라인</li>
+<li>4-stage 순차 테스트 <code>test_order_pipeline_4seq.py</code> 로 검증</li>
+</ul>
+<h3 id="43-eventbridge-backendmanagementservicesevent_bridgepy">4.3 EventBridge (<code>backend/management/services/event_bridge.py</code>)</h3>
+<ul>
+<li>569줄 contract + impl, 20 tests</li>
+<li>상태 변화 이벤트 전파 전용 (pure router, stateless, thread-safe)</li>
+<li>CRUD / 조회 / 명령은 직접 호출 (판단 기준: 응답 필요? 1:1? 트랜잭션?)</li>
+<li>설계 문서: <code>docs/event_bridge_design.html</code></li>
+</ul>
+<h3 id="44-fleet-traffic-amr">4.4 Fleet Traffic (AMR 제어)</h3>
+<ul>
+<li>설계: <code>docs/fleet_traffic_management.html</code>, <code>project_fleet_traffic_design.md</code></li>
+<li>1m × 2m 맵 + 0.12m AMR 3대</li>
+<li>Waypoint / Edge + nav2_route + Backtrack Yield</li>
+<li>ROS2 DDS 기반 다중 AMR 조율</li>
+</ul>
+<h3 id="45-vision-service-jetson">4.5 Vision Service (Jetson)</h3>
+<ul>
+<li><code>ImagePublisherService/PublishFrames</code> gRPC client streaming</li>
+<li>C920 카메라 → ESP32 트리거 → 프레임 캡처 → Management 전송</li>
+<li>하위 모듈: 비전 검출, AI 추론 요청</li>
+</ul>
+<hr>
+<h2 id="5">5. 데이터 모델</h2>
+<h3 id="51-2026-04-24">5.1 환경별 스키마 (2026-04-24 확정)</h3>
+<table>
+<thead>
+<tr>
+<th>환경</th>
+<th>Host</th>
+<th>DB</th>
+<th>스키마</th>
+<th>테이블 수</th>
+<th>용도</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>평소 개발 (default)</strong></td>
+<td>100.107.120.14 (Tailscale)</td>
+<td><code>smartcast_robotics</code></td>
+<td><code>public</code> (v2)</td>
+<td>22</td>
+<td>백엔드 기본 타겟</td>
+</tr>
+<tr>
+<td>참조/실험</td>
+<td>동일</td>
+<td>동일</td>
+<td><code>smartcast</code> (ERP)</td>
+<td>31</td>
+<td>참조용, 제거 가능</td>
+</tr>
+<tr>
+<td><strong>특별 요청</strong></td>
+<td>AWS RDS ap-northeast-2</td>
+<td><code>Casting</code></td>
+<td><code>public</code> (ERP)</td>
+<td>29</td>
+<td>Confluence 42270744 가이드</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-public-v2-22">5.2 로컬 public (v2) 주요 테이블 (22개)</h3>
+<ul>
+<li><strong>주문</strong>: <code>orders</code>, <code>order_details</code></li>
+<li><strong>제품</strong>: <code>products</code>, <code>load_classes</code>, <code>inspection_standards</code></li>
+<li><strong>공정</strong>: <code>items</code>, <code>production_jobs</code>, <code>production_metrics</code>, <code>process_stages</code>, <code>work_orders</code>, <code>priority_change_logs</code></li>
+<li><strong>장비/운반</strong>: <code>equipment</code>, <code>transport_tasks</code></li>
+<li><strong>검사</strong>: <code>inspection_records</code>, <code>sorter_logs</code></li>
+<li><strong>창고/출고</strong>: <code>warehouse_racks</code>, <code>outbound_orders</code></li>
+<li><strong>HW 이벤트</strong>: <code>handoff_acks</code>, <code>rfid_scan_log</code></li>
+<li><strong>알람/계정</strong>: <code>alerts</code> (630K 행, 시계열), <code>team_members</code>, <code>test_messages</code></li>
+</ul>
+<h3 id="53-aws-rds-public-erp-29">5.3 AWS RDS public (ERP) 주요 테이블 (29개)</h3>
+<ul>
+<li><strong>마스터</strong>: <code>category</code> (CMH/RMH/EMH), <code>product</code>, <code>product_option</code>, <code>pattern</code>, <code>pp_options</code>, <code>user_account</code>, <code>zone</code> (CAST/PP/INSP/STRG/SHIP/CHG), <code>res</code> (RA/CONV/AMR)</li>
+<li><strong>장비</strong>: <code>equip</code>, <code>equip_load_spec</code>, <code>equip_stat</code>, <code>equip_task_txn</code>, <code>equip_err_log</code></li>
+<li><strong>운반</strong>: <code>trans</code>, <code>trans_stat</code>, <code>trans_task_txn</code>, <code>trans_err_log</code></li>
+<li><strong>위치</strong>: <code>chg_location_stat</code>, <code>strg_location_stat</code>, <code>ship_location_stat</code></li>
+<li><strong>주문</strong>: <code>ord</code>, <code>ord_detail</code>, <code>ord_log</code>, <code>ord_pp_map</code>, <code>ord_stat</code>, <code>ord_txn</code></li>
+<li><strong>실행</strong>: <code>item</code>, <code>pp_task_txn</code>, <code>insp_task_txn</code></li>
+</ul>
+<h3 id="54">5.4 스키마 호환성</h3>
+<p>두 스키마는 <strong>호환되지 않음</strong> — 네이밍/테이블 구조 다름. 코드 재사용 불가. 의도적 마이그레이션만 수행.</p>
+<h3 id="55-enum-erp">5.5 주요 상태 enum (ERP 스키마)</h3>
+<table>
+<thead>
+<tr>
+<th>컬럼</th>
+<th>유효 값</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ord_stat.ord_stat</code></td>
+<td>RCVD / APPR / MFG / DONE / SHIP / COMP / REJT / CNCL</td>
+</tr>
+<tr>
+<td><code>ord_log.new_stat</code></td>
+<td>RCVD / APPR / MFG / DONE / SHIP / COMP / REJT / <strong>CANCELED</strong> ⚠</td>
+</tr>
+<tr>
+<td><code>ord_txn.txn_type</code></td>
+<td>RCVD (default) / APPR / CNCL / REJT</td>
+</tr>
+<tr>
+<td><code>*_task_txn.txn_stat</code></td>
+<td>QUE / PROC / SUCC / FAIL</td>
+</tr>
+<tr>
+<td><code>strg_location_stat.status</code></td>
+<td>empty / reserved / occupied (CHECK: occupied ↔ item_id NOT NULL)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-api">6. API 설계</h2>
+<h3 id="61-rest-interface-service-http-8000">6.1 REST (Interface Service, HTTP :8000)</h3>
+<p>Confluence 22806540 (Interface Specification v46) 기준.</p>
+<p>핵심 엔드포인트:<br>
+| 메소드 | 경로 | 설명 |<br>
+|---|---|---|<br>
+| POST | <code>/api/orders</code> | 주문 생성 (Admin PC → Interface) |<br>
+| GET | <code>/api/orders</code> | 주문 목록 |<br>
+| GET | <code>/api/orders/{id}</code> | 주문 상세 |<br>
+| PATCH | <code>/api/orders/{id}/status</code> | 상태 전이 (승인/반려/수정 요청) |<br>
+| GET | <code>/api/products</code> | 제품 카탈로그 |<br>
+| GET | <code>/api/management/health</code> | Management Service 상태 확인 (Phase C-1) |<br>
+| GET | <code>/api/management/*</code> | Management 프록시 (SPEC-C2 <code>INTERFACE_PROXY_START_PRODUCTION</code> flag) |</p>
+<h3 id="62-grpc-management-service-50051">6.2 gRPC (Management Service, :50051)</h3>
+<p>정의: <code>backend/management/proto/management.proto</code> (단일 소스)</p>
+<p>핵심 RPC:<br>
+| RPC | 방향 | 용도 |<br>
+|---|---|---|<br>
+| <code>StartProduction</code> (unary) | UI → Mgmt | 생산 시작 버튼 |<br>
+| <code>WatchItems</code> (server stream) | Mgmt → UI | 실시간 아이템 상태 |<br>
+| <code>WatchConveyorCommands</code> (server stream) | Mgmt → Jetson | 컨베이어 명령 스트림 |<br>
+| <code>PublishFrames</code> (client stream) | Jetson → Mgmt | 이미지 프레임 업로드 |<br>
+| <code>ReportRfidScan</code> (unary) | Jetson → Mgmt | RFID / 바코드 이벤트 보고 |<br>
+| <code>ReportHandoffAck</code> (unary) | Jetson → Mgmt | Handoff 버튼 이벤트 |<br>
+| <code>TransitionAmrState</code> (unary) | UI → Mgmt | AMR FSM 전이 |<br>
+| <code>ResumeConveyor</code> (unary) | Mgmt → Jetson | 컨베이어 재개 명령 |</p>
+<h3 id="63-proto">6.3 proto 재생성</h3>
+<ul>
+<li>Management 호스트: <code>grpcio-tools 1.59.5</code></li>
+<li>Jetson: <strong>직접 재생성 필요</strong> (protobuf 4.25.9 매칭)</li>
+<li>Monitoring: <code>monitoring/scripts/gen_proto.sh</code> 에서 absolute import → relative import 패치 수행</li>
+</ul>
+<hr>
+<h2 id="7-hw-v6-canonical-2026-04-22">7. HW 아키텍처 (V6 canonical, 2026-04-22 기준)</h2>
+<h3 id="71">7.1 통신 채널 요약</h3>
+<table>
+<thead>
+<tr>
+<th>HW</th>
+<th>프로토콜</th>
+<th>경로</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AMR-*</strong> / <strong>ARM-*</strong></td>
+<td>ROS2 DDS</td>
+<td>RPi5 / RPi4 노드 (<code>MGMT_ROS2_ENABLED=1</code>)</td>
+</tr>
+<tr>
+<td><strong>CONV-*</strong> / <strong>ESP-*</strong></td>
+<td>Mgmt gRPC → Jetson Serial(115200) → ESP32</td>
+<td><code>WatchConveyorCommands</code> stream (MQTT 제거)</td>
+</tr>
+<tr>
+<td><strong>Image Publisher</strong></td>
+<td>gRPC streaming</td>
+<td><code>ImagePublisherService/PublishFrames</code> (client stream)</td>
+</tr>
+<tr>
+<td><strong>RFID</strong> (RC522)</td>
+<td>SPI → Jetson Serial → gRPC unary</td>
+<td><code>ReportRfidScan</code> → <code>public.rfid_scan_log</code> append-only</td>
+</tr>
+<tr>
+<td><strong>Barcode</strong> (HID Keyboard)</td>
+<td><code>/dev/input/event*</code> → python-evdev → gRPC unary</td>
+<td><code>ReportRfidScan</code> 공용 (reader_id=<code>BARCODE-JETSON-01</code>)</td>
+</tr>
+<tr>
+<td><strong>Handoff Button</strong></td>
+<td>ESP32 GPIO 33 → Serial → Jetson bridge → gRPC unary</td>
+<td><code>ReportHandoffAck</code> → <code>public.handoff_acks</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-hw">7.2 주요 HW 장비</h3>
+<table>
+<thead>
+<tr>
+<th>종류</th>
+<th>모델/사양</th>
+<th>주요 용도</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AMR</td>
+<td>직경 ~0.12m × 3대</td>
+<td>팔레트/개별 이송</td>
+</tr>
+<tr>
+<td>로봇팔</td>
+<td>JetCobot 280 (Elephant Robotics)</td>
+<td>탈형, picking, 적재</td>
+</tr>
+<tr>
+<td>컨베이어</td>
+<td>L298N + JGB37-555 + 2x TOF250</td>
+<td>제품 이동, 비전 검사</td>
+</tr>
+<tr>
+<td>비전</td>
+<td>Jetson Orin NX + Logitech C920</td>
+<td>프레임 캡처, AI 추론</td>
+</tr>
+<tr>
+<td>ESP32</td>
+<td>v5.0 (v4.0 기반 WiFi/MQTT 제거)</td>
+<td>컨베이어·센서·버튼 제어</td>
+</tr>
+<tr>
+<td>RFID 리더</td>
+<td>RC522 (UART→Jetson)</td>
+<td>아이템 식별</td>
+</tr>
+<tr>
+<td>바코드 리더</td>
+<td><code>0483:0011</code> 저가 1D 레이저 (HID)</td>
+<td>아이템 식별 보조</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-spec">7.3 SPEC 구현 현황</h3>
+<table>
+<thead>
+<tr>
+<th>SPEC</th>
+<th>내용</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPEC-AMR-001</td>
+<td>AMR 제어 + Handoff Button (Wave 3)</td>
+<td>🟢 배포 완료, 실물 버튼 push 잔존</td>
+</tr>
+<tr>
+<td>SPEC-RFID-001 Wave 2</td>
+<td><code>rfid_scan_log</code> + <code>ReportRfidScan</code> + <code>RfidService</code></td>
+<td>🟡 진행</td>
+</tr>
+<tr>
+<td>SPEC-RC522-001</td>
+<td>RC522 안정성 회귀 테스트</td>
+<td>✅ PR #2 99%/70 tests 머지</td>
+</tr>
+<tr>
+<td>SPEC-ORD-001</td>
+<td>주문 도메인</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>SPEC-CASTING-001</td>
+<td>주조 공정</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>SPEC-API-001 / 002</td>
+<td>API 정의</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>SPEC-CTL-001</td>
+<td>제어 인터페이스</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>SPEC-DB-V2-MIGRATION</td>
+<td>v2 스키마 이관</td>
+<td>✅ (PR #2~#13 squash-merge)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="8">8. 이벤트 흐름</h2>
+<h3 id="81">8.1 주문 처리 흐름</h3>
+<div class="codehilite"><pre><span></span><code>Customer → Interface REST POST /api/orders
+          → DB.orders INSERT (status=&#39;pending&#39;)
+          → (관리자 검토)
+          → PATCH status=&#39;approved&#39;
+          → Management.StartProduction (gRPC)
+          → TaskManager 큐잉
+          → AMR/Arm/Conveyor 협업
+          → WatchItems stream (UI 실시간)
+          → 검사 통과
+          → status=&#39;production_completed&#39; → &#39;shipped&#39;
+</code></pre></div>
+
+<h3 id="82-hw-handoff-button-spec-amr-001-wave-3">8.2 HW 이벤트 흐름 (Handoff Button 예시, SPEC-AMR-001 Wave 3)</h3>
+<div class="codehilite"><pre><span></span><code>ESP32 GPIO 33 (A접점 INPUT_PULLUP)
+  ↓ rising edge
+firmware pollHandoffButton()
+  ↓ Serial HANDOFF_ACK 토큰 + JSON
+Jetson jetson_publisher/esp_bridge.py
+  ↓ gRPC unary ReportHandoffAck
+Management ReportHandoffAck 핸들러
+  ↓ INSERT public.handoff_acks
+  ↓ UPDATE public.transport_tasks.status=&#39;handoff_complete&#39;
+  ↓ AMR FSM: AT_DESTINATION/UNLOADING → UNLOAD_COMPLETED
+</code></pre></div>
+
+<h3 id="83">8.3 이미지 스트리밍</h3>
+<div class="codehilite"><pre><span></span><code>Jetson C920 → 프레임 캡처
+  ↓ gRPC client stream PublishFrames
+Management → ImagePublisherService 수신
+  ↓ AI 추론 (Jetson / AI Server Phase 2)
+  ↓ 검사 결과 insp_task_txn 기록
+</code></pre></div>
+
+<hr>
+<h2 id="9">9. 배포 아키텍처</h2>
+<h3 id="91">9.1 현재 배포 구성</h3>
+<ul>
+<li><strong>Factory 로컬 네트워크</strong>: Tailscale 메시</li>
+<li>사용자 Mac: <code>100.77.239.25</code> (kisoo)</li>
+<li>로컬 DB 서버: <code>100.107.120.14</code> (yejin-laptop, PG 16)</li>
+<li>AI Server: <code>100.66.177.119</code> (team2)</li>
+<li>Jetson: <code>100.77.62.67</code> (ssh alias <code>jetson-conveyor</code>)</li>
+<li>JetCobot: <code>100.94.152.67</code></li>
+<li><strong>AWS</strong>: RDS PostgreSQL 18.3 ap-northeast-2 <code>teamdb.ct4cesagstqf.ap-northeast-2.rds.amazonaws.com</code></li>
+<li><strong>FastDDS Bridge</strong>: AMR ↔ Factory 네트워크 (<code>deploy/</code> 디렉토리)</li>
+</ul>
+<h3 id="92">9.2 배포 런북</h3>
+<ul>
+<li>Phase A ~ C3: <code>docs/DEPLOY-phase-a-to-c3.md</code></li>
+<li>Barcode 핸드오프: <code>docs/barcode_jetson_ready.md</code></li>
+</ul>
+<h3 id="93">9.3 시작 순서 (권장)</h3>
+<ol>
+<li>DB 상태 확인 (Tailscale 접근성 <code>nc -zv 100.107.120.14 5432</code>)</li>
+<li>Management Service 기동 (<code>backend/management/server.py</code>)</li>
+<li>Interface Service 기동 (<code>uvicorn backend.app.main:app</code>)</li>
+<li>Next.js dev server (<code>pnpm dev</code>)</li>
+<li>Jetson Publisher + ESP bridge</li>
+<li>PyQt Monitoring</li>
+</ol>
+<hr>
+<h2 id="10">10. 보안 설계</h2>
+<h3 id="101">10.1 인증</h3>
+<ul>
+<li>관리자: 권한 기반 접근 (SR-ORD-03 비기능 요구사항)</li>
+<li>고객: 이메일 기반 계정</li>
+<li>공장 운영자: Factory Operator PC 물리적 접근 제한 + PyQt 세션</li>
+</ul>
+<h3 id="102">10.2 네트워크</h3>
+<ul>
+<li>모든 내부 통신: Tailscale 메시 (WireGuard 암호화)</li>
+<li>AWS RDS: SSL <code>verify-full</code> + RDS CA 번들 필수</li>
+<li>FastDDS: AMR ↔ Factory 격리 (<code>deploy/fastdds/</code>)</li>
+</ul>
+<h3 id="103">10.3 자격증명 관리</h3>
+<ul>
+<li>개발: <code>.env.local</code> 평문 허용 (프로덕션 전환 전까지)</li>
+<li>프로덕션: SSH 키 + macOS Keychain 전환 예정</li>
+<li>Confluence API 토큰: Keychain <code>service=casting-factory-atlassian</code></li>
+</ul>
+<h3 id="104">10.4 데이터 보호</h3>
+<ul>
+<li>고객 연락처·배송지: DB 안전 저장 (SR-ORD-03)</li>
+<li>RFID 스캔 로그: append-only (tamper evident)</li>
+<li>Confluence 원본: <strong>READ-ONLY</strong> (PUT/POST/DELETE 사용자 명시 허락 필수)</li>
+</ul>
+<hr>
+<h2 id="11">11. 참고 문서</h2>
+<h3 id="111-docsarchitecture">11.1 아키텍처 상세 (<code>docs/architecture/</code>)</h3>
+<ul>
+<li>12개 컴포넌트 설계 문서 + index (4207줄)</li>
+</ul>
+<h3 id="112-html-docshtml">11.2 HTML 다이어그램 (<code>docs/*.html</code>)</h3>
+<ul>
+<li><code>system_overview.html</code> — 시스템 전체 개요</li>
+<li><code>component_relationship_clear.html</code> — 컴포넌트 관계도</li>
+<li><code>event_bridge_flows.html</code> — EventBridge 이벤트 흐름</li>
+<li><code>fleet_traffic_management.html</code> — AMR 경로 관리</li>
+<li><code>manhole_state_diagram.html</code> — 맨홀 아이템 상태 다이어그램</li>
+<li><code>production_planning_flowchart.html</code> — 생산 계획 플로우</li>
+<li><code>interface_service_audit.html</code> — Interface Service 감사 리포트</li>
+<li><code>interface_internal_structure_explained.html</code> — Interface 내부 구조</li>
+<li><code>interface_service_cheatsheet.html</code> — Interface 치트시트</li>
+<li><code>management_components.html</code> — Management 컴포넌트</li>
+<li><code>task_manager_summary.html</code>, <code>task_allocator_summary.html</code> — TaskManager 요약</li>
+<li><code>data_flow_report.html</code>, <code>data_flow_summary.html</code> — 데이터 흐름</li>
+</ul>
+<h3 id="113-spec-moaispecs">11.3 SPEC (<code>.moai/specs/</code>)</h3>
+<ul>
+<li>SPEC-AMR-001 / API-001 / API-002 / CASTING-001 / CTL-001 / DB-V2-MIGRATION / ORD-001 / RC522-001 / RFID-001</li>
+</ul>
+<h3 id="114-confluence">11.4 Confluence 원천</h3>
+<ul>
+<li><code>docs/CONFLUENCE_FACTS.md</code> (23K 줄, 22 페이지, launchd 매일 동기화)</li>
+<li>Interface Spec: Confluence 22806540</li>
+<li>Detailed Design: Confluence 6651919</li>
+<li>System Architecture: Confluence 3375131</li>
+</ul>
+<hr>
+<h2 id="_1">변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>일자</th>
+<th>버전</th>
+<th>변경 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-04-24</td>
+<td>V6</td>
+<td>초기 작성. 이원화 아키텍처 · 29/22 테이블 스키마 · 8 RPC · HW 6채널 반영</td>
+</tr>
+</tbody>
+</table>
+</main>
+<div class="footer">
+  SmartCast Robotics 프로젝트 문서 · V6 (2026-04-24) ·
+  <a href="README.html">문서 인덱스</a>
+</div>
+</body>
+</html>

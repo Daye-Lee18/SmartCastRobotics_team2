@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07. Workflow / Task Manager</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Workflow Layer</div>
+      <h1>07. Workflow / Task Manager<span class="badge workflow">Workflow</span></h1>
+      <div class="subtitle">
+        work_order를 실행 가능한 task DAG로 분해 · 순차/병렬/선행조건 관리 · Ready task 생성
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">Work Order → Task 분해</a></li>
+        <li><a href="#s3">DAG 모델</a></li>
+        <li><a href="#s4">Task 상태 머신</a></li>
+        <li><a href="#s5">주조 공정 DAG 예시</a></li>
+        <li><a href="#s6">출고 공정 DAG 예시</a></li>
+        <li><a href="#s7">구현 스케치</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Workflow / Task Manager</strong>는 고수준의 work_order를 <strong>원자적인 task들</strong>로 쪼개고, 이들 사이의 <strong>선행 관계(dependency)</strong>를 관리합니다. 생산 1건은 20~30개의 task로 분해됩니다.</p>
+
+      <h3>1.1 역할</h3>
+      <ul>
+        <li><strong>Template 매칭</strong>: work_order 타입에 따라 task 템플릿 선택</li>
+        <li><strong>DAG 생성</strong>: task 노드 + 선행 관계 엣지</li>
+        <li><strong>Dependency 해결</strong>: 선행 task 완료 감지 → 다음 task ready 전환</li>
+        <li><strong>Ready 이벤트 발행</strong>: <a href="08_ready_task_pool.html">Ready Task Pool</a>에 삽입</li>
+      </ul>
+
+      <h3>1.2 역할이 아닌 것</h3>
+      <ul>
+        <li>로봇 선택 — <a href="09_global_task_allocator.html">Allocator</a></li>
+        <li>경로 계획 — Traffic Manager</li>
+        <li>자원 예약 — <a href="10_resource_reservation_manager.html">Reservation Manager</a></li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② Work Order → Task 분해</h2>
+
+      <p>work_order의 제품·공정 특성에 따라 사전 정의된 템플릿으로 분해:</p>
+
+      <table>
+        <thead><tr><th>Work Order 타입</th><th>Task 개수</th><th>주요 Task</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>주조 생산 (신규)</td>
+            <td>~25</td>
+            <td>원재료 준비/용해/조형/주탕/냉각/탈형/이송/검사/분류/적재</td>
+          </tr>
+          <tr>
+            <td>출고 (재고에서)</td>
+            <td>~6</td>
+            <td>위치 조회/피킹/이송/도크 도착/출고 확인/재고 차감</td>
+          </tr>
+          <tr>
+            <td>재배치 (Rebalancing)</td>
+            <td>~4</td>
+            <td>소스 픽업/이송/목적지 적재/완료 기록</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s3">
+      <h2>③ DAG 모델</h2>
+
+      <pre><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">from</span> enum <span class="kw">import</span> Enum
+
+<span class="kw">class</span> TaskType(Enum):
+    MATERIAL_INPUT = <span class="str">"material_input"</span>
+    MELTING = <span class="str">"melting"</span>
+    MOLDING = <span class="str">"molding"</span>
+    POURING = <span class="str">"pouring"</span>
+    COOLING = <span class="str">"cooling"</span>
+    DEMOLDING = <span class="str">"demolding"</span>
+    TRANSPORT = <span class="str">"transport"</span>
+    INSPECTION = <span class="str">"inspection"</span>
+    SORTING = <span class="str">"sorting"</span>
+    STORAGE = <span class="str">"storage"</span>
+    PICKING = <span class="str">"picking"</span>
+    SHIPMENT = <span class="str">"shipment"</span>
+
+<span class="kw">class</span> TaskState(Enum):
+    PENDING = <span class="str">"pending"</span>      <span class="comment"># 선행 미완료</span>
+    READY = <span class="str">"ready"</span>          <span class="comment"># Pool에 삽입 가능</span>
+    ASSIGNED = <span class="str">"assigned"</span>    <span class="comment"># Allocator가 로봇 배정</span>
+    RUNNING = <span class="str">"running"</span>      <span class="comment"># 실행 중</span>
+    COMPLETED = <span class="str">"completed"</span>
+    FAILED = <span class="str">"failed"</span>
+
+@dataclass
+<span class="kw">class</span> Task:
+    task_id: str
+    work_order_id: int
+    type: TaskType
+    state: TaskState = TaskState.PENDING
+    required_capability: list[str] = field(default_factory=list)
+    <span class="comment"># 예: ["amr"], ["manipulator", "pouring"]</span>
+    depends_on: list[str] = field(default_factory=list)  <span class="comment"># task_ids</span>
+    payload: dict = field(default_factory=dict)
+    assigned_to: str | <span class="kw">None</span> = <span class="kw">None</span>
+    started_at: datetime | <span class="kw">None</span> = <span class="kw">None</span>
+    ended_at: datetime | <span class="kw">None</span> = <span class="kw">None</span></pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ Task 상태 머신</h2>
+
+      <div class="ascii">[Workflow 생성]
+      │
+      ▼
+   PENDING ─────► READY ─────► ASSIGNED ─────► RUNNING ─────► COMPLETED
+      │              │             │              │
+      │              │             │              └──────► FAILED
+      │              │             │
+      │              │             └── (재배정 필요 시) ──► READY
+      │              │
+      │              └── (allocator가 pickup) ──► ASSIGNED
+      │
+      └── (depends_on 모두 COMPLETED) ──► READY</div>
+
+      <h3>4.1 Dependency 해결</h3>
+      <pre><span class="kw">def</span> on_task_completed(completed_task: Task):
+    <span class="str">"""한 task가 완료되면 그것에 의존하던 task들을 READY로 승격."""</span>
+    dependents = db.query(Task).filter(
+        Task.depends_on.contains([completed_task.task_id])
+    ).all()
+
+    <span class="kw">for</span> dep <span class="kw">in</span> dependents:
+        <span class="kw">if</span> all_deps_completed(dep):
+            dep.state = TaskState.READY
+            ready_task_pool.insert(dep)
+            emit_event(<span class="str">"task.ready"</span>, task_id=dep.task_id)</pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 주조 공정 DAG 예시</h2>
+
+      <div class="ascii">            [원재료 준비]
+                  │
+                  ▼
+              [용해 시작]
+                  │
+                  ▼
+          [용해 완료 감지]
+                  │
+          ┌───────┴───────┐   (병렬)
+          ▼               ▼
+     [조형 시작]    [주탕 위치 이동]
+          │               │
+          ▼               │
+     [조형 완료]           │
+          │               │
+          └───────┬───────┘
+                  ▼
+              [주탕]
+                  │
+                  ▼
+           [냉각 모니터링]
+                  │
+                  ▼
+         [냉각 완료 판정]
+                  │
+                  ▼
+              [탈형]
+                  │
+                  ▼
+          [AMR 이송: 냉각→후처리]
+                  │
+                  ▼
+            [후처리 (수작업)]
+                  │
+                  ▼
+          [AMR 이송: 후처리→검사]
+                  │
+                  ▼
+           [컨베이어 구동]
+                  │
+                  ▼
+           [비전 검사]
+          /               \
+         ▼                 ▼
+   [양품 분류]         [불량 분류]
+         │                 │
+         ▼                 ▼
+  [AMR 양품 적재]   [AMR 불량 폐기]</div>
+
+      <p><strong>병렬 구간</strong>: 조형과 주탕 위치 이동은 동시 진행 가능. Task Manager는 이런 병렬 구간을 DAG로 표현.</p>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 출고 공정 DAG 예시 (단순)</h2>
+
+      <div class="ascii">[위치 조회 (LIFO)]
+      │
+      ▼
+  [AMR 이송: 창고→출고장]
+      │
+      ▼
+  [도크 도착]
+      │
+      ▼
+  [출고 확인]
+      │
+      ▼
+  [재고 차감]</div>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> WorkflowTaskManager:
+    <span class="kw">def</span> __init__(self, db, ready_pool):
+        self.db = db
+        self.pool = ready_pool
+
+    <span class="kw">def</span> decompose(self, work_order) -&gt; list[Task]:
+        <span class="str">"""Work order를 task DAG로 분해."""</span>
+        template = self._select_template(work_order)
+        tasks = []
+
+        <span class="kw">for</span> task_spec <span class="kw">in</span> template.tasks:
+            task = Task(
+                task_id=f<span class="str">"WO{work_order.work_order_id}-T{task_spec.seq}"</span>,
+                work_order_id=work_order.work_order_id,
+                type=task_spec.type,
+                required_capability=task_spec.capability,
+                depends_on=[
+                    f<span class="str">"WO{work_order.work_order_id}-T{dep}"</span>
+                    <span class="kw">for</span> dep <span class="kw">in</span> task_spec.depends_on
+                ],
+                payload=task_spec.payload_for(work_order),
+            )
+            tasks.append(task)
+            self.db.add(task)
+
+        self.db.commit()
+
+        <span class="comment"># dependency가 없는 task는 즉시 READY</span>
+        <span class="kw">for</span> task <span class="kw">in</span> tasks:
+            <span class="kw">if</span> <span class="kw">not</span> task.depends_on:
+                self._mark_ready(task)
+
+        <span class="kw">return</span> tasks
+
+    <span class="kw">def</span> on_task_completed(self, task_id: str, success: bool):
+        task = self.db.query(Task).get(task_id)
+        task.state = TaskState.COMPLETED <span class="kw">if</span> success <span class="kw">else</span> TaskState.FAILED
+        task.ended_at = datetime.utcnow()
+        self.db.commit()
+
+        <span class="kw">if</span> <span class="kw">not</span> success:
+            self._handle_task_failure(task)
+            <span class="kw">return</span>
+
+        <span class="comment"># dependency 해결</span>
+        dependents = self.db.query(Task).filter(
+            Task.depends_on.any(task_id)
+        ).all()
+        <span class="kw">for</span> dep <span class="kw">in</span> dependents:
+            <span class="kw">if</span> self._all_deps_done(dep):
+                self._mark_ready(dep)
+
+        <span class="comment"># 모든 task 완료 시 work_order 완료</span>
+        <span class="kw">if</span> self._all_wo_tasks_done(task.work_order_id):
+            self._complete_work_order(task.work_order_id)
+
+    <span class="kw">def</span> _mark_ready(self, task: Task):
+        task.state = TaskState.READY
+        self.db.commit()
+        self.pool.insert(task)
+        emit_event(<span class="str">"task.ready"</span>, task_id=task.task_id)</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="05_production_lane_queue.html"><strong>05 Production Lane Queue</strong></a>: active work_order 이벤트</li>
+        <li><a href="06_shipment_lane_queue.html"><strong>06 Shipment Lane Queue</strong></a>: active shipment 이벤트</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="08_ready_task_pool.html"><strong>08 Ready Task Pool</strong></a>: READY task 삽입</li>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: <code>on_task_completed</code> 호출</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="06_shipment_lane_queue.html">
+          <div class="label">← 이전</div>
+          <div class="name">06. Shipment Lane Queue</div>
+        </a>
+        <a href="08_ready_task_pool.html">
+          <div class="label">다음 →</div>
+          <div class="name">08. Ready Task Pool</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 07. Workflow / Task Manager · 2026-04-08</footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>2026-04-15 · Stage A · PyQt 카메라 라이브 뷰</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--line:#30363d;--ink:#e6edf3;--mute:#8b949e;
+        --accent:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--purple:#d2a8ff;
+        --code:#0d1117;--chip:#1f6feb33;}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.65 -apple-system,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+  .crumb{color:var(--mute);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  h1{font:700 26px/1.3 inherit;margin:6px 0 8px}
+  h2{font:600 18px/1.4 inherit;margin:32px 0 10px;padding-top:12px;border-top:1px dashed var(--line);color:#c9d1d9}
+  h3{font:600 15px/1.4 inherit;margin:18px 0 6px;color:#c9d1d9}
+  p{margin:8px 0}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  code{background:#1f252e;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px}
+  .muted{color:var(--mute)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--chip);color:#79c0ff;font-size:11.5px;margin-right:4px}
+  .chip.ok{background:#1f6b2d33;color:#7ee787}
+  .chip.warn{background:#bb800933;color:#e3b341}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#171d25;font-weight:600}
+  tr:nth-child(even) td{background:#12161d}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:12px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .card h4{margin:0 0 6px;font-size:13.5px;color:#c9d1d9}
+  .kvs{list-style:none;padding:0;margin:0;font-size:13px}
+  .kvs li{padding:3px 0;border-bottom:1px dotted var(--line)}
+  .kvs li:last-child{border:none}
+  .kvs b{color:#c9d1d9;margin-right:6px;font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--mute);margin-right:4px}
+  .ascii{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;white-space:pre;overflow-x:auto;color:#c9d1d9}
+  .note{background:#112538;border-left:3px solid var(--accent);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .warn-box{background:#2a2010;border-left:3px solid var(--warn);padding:10px 14px;border-radius:4px;margin:10px 0}
+  footer{margin-top:48px;padding-top:12px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="crumb">Casting Factory · Worklog</div>
+  <h1>2026-04-15 · Stage A · PyQt 품질 페이지 라이브 카메라 뷰 <span class="chip ok">동작 확인</span></h1>
+  <p class="muted">Jetson Orin NX 에 연결된 USB 카메라(Logitech C920) 영상을 PyQt 모니터링 앱의 <b>품질 검사</b> 페이지 카메라 뷰에 1Hz 로 실시간 표시한다. 기존 시뮬레이션 위젯을 실 프레임 렌더링으로 승격하면서 PASS/FAIL 오버레이 구조는 그대로 유지해 Stage B(실제 추론) 도입 시 자연스럽게 이어지도록 설계했다.</p>
+  <p><span class="chip">gRPC RPC 1 추가</span><span class="chip">PyQt 위젯 확장</span><span class="chip">1Hz polling</span><span class="chip warn">판정은 Stage B 대기</span></p>
+</header>
+
+<h2>1. 배경과 목표</h2>
+<p>V6 이미지 파이프라인 상태 점검 중, 사용자가 "카메라 뷰에 실제 영상이 보이는가? PASS/FAIL 로 나오는가?" 를 물었다. 조사 결과 현재 구성은 다음과 같았다.</p>
+<div class="warn-box">
+<b>Before (2026-04-15 오후 전):</b><br>
+· 카메라 뷰는 <code>CameraLiveView</code> <b>시뮬레이션 위젯</b> — QPainter 로 그라데이션+스캔라인 렌더<br>
+· PASS/FAIL 판정 데이터는 레거시 FastAPI <code>/api/quality/vision-feed</code> 에서 mock 수신<br>
+· Jetson → Mgmt image_sink 로 쌓이는 <b>실제 프레임은 PyQt 와 전혀 연결되지 않음</b>
+</div>
+<p>두 단계로 분해했다:</p>
+<ul>
+  <li><b>Stage A</b> (지금 진행) — 실제 프레임 스트림을 PyQt 카메라 뷰에 표시. 추론은 아직 없음.</li>
+  <li><b>Stage B</b> (AI Server 모델 확정 후) — IP snapshot 에 대한 PASS/FAIL 추론 + DB/스트림 노출.</li>
+</ul>
+
+<h2>2. 설계 결정</h2>
+<table>
+  <thead><tr><th>항목</th><th>선택</th><th>근거</th></tr></thead>
+  <tbody>
+    <tr><td>전송 방식</td><td>서버 polling (<code>GetLatestFrame</code> unary)</td><td>구현 단순, 테스트 용이. 추후 server streaming 으로 승격 여지</td></tr>
+    <tr><td>주기</td><td>1Hz (<code>MGMT_LIVE_FRAME_POLL_MS=1000</code>)</td><td>Jetson 2Hz 생산 속도의 절반. 대역·CPU 부담 낮음</td></tr>
+    <tr><td>sequence 기반 dedup</td><td>클라이언트 쪽에서 비교</td><td>같은 seq 이미지로 paintEvent 중복 트리거 방지</td></tr>
+    <tr><td>기존 시뮬레이션 위젯 처리</td><td>pixmap 이 있을 때만 실 프레임 표시, 없으면 기존 렌더 유지</td><td>연결 끊기면 STANDBY 표시로 자연스러운 fallback</td></tr>
+    <tr><td>PASS/FAIL 오버레이</td><td>그대로 유지 (mock 소스)</td><td>Stage B 에서 소스만 교체하면 됨</td></tr>
+  </tbody>
+</table>
+
+<h2>3. 데이터 플로우</h2>
+<div class="ascii">
+[ Jetson C920 /dev/video0 ]
+ 1280x720 JPEG @ 2Hz
+        │
+        ▼ gRPC client streaming ImagePublisherService.PublishFrames
+[ Management Server :50051 · Mac 100.77.239.25 ]
+   image_sink.push(camera_id="CAM-INSP-01", data=JPEG, seq=N)
+                     ▲
+                     │
+           GetLatestFrame(camera_id) unary RPC
+                     │
+        ▲────────────┘ 1Hz polling
+        │
+[ PyQt monitoring · 품질 검사 페이지 ]
+   QTimer 1s → ManagementClient.get_latest_frame()
+              → CameraLiveView.set_frame_bytes(data, enc, seq, received_at)
+                    │ QImage.fromData → QPixmap.fromImage
+                    ▼ paintEvent 에서 pixmap 먼저 렌더
+              + 기존 PASS/FAIL/CHECKING 오버레이 유지
+</div>
+
+<h2>4. 구현 상세</h2>
+
+<h3>4.1 proto 정의 — 신규 RPC</h3>
+<pre>// backend/management/proto/management.proto
+service ManagementService {
+  ...
+  rpc Health(Empty) returns (Empty);
+  rpc GetLatestFrame(LatestFrameRequest) returns (LatestFrameResponse);
+}
+
+message LatestFrameRequest {
+  string camera_id = 1;
+}
+message LatestFrameResponse {
+  bool      available   = 1;
+  string    camera_id   = 2;
+  string    encoding    = 3;   // "jpeg"
+  uint32    width       = 4;
+  uint32    height      = 5;
+  bytes     data        = 6;
+  uint64    sequence    = 7;
+  Timestamp captured_at = 8;
+  Timestamp received_at = 9;
+}</pre>
+
+<h3>4.2 서버 servicer — image_sink 조회</h3>
+<pre># backend/management/server.py
+def GetLatestFrame(self, request, context):
+    cam = request.camera_id or ""
+    frame = image_sink.latest(cam) if cam else None
+    if not frame:
+        return management_pb2.LatestFrameResponse(
+            available=False, camera_id=cam,
+        )
+    return management_pb2.LatestFrameResponse(
+        available=True, camera_id=cam,
+        encoding=frame.get("encoding", ""),
+        width=int(frame.get("width", 0) or 0),
+        height=int(frame.get("height", 0) or 0),
+        data=frame.get("data", b""),
+        sequence=int(frame.get("sequence", 0) or 0),
+        captured_at=management_pb2.Timestamp(iso8601=frame.get("captured_at","")),
+        received_at=management_pb2.Timestamp(iso8601=frame.get("received_at","")),
+    )</pre>
+
+<h3>4.3 PyQt 클라이언트 헬퍼</h3>
+<pre># monitoring/app/management_client.py
+def get_latest_frame(self, camera_id: str) -&gt; dict | None:
+    try:
+        resp = self._stub.GetLatestFrame(
+            management_pb2.LatestFrameRequest(camera_id=camera_id),
+            timeout=2.0,
+        )
+    except grpc.RpcError as e:
+        logger.warning("GetLatestFrame failed: %s", e)
+        return None
+    if not resp.available:
+        return None
+    return {
+        "camera_id": resp.camera_id, "encoding": resp.encoding,
+        "width": int(resp.width), "height": int(resp.height),
+        "data": bytes(resp.data), "sequence": int(resp.sequence),
+        "captured_at": resp.captured_at.iso8601,
+        "received_at": resp.received_at.iso8601,
+    }</pre>
+
+<h3>4.4 CameraLiveView 확장 — 실 프레임 렌더</h3>
+<pre># monitoring/app/widgets/camera_view.py
+def set_frame_bytes(self, data: bytes, encoding="jpeg",
+                    sequence=0, received_at=""):
+    if not data:
+        self._pixmap = None
+        self.update(); return
+    img = QImage.fromData(data, encoding.upper() or "JPEG")
+    self._pixmap = None if img.isNull() else QPixmap.fromImage(img)
+    self._frame_sequence = int(sequence)
+    self._frame_received_at = received_at or ""
+    self.update()
+
+# paintEvent 분기
+if self._pixmap is not None and not self._pixmap.isNull():
+    scaled = self._pixmap.scaled(w, h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    painter.drawPixmap((w-scaled.width())//2, (h-scaled.height())//2, scaled)
+    self._draw_overlay(painter, w, h)    # 브래킷 + PASS/FAIL 라벨 + 하단 바
+    return
+# 없으면 기존 시뮬레이션 렌더 (원형 제품 + 스캔라인 + 격자)</pre>
+<p class="muted">오버레이(<code>_draw_overlay</code>) 는 실 프레임/시뮬레이션 모두에서 재사용되어 PASS/FAIL/CHECKING/STANDBY 라벨과 ROI 코너 브래킷이 항상 동일한 위치에 그려진다. 하단 정보 바는 "카메라: LIVE · seq N · 수신 시각" 으로 바뀌어 실시간 피드 여부를 시각적으로 구분한다.</p>
+
+<h3>4.5 QualityPage — 1Hz 폴링 타이머</h3>
+<pre># monitoring/app/pages/quality.py
+_LIVE_CAMERA_ID = os.environ.get("MGMT_IP_CAMERA_ID", "CAM-INSP-01")
+_FRAME_POLL_MS  = int(os.environ.get("MGMT_LIVE_FRAME_POLL_MS", "1000"))
+
+# __init__
+self._frame_timer = QTimer(self)
+self._frame_timer.setInterval(_FRAME_POLL_MS)
+self._frame_timer.timeout.connect(self._poll_live_frame)
+self._frame_timer.start()
+
+def _poll_live_frame(self):
+    mgmt = self._ensure_mgmt_client()   # lazy ManagementClient
+    if mgmt is None: return
+    frame = mgmt.get_latest_frame(_LIVE_CAMERA_ID)
+    if not frame: return
+    seq = int(frame.get("sequence", 0))
+    if seq == self._last_frame_seq: return   # dedup
+    self._last_frame_seq = seq
+    self._camera.set_frame_bytes(
+        data=frame["data"], encoding=frame["encoding"],
+        sequence=seq, received_at=frame["received_at"],
+    )</pre>
+
+<h2>5. 환경변수</h2>
+<table>
+  <thead><tr><th>변수</th><th>기본</th><th>용도</th></tr></thead>
+  <tbody>
+    <tr><td><code>MGMT_IP_CAMERA_ID</code></td><td><code>CAM-INSP-01</code></td><td>품질 페이지가 조회할 카메라 ID (Jetson env 와 일치해야 함)</td></tr>
+    <tr><td><code>MGMT_LIVE_FRAME_POLL_MS</code></td><td><code>1000</code></td><td>품질 페이지 폴링 주기. 500 으로 낮추면 2fps 렌더 가능</td></tr>
+  </tbody>
+</table>
+
+<h2>6. 검증</h2>
+<div class="grid">
+  <div class="card"><h4>RPC smoke test</h4>
+    <ul class="kvs">
+      <li><b>probe file:</b> /tmp/stageA_probe.jpg</li>
+      <li><b>크기:</b> 1280×720 JFIF</li>
+      <li><b>바이트:</b> 121,567</li>
+      <li><b>seq:</b> 129 (진행 중)</li>
+    </ul>
+  </div>
+  <div class="card"><h4>PyQt 런타임</h4>
+    <ul class="kvs">
+      <li><b>PID:</b> 62623</li>
+      <li><b>로그:</b> <code>/tmp/pyqt.log</code> 에 gRPC 에러 없음</li>
+      <li><b>환경:</b> 기본값 (1Hz)</li>
+      <li><b>결과:</b> <span class="ok">카메라 뷰에 실 영상 표시 확인</span></li>
+    </ul>
+  </div>
+</div>
+
+<h2>7. 변경 파일 요약</h2>
+<table>
+  <thead><tr><th>파일</th><th>종류</th><th>변경</th></tr></thead>
+  <tbody>
+    <tr><td>backend/management/proto/management.proto</td><td>proto</td><td>GetLatestFrame RPC + 2 메시지</td></tr>
+    <tr><td>backend/management/management_pb2*.py</td><td>generated</td><td>protoc 재실행</td></tr>
+    <tr><td>backend/management/server.py</td><td>servicer</td><td><code>GetLatestFrame</code> 구현</td></tr>
+    <tr><td>monitoring/app/generated/management_pb2*.py</td><td>generated</td><td><code>scripts/gen_proto.sh</code> (relative import 포함)</td></tr>
+    <tr><td>monitoring/app/management_client.py</td><td>client</td><td><code>get_latest_frame(camera_id)</code> 추가</td></tr>
+    <tr><td>monitoring/app/widgets/camera_view.py</td><td>위젯</td><td><code>set_frame_bytes()</code>, <code>_draw_overlay()</code> 분리, QPixmap 렌더 분기</td></tr>
+    <tr><td>monitoring/app/pages/quality.py</td><td>페이지</td><td>QTimer 1Hz + lazy ManagementClient + seq dedup</td></tr>
+  </tbody>
+</table>
+
+<h2>8. 알려진 한계와 Stage B 로드맵</h2>
+<div class="warn-box">
+<b>현재 한계:</b>
+<ul>
+  <li>PASS/FAIL 은 <b>실 추론 아님</b> — FastAPI mock 데이터 기반</li>
+  <li>폴링 방식 — 서버 파이프는 pub/sub 이 아님. client streaming 으로 바꾸면 대기 시간 ↓</li>
+  <li>다중 카메라: 현재 1개 카메라 ID 만 하드코딩. 페이지 탭/셀렉터 필요</li>
+  <li>PyQt 는 Mac 에서 Mgmt 서버와 같은 호스트 — 프로덕션 Factory Operator PC 배포 미정</li>
+</ul>
+</div>
+
+<h3>Stage B 예정 작업 (AI Server 모델 확정 후)</h3>
+<ol>
+  <li>AI Server 추론 gRPC 엔드포인트 정의 (입력: ImageFrame, 출력: <code>VerdictResponse</code>)</li>
+  <li><code>image_forwarder</code> 가 IP snapshot 업로드 후 추론 호출 → 결과 DB 기록</li>
+  <li>PyQt <code>WatchInspections</code> stream 또는 기존 <code>WatchItems</code> 에 verdict 채널 추가</li>
+  <li><code>CameraLiveView.set_result()</code> 의 소스를 mock 에서 실 verdict 로 교체</li>
+  <li><code>docs/worklog/</code> Stage B 보고서 추가</li>
+</ol>
+
+<h2>9. 회고</h2>
+<div class="note">
+사용자의 <b>"실제 영상이 보이는가?"</b> 질문 한 번으로 현재 구성의 gap(시뮬레이션 vs 실제 스트림) 을 명확히 드러낼 수 있었다. Stage A 는 1.5 시간 내 완결 — gRPC RPC 1개 + 위젯 확장 + 1Hz 타이머만으로 충분했다. 이전 커밋에서 시뮬레이션 위젯을 <code>QFrame</code> 기반으로 잘 추상화해 둔 덕에 <code>set_frame_bytes()</code> 한 메서드 추가로 실 프레임 모드로 승격할 수 있었다. Stage B 에서도 오버레이 구조를 건드리지 않고 판정 소스만 교체하면 된다.
+</div>
+
+<footer>
+생성: 2026-04-15 · 범위: Stage A (카메라 라이브 뷰) · 작업자: ibkim · Claude Code 지원<br>
+경로: <code>docs/worklog/2026-04-15_stageA_live_camera.html</code> · <a href="./index.html">인덱스</a> · <a href="./2026-04-14_15_full_report.html">Full Report</a>
+</footer>
+
+</div>
+</body>
+</html>

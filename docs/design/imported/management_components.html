@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Monitoring (PyQt) — 진행 TASK 정리</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 32px 24px;
+    line-height: 1.6;
+  }
+  .container { max-width: 1280px; margin: 0 auto; }
+  header {
+    border-bottom: 2px solid #334155;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: #f8fafc;
+    letter-spacing: -0.5px;
+  }
+  .subtitle { color: #94a3b8; font-size: 14px; }
+  h2 {
+    color: #f8fafc;
+    font-size: 20px;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #334155;
+  }
+  h3 { color: #cbd5e1; font-size: 16px; margin: 24px 0 12px; }
+
+  /* Task cards */
+  .tasks {
+    display: grid;
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .task {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-left: 4px solid #38bdf8;
+    border-radius: 8px;
+    padding: 14px 20px 16px;
+  }
+  .task.p0 { border-left-color: #ef4444; }
+  .task.p1 { border-left-color: #f59e0b; }
+  .task.p2 { border-left-color: #a78bfa; }
+  .task.done { border-left-color: #34d399; opacity: 0.72; }
+  .task header {
+    border-bottom: none;
+    padding: 0 0 6px 0;
+    margin: 0 0 8px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .task .tid {
+    font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+    color: #7dd3fc;
+    font-size: 12px;
+    background: #0f172a;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .task h4 {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 15px;
+    flex: 1;
+  }
+  .task .body { color: #cbd5e1; font-size: 13.5px; }
+  .task .meta {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #94a3b8;
+    border-top: 1px dashed #334155;
+    padding-top: 8px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+  }
+  .task .meta b { color: #e2e8f0; font-weight: 600; white-space: nowrap; }
+  .task code {
+    background: #0f172a;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #93c5fd;
+    font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .badge.p0 { background: #7f1d1d; color: #fecaca; }
+  .badge.p1 { background: #78350f; color: #fcd34d; }
+  .badge.p2 { background: #4c1d95; color: #ddd6fe; }
+  .badge.done { background: #064e3b; color: #6ee7b7; }
+  .badge.area { background: #334155; color: #cbd5e1; }
+
+  /* Summary table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1e293b;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th {
+    background: #334155;
+    text-align: left;
+    padding: 12px 14px;
+    color: #f1f5f9;
+    font-weight: 600;
+  }
+  td { padding: 10px 14px; border-top: 1px solid #334155; vertical-align: top; }
+  td code {
+    background: #0f172a;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #7dd3fc;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 8px 0 24px;
+    font-size: 13px;
+    color: #cbd5e1;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; }
+
+  .intro {
+    background: #0f172a;
+    border-left: 3px solid #38bdf8;
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    color: #cbd5e1;
+    font-size: 13.5px;
+    margin: 12px 0 24px;
+  }
+  .intro code { background: #1e293b; color: #93c5fd; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid #334155;
+    color: #64748b;
+    font-size: 12px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Monitoring (PyQt) — 진행 TASK 정리</h1>
+  <div class="subtitle">monitoring/ · Factory Operator PC 관점 · 2026-04-20</div>
+</header>
+
+<div class="intro">
+  본 문서는 <code>backend/management/</code> 가 아니라 <b>PyQt 관제 앱(<code>monitoring/</code>) 관점에서</b> 아직
+  진행해야 할 TASK 만 모은 것이다. V6 결정(PyQt → gRPC 직결)이 적용 중이지만 <code>api_client</code>(HTTP + mock) 와
+  <code>ws_worker</code>(WebSocket) 가 여전히 공존한다. 대부분의 TASK 는 <b>기존 HTTP/Mock 경로의 gRPC 이관</b>,
+  <b>실시간 채널 안정화</b>, <b>운영성/배포</b> 세 축으로 나뉜다.
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#ef4444"></span>P0 — 지금 막히면 시연/운영 차단</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#f59e0b"></span>P1 — 다음 스프린트 내</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#a78bfa"></span>P2 — 배포/안정화 전</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#34d399"></span>완료(참고)</div>
+</div>
+
+<section>
+  <h2>1. 현재 상태 스냅샷</h2>
+  <table>
+    <tr><th>영역</th><th>상태</th><th>근거 파일</th></tr>
+    <tr><td>gRPC 채널 (<code>ManagementClient</code>)</td><td>구현 + start_production · list_items · watch_items · watch_alerts · get_robot_status · transition_amr_state</td>
+        <td><code>monitoring/app/management_client.py</code></td></tr>
+    <tr><td>실시간 워커 (QThread)</td><td>item_stream / alert_stream / camera_frame / amr_status · 모두 <code>daemon</code></td>
+        <td><code>monitoring/app/workers/*.py</code></td></tr>
+    <tr><td>HTTP 경로</td><td>7개 페이지가 <code>ApiClient</code> + <code>mock_data</code> 조합으로 데이터 로딩</td>
+        <td><code>monitoring/app/api_client.py</code> (400줄+)</td></tr>
+    <tr><td>WebSocket</td><td><code>CASTING_WS_ENABLED=0</code> 기본 비활성 · alerts 는 gRPC stream 으로 전환됨</td>
+        <td><code>monitoring/app/ws_worker.py</code></td></tr>
+    <tr><td>MQTT</td><td>직접 구독 경로 남아있음 (컨베이어/비전/코봇/AMR)</td>
+        <td><code>monitoring/app/mqtt_worker.py</code></td></tr>
+    <tr><td>Critical alert</td><td>모달 + 중복 방지(200 cache) 구현</td>
+        <td><code>main_window._on_alert_event</code></td></tr>
+    <tr><td>Handoff ACK (SPEC-AMR-001)</td><td>WebSocket 경로만 수신 (<code>handoff.ack</code>), gRPC 경로 미연결</td>
+        <td><code>main_window._on_handoff_ack</code></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. P0 — 가동 차단 요소</h2>
+  <div class="tasks">
+
+    <div class="task p0">
+      <header>
+        <span class="tid">M-P0-01</span>
+        <span class="badge p0">P0</span>
+        <span class="badge area">operations</span>
+        <h4>패턴 등록 → 생산 시작 E2E 실기 검증</h4>
+      </header>
+      <div class="body">
+        <code>operations.py</code> 의 [패턴 등록] → [생산 시작] 버튼은 <code>POST /api/production/patterns</code> 와
+        <code>ManagementClient.start_production()</code> 2단 호출. <b>두 호출 사이 실패 시 롤백 경로 없음</b> —
+        패턴은 등록됐는데 gRPC 가 터지면 UI 가 stuck 됨.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>승인 주문 1건 → 패턴 등록 → gRPC start_production 성공 + 실패 시 rollback UX (상태 라벨 에러 표시)</span>
+        <b>차단</b><span>Mgmt 가 running 이어야 — 시연 직전 smoke test 필수</span>
+      </div>
+    </div>
+
+    <div class="task p0">
+      <header>
+        <span class="tid">M-P0-02</span>
+        <span class="badge p0">P0</span>
+        <span class="badge area">production</span>
+        <h4>응급정지 / 운전모드 전환 버튼 TODO 해소</h4>
+      </header>
+      <div class="body">
+        <code>production.py:433,437</code> 의 <code># TODO: POST /api/production/emergency_stop</code> 와
+        <code># TODO: POST /api/production/mode</code> 2건이 그대로 남음. 관제실에서 가장 자주 누르는 버튼이라 데모에서 실패하면 신뢰도 타격.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>Mgmt gRPC 에 해당 RPC 가 있으면 그쪽 호출로, 없으면 FastAPI endpoint 확인 후 1건씩 바인딩</span>
+        <b>선택지</b><span>(A) FastAPI 에 이미 있는지 확인  ·  (B) Mgmt 에 RPC 추가 제안</span>
+      </div>
+    </div>
+
+    <div class="task p0">
+      <header>
+        <span class="tid">M-P0-03</span>
+        <span class="badge p0">P0</span>
+        <span class="badge area">workers</span>
+        <h4>gRPC stream 재연결/keepalive 실전 검증</h4>
+      </header>
+      <div class="body">
+        4개 스트림 워커(items/alerts/camera/amr_status) 가 Mgmt 프로세스 재시작/TCP 끊김 상황에서 자동 복구하는지 확인.
+        <code>ManagementClient</code> keepalive 옵션은 있으나 워커 레벨 backoff 루프가 일관적이지 않음.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>서버 재시작 3회 → 워커 전부 30초 내 재구독 · 로그에 "reconnect" 기록</span>
+        <b>테스트</b><span>Mgmt 를 SIGTERM 후 재기동, camera_frame_worker 에 last_seq 유지 여부 확인</span>
+      </div>
+    </div>
+
+    <div class="task p0">
+      <header>
+        <span class="tid">M-P0-04</span>
+        <span class="badge p0">P0</span>
+        <span class="badge area">critical alert</span>
+        <h4>Critical 모달 폭주 캐시 cap 교체</h4>
+      </header>
+      <div class="body">
+        <code>main_window._on_alert_event</code> 의 cap(200→100) 방식은 <b>순서 보장 없음</b> — <code>set(list(...)[-100:])</code>
+        은 iteration order 에 의존. 대량 critical 시 실제로는 최근 alert_id 가 날아갈 수 있음. deque 또는 OrderedDict 로 교체.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>LRU 보장 + 단위 테스트 (300건 주입 → 최신 100건만 남는지)</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>3. P1 — 다음 스프린트</h2>
+  <div class="tasks">
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-01</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">migration</span>
+        <h4>HTTP → gRPC 이관 (Phase 8 완료)</h4>
+      </header>
+      <div class="body">
+        <code>api_client.py</code> 400+ 줄 중 대다수가 mock fallback 에 의존. 다음 순서로 Mgmt gRPC 전환:
+        <br>① dashboard KPI (<code>/api/dashboard/stats</code>) → Mgmt 집계 RPC 신설 요청
+        <br>② logistics tasks (<code>/api/logistics/tasks</code>) → <code>ListItems</code>(stage=TR_*) 파생
+        <br>③ quality summary (<code>/api/quality/summary</code>) → Mgmt 또는 DB 직결 RPC
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>3개 엔드포인트에 대해 <code>CASTING_DATA_MODE=normal</code> 에서도 mock 없이 화면 동작</span>
+        <b>주의</b><span>RPC 없는 것 먼저 백엔드팀과 합의 (맘대로 proto 추가 금지)</span>
+      </div>
+    </div>
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-02</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">handoff</span>
+        <h4>Handoff ACK 수신 경로 gRPC 로 전환</h4>
+      </header>
+      <div class="body">
+        현재 <code>_on_handoff_ack</code> 는 WebSocket <code>handoff.ack</code> 만 수신. WebSocket 단종 기본값(<code>CASTING_WS_ENABLED=0</code>) 환경에서
+        <b>Factory Operator 가 인수인계 사실을 알지 못함</b>. <code>WatchAlerts</code> 에 handoff 이벤트를 얹거나 <code>WatchHandoff</code> RPC 신설.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>WS 없이 handoff 발생 → 8초 상태바 메시지 + 로그 기록</span>
+        <b>연관</b><span>SPEC-AMR-001 FR-AMR-01-06</span>
+      </div>
+    </div>
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-03</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">logistics</span>
+        <h4>AMR 상태 폴링 → stream 전환</h4>
+      </header>
+      <div class="body">
+        <code>AmrStatusWorker</code> 가 <code>AMR_POLL_INTERVAL=10</code>초 폴링. Mgmt 에 <code>WatchRobotStatus</code> stream 이 있으면 10초 지연 제거.
+        현재 스트림이 없으면 프로토 확장 요청, 폴링 유지 시 간격을 배터리/상태별 적응형으로 (IDLE 30s / MOVE 2s).
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>MOVE 상태에서 UI 마커가 2초 내 갱신 (현재 10초)</span>
+      </div>
+    </div>
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-04</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">amr card</span>
+        <h4>수동 상태 전이 버튼 (UNLOADING / UNLOAD_COMPLETED / RESET)</h4>
+      </header>
+      <div class="body">
+        <code>transition_amr_state()</code> 는 준비돼 있으나 UI 진입점 없음. <code>AmrStatusCard</code> 또는 logistics 페이지에
+        "하차 시작 / 완료 / FAILED 리셋" 버튼 3종 추가. Factory Operator 가 ROS 단절 시 수동 복구 가능해야 함.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>3개 버튼 → AmrStateMachine 10-state 전이표 준수 + 실패 시 QMessageBox 사유 표시</span>
+      </div>
+    </div>
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-05</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">mqtt</span>
+        <h4>MQTT 경로 정리 (사용처 vs Mgmt 중복)</h4>
+      </header>
+      <div class="body">
+        <code>mqtt_worker</code> 가 <code>conveyor/+/status</code>, <code>vision/+/result</code>, <code>cobot/+/status</code>, <code>amr/+/position</code>, <code>factory/alarm</code> 구독.
+        Mgmt gRPC stream 과 일부 중복 가능성. 표를 만들어 <b>어느 채널이 source of truth 인지 1건씩 확정</b> 후 중복 제거.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>5개 토픽 각각 (A) MQTT keep / (B) gRPC 전환 / (C) 제거 결정된 표</span>
+      </div>
+    </div>
+
+    <div class="task p1">
+      <header>
+        <span class="tid">M-P1-06</span>
+        <span class="badge p1">P1</span>
+        <span class="badge area">refresh</span>
+        <h4>REFRESH_INTERVAL 전역 8초 → 페이지별 차등</h4>
+      </header>
+      <div class="body">
+        <code>REFRESH_INTERVAL_MS=8000</code> 이 모든 페이지에 동일 적용 중. dashboard KPI 는 8초여도 되지만 production 진행 테이블은 2~3초가 필요.
+        map / dashboard 미니맵만 500ms fast timer 가 별도로 돈다 — 일관성 없음.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>페이지별 interval config + stream 도달 시 interval 자동 slowdown</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>4. P2 — 배포/안정화 전</h2>
+  <div class="tasks">
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-01</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">data mode</span>
+        <h4>mock_data 의존 축소 + 데모 모드 명시</h4>
+      </header>
+      <div class="body">
+        <code>CASTING_DATA_MODE</code> 3-level(<code>normal/fallback/mock_only</code>) 이 있으나 페이지들은 fallback 을 암묵 전제로 짜여있음.
+        <b>실제 운영에서 mock 이 보이면 심각한 혼동</b>. 상태바에 현재 모드 배지 노출 + <code>mock_only</code> 는 "DEMO" 워터마크.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>우하단 "MODE: normal/fallback/DEMO" 배지 + 데모 모드 배경 워터마크</span>
+      </div>
+    </div>
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-02</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">tls</span>
+        <h4>mTLS 클라이언트 cert 자동 배포</h4>
+      </header>
+      <div class="body">
+        <code>MGMT_GRPC_TLS_ENABLED=1</code> 활성 시 <code>backend/management/certs/{ca,client}.{crt,key}</code> 를 찾음.
+        Operator PC 가 여러 대면 cert 배포 수작업 부담. <code>monitoring/scripts/fetch_certs.sh</code> (SCP 또는 Tailscale) 추가.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>1 명령으로 cert 3종 다운로드 + 만료일 체크 경고</span>
+      </div>
+    </div>
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-03</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">env</span>
+        <h4>환경변수 네임스페이스 일원화</h4>
+      </header>
+      <div class="body">
+        현재 혼재: <code>CASTING_API_HOST</code>, <code>CASTING_MQTT_HOST</code>, <code>MANAGEMENT_GRPC_HOST</code>, <code>MGMT_GRPC_TLS_ENABLED</code>, <code>MGMT_IP_CAMERA_ID</code>.
+        접두사를 <code>CASTING_</code> 으로 통일하고 <code>MGMT_</code> 를 alias 로만 남기는 이행 계획.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span><code>.env.example</code> 에 모든 변수 정리 + 배포 문서 업데이트</span>
+      </div>
+    </div>
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-04</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">packaging</span>
+        <h4>PyInstaller 패키징 + 관제실 고정 레이아웃</h4>
+      </header>
+      <div class="body">
+        README roadmap <code>v1.0.0</code> 항목. macOS(dev) + Ubuntu 24.04(현장) 양쪽 빌드. 기동 시 자동 전체화면, ESC 차단 옵션(<code>CASTING_KIOSK=1</code>).
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>.app / .AppImage 생성 + 의존 3rd party (grpc, pyqt5, requests) 번들</span>
+      </div>
+    </div>
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-05</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">logging</span>
+        <h4>로그 파일 rotation + 에러 집계</h4>
+      </header>
+      <div class="body">
+        현재 <code>logging.basicConfig</code> 만 사용 — 파일 저장 없음. 관제실 PC 에서 장시간 구동 후 사고 분석 불가. <code>RotatingFileHandler</code>
+        + critical 레벨 이상은 별도 파일로.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span>~/monitoring-logs/ 에 10MB x 5 rotation + critical.log 분리</span>
+      </div>
+    </div>
+
+    <div class="task p2">
+      <header>
+        <span class="tid">M-P2-06</span>
+        <span class="badge p2">P2</span>
+        <span class="badge area">tests</span>
+        <h4>pytest 도입 — 최소 smoke</h4>
+      </header>
+      <div class="body">
+        monitoring/ 쪽에 테스트 0건. 우선 <code>ManagementClient</code> 단위 테스트(mock stub) + <code>operations._on_register_pattern</code>
+        워크플로 smoke 3개만. GUI 테스트는 비용 대비 낮은 우선순위.
+      </div>
+      <div class="meta">
+        <b>완료 조건</b><span><code>pytest monitoring/</code> 에서 녹색 5건 이상 + CI 주입</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>5. 참고 — 이미 완료된 것 (교차확인용)</h2>
+  <div class="tasks">
+
+    <div class="task done">
+      <header>
+        <span class="tid">DONE</span>
+        <span class="badge done">완료</span>
+        <span class="badge area">camera</span>
+        <h4>Jetson → Mgmt → PyQt 카메라 스트리밍 (Stage B)</h4>
+      </header>
+      <div class="body">
+        <code>CameraFrameWorker</code> 가 <code>WatchCameraFrames</code> server stream 구독, quality 페이지에 실시간 프레임 표시.
+        camera_id 는 <code>MGMT_IP_CAMERA_ID</code> 환경변수(기본 <code>CAM-INSP-01</code>).
+      </div>
+    </div>
+
+    <div class="task done">
+      <header>
+        <span class="tid">DONE</span>
+        <span class="badge done">완료</span>
+        <span class="badge area">alerts</span>
+        <h4>Alert WebSocket → gRPC 전환</h4>
+      </header>
+      <div class="body">
+        <code>AlertStreamWorker</code> + critical 모달 / warning·info 토스트 분기 완료. <code>CASTING_WS_ENABLED=0</code> 가 기본.
+      </div>
+    </div>
+
+    <div class="task done">
+      <header>
+        <span class="tid">DONE</span>
+        <span class="badge done">완료</span>
+        <span class="badge area">items</span>
+        <h4>Item stage 행 단위 부분 갱신</h4>
+      </header>
+      <div class="body">
+        <code>ItemStreamWorker</code> 로 stage 변화 시 <code>_update_item_row</code> 가 해당 row 1개만 다시 그림 — 전체 refresh 비용 회피.
+      </div>
+    </div>
+
+    <div class="task done">
+      <header>
+        <span class="tid">DONE</span>
+        <span class="badge done">완료</span>
+        <span class="badge area">shortcut</span>
+        <h4>페이지 단축키 · 사이드바 토글 · 전체화면</h4>
+      </header>
+      <div class="body">
+        Ctrl+1..6 (페이지), Ctrl+B (사이드바), F11 (전체화면), ESC (해제) 모두 <code>main_window._build_ui</code> 에 구현.
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>6. 요약표 — 한눈에 보기</h2>
+  <table>
+    <tr><th>ID</th><th>우선</th><th>영역</th><th>요약</th><th>의존</th></tr>
+    <tr><td>M-P0-01</td><td>P0</td><td>operations</td><td>패턴 등록 → 생산 시작 E2E + rollback</td><td>Mgmt running</td></tr>
+    <tr><td>M-P0-02</td><td>P0</td><td>production</td><td>응급정지 / 운전모드 TODO 해소</td><td>RPC 확인</td></tr>
+    <tr><td>M-P0-03</td><td>P0</td><td>workers</td><td>gRPC stream 재연결 실전 검증</td><td>—</td></tr>
+    <tr><td>M-P0-04</td><td>P0</td><td>alerts</td><td>Critical 모달 LRU 캐시 교체</td><td>—</td></tr>
+    <tr><td>M-P1-01</td><td>P1</td><td>migration</td><td>dashboard/logistics/quality HTTP → gRPC</td><td>Mgmt RPC 추가</td></tr>
+    <tr><td>M-P1-02</td><td>P1</td><td>handoff</td><td>handoff ACK gRPC 경로 신설</td><td>proto 확장</td></tr>
+    <tr><td>M-P1-03</td><td>P1</td><td>logistics</td><td>AMR 10초 폴링 → stream</td><td>WatchRobotStatus</td></tr>
+    <tr><td>M-P1-04</td><td>P1</td><td>amr card</td><td>수동 상태 전이 버튼 3종</td><td>—</td></tr>
+    <tr><td>M-P1-05</td><td>P1</td><td>mqtt</td><td>MQTT vs Mgmt 중복 정리</td><td>백엔드 합의</td></tr>
+    <tr><td>M-P1-06</td><td>P1</td><td>refresh</td><td>페이지별 interval 차등</td><td>—</td></tr>
+    <tr><td>M-P2-01</td><td>P2</td><td>data mode</td><td>mock 배지 + DEMO 워터마크</td><td>—</td></tr>
+    <tr><td>M-P2-02</td><td>P2</td><td>tls</td><td>cert 배포 스크립트</td><td>Tailscale</td></tr>
+    <tr><td>M-P2-03</td><td>P2</td><td>env</td><td>환경변수 네임스페이스 통일</td><td>—</td></tr>
+    <tr><td>M-P2-04</td><td>P2</td><td>packaging</td><td>PyInstaller + kiosk 모드</td><td>—</td></tr>
+    <tr><td>M-P2-05</td><td>P2</td><td>logging</td><td>파일 로그 rotation</td><td>—</td></tr>
+    <tr><td>M-P2-06</td><td>P2</td><td>tests</td><td>pytest 최소 smoke 5건</td><td>—</td></tr>
+  </table>
+</section>
+
+<footer>
+  Casting Factory · Monitoring (PyQt) Task List · 2026-04-20<br>
+  Source: monitoring/app/** + V6 Phase 1~8 meta
+</footer>
+
+</div>
+</body>
+</html>

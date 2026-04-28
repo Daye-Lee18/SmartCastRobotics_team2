@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10. Resource Reservation Manager</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Resource Layer</div>
+      <h1>10. Resource Reservation Manager<span class="badge resource">Resource</span></h1>
+      <div class="subtitle">
+        station / buffer / dock 점유 관리 · 공유 자원 충돌 방지 · Traffic Manager와 병렬
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">Traffic Manager와의 경계</a></li>
+        <li><a href="#s3">관리 대상 자원</a></li>
+        <li><a href="#s4">예약 라이프사이클</a></li>
+        <li><a href="#s5">Deadlock 방지</a></li>
+        <li><a href="#s6">구현 스케치</a></li>
+        <li><a href="#s7">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Resource Reservation Manager</strong>는 공장 내 <strong>정적 자원(station / buffer / dock / charging station)</strong>의 점유 상태를 관리합니다. Traffic Manager가 "이동 경로"를 관리한다면 이 매니저는 "머무르는 공간"을 관리합니다.</p>
+
+      <h3>1.1 대표 자원</h3>
+      <ul>
+        <li><strong>Station</strong>: 용해로 앞, 주탕 위치, 검사대, 후처리 스테이션</li>
+        <li><strong>Buffer</strong>: 공정 간 임시 적재 버퍼 (냉각 대기 영역)</li>
+        <li><strong>Dock</strong>: 출고장 도크, AMR 피킹 위치</li>
+        <li><strong>Charging Station</strong>: AMR 충전소</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② Traffic Manager와의 경계</h2>
+      <table>
+        <thead><tr><th>측면</th><th>Traffic Manager</th><th>Reservation Manager</th></tr></thead>
+        <tbody>
+          <tr><td>관리 대상</td><td>이동 경로 (edge/zone)</td><td>정적 위치 (station/dock)</td></tr>
+          <tr><td>시간 특성</td><td>짧음 (통과 수 초)</td><td>길음 (수 분~수십 분)</td></tr>
+          <tr><td>점유 패턴</td><td>sliding window</td><td>lock (acquire/release)</td></tr>
+          <tr><td>충돌 해결</td><td>Priority Yield + Backtrack</td><td>대기 큐</td></tr>
+          <tr><td>문서</td><td><a href="../fleet_traffic_management.html">fleet_traffic_management.html</a></td><td>본 문서</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>협력 예시</strong>: AMR이 "창고 랙 A-3 위치로 이동"할 때
+        <ol style="margin:4px 0 0 16px">
+          <li>Reservation Manager: 랙 A-3 예약 확보</li>
+          <li>Traffic Manager: 현재 위치 → 랙 A-3까지 경로 안전 확보</li>
+          <li>AMR 이동</li>
+          <li>도착 후 Reservation은 작업 종료까지 유지</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2>③ 관리 대상 자원</h2>
+
+      <pre>@dataclass
+<span class="kw">class</span> Resource:
+    id: str
+    type: ResourceType  <span class="comment"># STATION/BUFFER/DOCK/CHARGING</span>
+    position: tuple[float, float]
+    capacity: int = <span class="num">1</span>  <span class="comment"># 동시 점유 가능 수</span>
+    current_holders: set[str] = field(default_factory=set)
+    wait_queue: deque = field(default_factory=deque)
+    max_hold_sec: int = <span class="num">300</span>  <span class="comment"># 5분 초과 시 stale 경고</span>
+
+<span class="kw">class</span> ResourceType(Enum):
+    STATION = <span class="str">"station"</span>
+    BUFFER = <span class="str">"buffer"</span>
+    DOCK = <span class="str">"dock"</span>
+    CHARGING = <span class="str">"charging"</span></pre>
+
+      <h3>3.1 자원 YAML 예시</h3>
+      <pre>resources:
+  - id: STN_MELTING
+    type: station
+    position: [<span class="num">0.2</span>, <span class="num">0.5</span>]
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">600</span>  <span class="comment"># 용해 10분까지</span>
+
+  - id: STN_POURING
+    type: station
+    position: [<span class="num">0.4</span>, <span class="num">0.5</span>]
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">60</span>
+
+  - id: BUF_COOLING
+    type: buffer
+    position: [<span class="num">0.6</span>, <span class="num">0.5</span>]
+    capacity: <span class="num">5</span>  <span class="comment"># 냉각 병렬 5개</span>
+    max_hold_sec: <span class="num">900</span>
+
+  - id: STN_INSPECT
+    type: station
+    position: [<span class="num">1.8</span>, <span class="num">0.5</span>]
+    capacity: <span class="num">1</span>
+    max_hold_sec: <span class="num">30</span>
+
+  - id: DOCK_OUT_1
+    type: dock
+    position: [<span class="num">1.9</span>, <span class="num">0.1</span>]
+    capacity: <span class="num">1</span>
+
+  - id: CHARGE_1
+    type: charging
+    position: [<span class="num">0.1</span>, <span class="num">0.1</span>]
+    capacity: <span class="num">1</span></pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ 예약 라이프사이클</h2>
+
+      <div class="ascii">    [Allocator 요청]
+          │
+          ▼
+   ┌─ try_reserve(resource_id, holder_id) ────┐
+   │                                           │
+   │  1. lock 획득                              │
+   │  2. current_holders < capacity?            │
+   │     YES → add holder, granted              │
+   │     NO  → wait_queue 등록, pending          │
+   │  3. lock 해제                              │
+   └─────────────┬─────────────────────────────┘
+                 │
+           granted / pending
+                 │
+                 ▼
+         [작업 수행]
+                 │
+                 ▼
+         release(resource_id, holder_id)
+                 │
+                 ▼
+    wait_queue 선두 → grant</div>
+
+      <h3>4.1 Stale 예약 처리</h3>
+      <p>max_hold_sec 초과 시 관리자 경보 + 강제 해제 옵션:</p>
+      <pre><span class="kw">def</span> cleanup_stale():
+    now = datetime.utcnow()
+    <span class="kw">for</span> res <span class="kw">in</span> resources.values():
+        <span class="kw">for</span> holder, reserved_at <span class="kw">in</span> list(res.reserved_at.items()):
+            <span class="kw">if</span> now - reserved_at &gt; timedelta(seconds=res.max_hold_sec):
+                emit_alert(<span class="str">"stale_reservation"</span>,
+                           resource=res.id, holder=holder)
+                <span class="comment"># 자동 해제는 설정에 따라</span>
+                <span class="kw">if</span> AUTO_RELEASE_STALE:
+                    release(res.id, holder)</pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ Deadlock 방지</h2>
+
+      <p>한 task가 여러 자원을 요구하면 데드락 가능 (A→B→A 순환). 해결:</p>
+
+      <h3>5.1 Resource Ordering (전역 순서)</h3>
+      <p>모든 자원에 고정 순서를 부여하고, 항상 <strong>작은 번호부터</strong> 획득:</p>
+
+      <pre>RESOURCE_ORDER = {
+    <span class="str">"STN_MELTING"</span>: <span class="num">1</span>,
+    <span class="str">"STN_POURING"</span>: <span class="num">2</span>,
+    <span class="str">"BUF_COOLING"</span>: <span class="num">3</span>,
+    <span class="str">"STN_INSPECT"</span>: <span class="num">4</span>,
+    <span class="str">"DOCK_OUT_1"</span>: <span class="num">5</span>,
+}
+
+<span class="kw">def</span> reserve_multiple(resource_ids: list[str], holder: str):
+    <span class="comment"># 번호 오름차순 정렬 (데드락 방지)</span>
+    sorted_ids = sorted(resource_ids, key=<span class="kw">lambda</span> r: RESOURCE_ORDER[r])
+    acquired = []
+    <span class="kw">try</span>:
+        <span class="kw">for</span> rid <span class="kw">in</span> sorted_ids:
+            <span class="kw">if</span> <span class="kw">not</span> try_reserve(rid, holder):
+                <span class="kw">raise</span> ReservationFailure(rid)
+            acquired.append(rid)
+        <span class="kw">return</span> acquired
+    <span class="kw">except</span> ReservationFailure:
+        <span class="comment"># 역순으로 rollback</span>
+        <span class="kw">for</span> rid <span class="kw">in</span> reversed(acquired):
+            release(rid, holder)
+        <span class="kw">raise</span></pre>
+
+      <h3>5.2 All-or-nothing 방식</h3>
+      <p>일부만 잡고 기다리다가 상대방이 내 것을 원하는 circular wait 방지. 반드시 <strong>전부 성공 or 전부 rollback</strong>.</p>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> ResourceReservationManager:
+    <span class="kw">def</span> __init__(self, resources_yaml):
+        self.resources: dict[str, Resource] = load_resources(resources_yaml)
+        self._lock = threading.RLock()
+
+    <span class="kw">def</span> try_reserve(self, rid: str, holder: str) -&gt; bool:
+        <span class="kw">with</span> self._lock:
+            res = self.resources[rid]
+
+            <span class="comment"># 이미 보유 (idempotent)</span>
+            <span class="kw">if</span> holder <span class="kw">in</span> res.current_holders:
+                <span class="kw">return</span> <span class="kw">True</span>
+
+            <span class="comment"># 용량 여유</span>
+            <span class="kw">if</span> len(res.current_holders) &lt; res.capacity:
+                res.current_holders.add(holder)
+                res.reserved_at[holder] = datetime.utcnow()
+                <span class="kw">return</span> <span class="kw">True</span>
+
+            <span class="comment"># 대기열 등록 (비차단)</span>
+            res.wait_queue.append(holder)
+            <span class="kw">return</span> <span class="kw">False</span>
+
+    <span class="kw">def</span> release(self, rid: str, holder: str) -&gt; <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            res = self.resources[rid]
+            res.current_holders.discard(holder)
+            res.reserved_at.pop(holder, <span class="kw">None</span>)
+
+            <span class="comment"># 대기열 선두 grant</span>
+            <span class="kw">while</span> res.wait_queue <span class="kw">and</span> len(res.current_holders) &lt; res.capacity:
+                next_holder = res.wait_queue.popleft()
+                res.current_holders.add(next_holder)
+                res.reserved_at[next_holder] = datetime.utcnow()
+                emit_event(<span class="str">"resource.granted"</span>,
+                           resource=rid, holder=next_holder)
+
+    <span class="kw">def</span> reserve_multiple(self, rids: list[str], holder: str) -&gt; bool:
+        <span class="str">"""All-or-nothing 다중 예약."""</span>
+        sorted_ids = sorted(rids, key=<span class="kw">lambda</span> r: RESOURCE_ORDER[r])
+        acquired = []
+        <span class="kw">for</span> rid <span class="kw">in</span> sorted_ids:
+            <span class="kw">if</span> self.try_reserve(rid, holder):
+                acquired.append(rid)
+            <span class="kw">else</span>:
+                <span class="comment"># rollback</span>
+                <span class="kw">for</span> r <span class="kw">in</span> reversed(acquired):
+                    self.release(r, holder)
+                <span class="kw">return</span> <span class="kw">False</span>
+        <span class="kw">return</span> <span class="kw">True</span>
+
+    <span class="kw">def</span> status(self, rid: str) -&gt; dict:
+        res = self.resources[rid]
+        <span class="kw">return</span> {
+            <span class="str">"id"</span>: rid,
+            <span class="str">"type"</span>: res.type.value,
+            <span class="str">"holders"</span>: list(res.current_holders),
+            <span class="str">"wait_queue"</span>: list(res.wait_queue),
+            <span class="str">"capacity"</span>: res.capacity,
+        }</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="09_global_task_allocator.html"><strong>09 Global Task Allocator</strong></a>: 예약 요청</li>
+      </ul>
+      <h3>병렬</h3>
+      <ul>
+        <li><a href="../fleet_traffic_management.html"><strong>Traffic Manager</strong></a>: 이동 경로</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="11_robot_cell_executors.html"><strong>11 Robot / Cell Executors</strong></a>: 예약 후 실제 이동/작업</li>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: 완료 시 release 트리거</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="09_global_task_allocator.html">
+          <div class="label">← 이전</div>
+          <div class="name">09. Global Task Allocator</div>
+        </a>
+        <a href="11_robot_cell_executors.html">
+          <div class="label">다음 →</div>
+          <div class="name">11. Robot / Cell Executors</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 10. Resource Reservation Manager · 2026-04-08</footer>
+  </div>
+</body>
+</html>

@@ -1,2 +1,25 @@
-pytest
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+sqlalchemy==2.0.35
+pydantic==2.9.0
+python-multipart==0.0.9
+websockets==13.0
 
+# PostgreSQL (Phase 1+)
+# 운영 DB: PostgreSQL 16 + TimescaleDB extension
+# pip install 후 DATABASE_URL 환경변수를 postgresql+psycopg://... 로 설정
+psycopg[binary]==3.2.3
+asyncpg==0.29.0
+alembic==1.13.3
+
+# MQTT bridge (Phase 1+)
+asyncio-mqtt==0.16.2
+
+# Cache / pub-sub (Phase 1+)
+redis==5.1.1
+
+# V6 canonical Phase 4 (Phase C-1): Interface → Management gRPC proxy
+# Management Service (backend/management/) 의 proto stubs 를 호출하기 위해 필요.
+# protobuf 버전은 backend/management/requirements.txt 의 >=6.30 과 일치해야 함 (gencode 호환).
+grpcio>=1.80.0,<2.0
+protobuf>=6.30.0,<7.0

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interface Service 치트시트 — 1페이지 요약</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --fail: #ef4444;
+    --border: #475569;
+  }
+  body {
+    margin: 0;
+    padding: 1.5rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 {
+    color: var(--accent);
+    margin: 0 0 0.3rem;
+    font-size: 1.4rem;
+  }
+  .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+  @media (max-width: 780px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+  .card h2 {
+    margin: 0 0 0.5rem;
+    color: var(--accent);
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.3rem;
+  }
+  .card h2 .tag {
+    float: right;
+    font-size: 0.7rem;
+    background: var(--card2);
+    padding: 0.05rem 0.4rem;
+    border-radius: 3px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  ul { margin: 0.3rem 0; padding-left: 1.1rem; }
+  li { margin: 0.18rem 0; }
+  code {
+    background: var(--card2);
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    color: #fde68a;
+  }
+  .pipe {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.8rem;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    color: var(--text);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .pipe .k { color: var(--accent); }
+  .pipe .m { color: var(--ok); }
+  .pipe .x { color: var(--fail); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--accent); font-size: 0.72rem; text-transform: uppercase; }
+  .ok { color: var(--ok); }
+  .warn { color: var(--warn); }
+  .fail { color: var(--fail); }
+  .info { color: var(--accent); }
+  .rule {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .rule:last-child { border-bottom: none; }
+  .rule .id { color: var(--accent); font-weight: 700; font-family: monospace; }
+  .rule .txt { color: var(--text); }
+  .rule.fail .id { color: var(--fail); }
+  .rule.warn .id { color: var(--warn); }
+  .rule.info .id { color: var(--accent); }
+  .foot {
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+  .foot a { color: var(--accent); text-decoration: none; }
+  .pill {
+    display: inline-block;
+    padding: 0.08rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-right: 0.3rem;
+  }
+  .pill.ok { background: var(--ok); color: #052e16; }
+  .pill.warn { background: var(--warn); color: #422006; }
+  .pill.fail { background: var(--fail); color: #450a0a; }
+</style>
+</head>
+<body>
+
+<h1>Interface Service 치트시트</h1>
+<p class="sub">V6 canonical · <code>backend/app/</code> FastAPI :8000 · 2026-04-21 · 판정 <span class="pill ok">양호</span> (PASS 18/20, 운영 blocker 1)</p>
+
+<div class="pipe">
+<span class="k">브라우저(관리자/고객)</span>  ─HTTPS─▶  <span class="k">Interface :8000</span>  ─gRPC─▶  <span class="m">Management :50051</span>  ─ROS2/Serial─▶  <span class="k">설비</span>
+                                                  └─▶ <span class="k">DB (PG 16 + TimescaleDB, smartcast + public)</span> ◀─┘
+<span class="k">Factory Operator PC (PyQt)</span>  ───gRPC 직결───▶  <span class="m">Management :50051</span>   (Interface 우회 · SPOF 회피)
+</div>
+
+<!-- 규칙 20 + M-4a/b 3개 카드 -->
+<div class="grid">
+
+  <!-- 경계 -->
+  <div class="card">
+    <h2>계층 경계 <span class="tag">5/5 PASS</span></h2>
+    <div class="rule"><span class="id">C-1</span><span class="txt">웹(고객/관리자) ↔ Management 직통신 <strong>금지</strong>. <code>/api/*</code> HTTP 만.</span></div>
+    <div class="rule"><span class="id">C-2</span><span class="txt">Interface 는 포트 8000(HTTP) 만 노출. gRPC servicer 등록 금지.</span></div>
+    <div class="rule"><span class="id">C-3</span><span class="txt">Interface→Mgmt 채널은 <code>clients/management.py</code> 싱글톤 1곳에서만.</span></div>
+    <div class="rule"><span class="id">C-4</span><span class="txt">Interface 에 ROS2 · MQTT · Serial import 금지 (HW 프로토콜 0).</span></div>
+    <div class="rule"><span class="id">C-5</span><span class="txt">Management 가 Interface HTTP 역호출 금지. canonical 양방향 화살표는 gRPC full-duplex 의미.</span></div>
+  </div>
+
+  <!-- 내부 -->
+  <div class="card">
+    <h2>내부 구조 <span class="tag">5/6 PASS</span></h2>
+    <div class="rule"><span class="id">I-1</span><span class="txt">gRPC 채널 = lazy + 싱글톤. 첫 호출 시 생성, 프로세스 lifetime 재사용.</span></div>
+    <div class="rule"><span class="id">I-2</span><span class="txt">Mgmt 장애 → <code>ManagementUnavailable</code> → HTTP 503. Interface 는 안 죽음.</span></div>
+    <div class="rule"><span class="id">I-3</span><span class="txt"><code>INTERFACE_PROXY_START_PRODUCTION</code> 플래그는 <em>모듈 import 시점</em> 고정. flip 시 worker 전체 재시작.</span></div>
+    <div class="rule"><span class="id">I-4</span><span class="txt">FastAPI lifespan 이 shutdown 시 <code>ManagementClient.close()</code>.</span></div>
+    <div class="rule"><span class="id">I-5</span><span class="txt">proto stubs 부재 시 graceful degradation (<code>_PROTO_AVAILABLE=False</code>).</span></div>
+    <div class="rule warn"><span class="id">I-6</span><span class="txt">mTLS 코드 구현됨 · 현재 <code>MGMT_GRPC_TLS_ENABLED=0</code> · 운영 전 활성화 필요.</span></div>
+  </div>
+
+  <!-- 고객 -->
+  <div class="card">
+    <h2>고객 포털 계약 <span class="tag">3/4 PASS</span></h2>
+    <div class="rule"><span class="id">O-1</span><span class="txt">발주 수신 단일 엔드포인트 <code>POST /api/orders/customer</code> (원자 트랜잭션).</span></div>
+    <div class="rule"><span class="id">O-2</span><span class="txt">이메일 조회 <code>GET /api/orders/lookup?email=</code> 없으면 <code>[]</code> (404 아님).</span></div>
+    <div class="rule"><span class="id">O-3</span><span class="txt">제품/하중 등급 마스터 공개 읽기 전용.</span></div>
+    <div class="rule fail"><span class="id">O-4</span><span class="txt"><strong>운영 blocker</strong>: <code>POST /api/orders/{id}/status</code> 권한 가드 부재. 단기 nginx basic auth, 장기 JWT.</span></div>
+  </div>
+
+  <!-- 관리자 -->
+  <div class="card">
+    <h2>관리자 포털 계약 <span class="tag">5/5 PASS</span></h2>
+    <div class="rule"><span class="id">M-1</span><span class="txt">주문 6단계: 접수→승인→생산→생산완료→출고→완료 (OrdStat append).</span></div>
+    <div class="rule"><span class="id">M-2</span><span class="txt">생산 실시간 뷰 (items · equip_tasks · equip_stats) REST 제공.</span></div>
+    <div class="rule"><span class="id">M-3</span><span class="txt">품질 · 물류 · 재고 조회 REST 제공 (DB 직결, Mgmt 경유 안 함).</span></div>
+    <div class="rule"><span class="id">M-4</span><span class="txt">실시간은 소비자 적합형: PyQt=gRPC 직구독, Admin=5초 polling, Customer=on-demand.</span></div>
+    <div class="rule info"><span class="id">M-4a</span><span class="txt"><strong>설계 결정</strong>: Mgmt→Interface stream relay 현 단계 <strong>비도입</strong>. 근거 4건 (실시간 소비자는 PyQt 직결·polling DB 부하 trivial·복잡도·gRPC 프로토콜 속성).</span></div>
+    <div class="rule info"><span class="id">M-4b</span><span class="txt">승격 트리거: ① Critical SLA&lt;2s ② Admin 동접≥30 ③ 웹 현장제어 UX. 하나라도 성립 시 Phase C-3.</span></div>
+    <div class="rule"><span class="id">M-5</span><span class="txt">생산 개시 Mgmt 위임 (SPEC-C2 flag-gated proxy).</span></div>
+  </div>
+
+  <!-- 데이터 -->
+  <div class="card">
+    <h2>데이터 계약 <span class="tag">3/3 PASS</span></h2>
+    <div class="rule"><span class="id">D-1</span><span class="txt">Interface + Management <strong>같은 PG + 같은 DATABASE_URL</strong>. 분리 금지.</span></div>
+    <div class="rule"><span class="id">D-2</span><span class="txt">smartcast v2 (27테이블) 우선. public legacy 4개(Alert/HandoffAck/TransportTask/RfidScanLog) 는 <code>models_mgmt.py</code> 에서 선별 import.</span></div>
+    <div class="rule"><span class="id">D-3</span><span class="txt">SQLite 폴백 없음. <code>DATABASE_URL</code> 미설정 시 fail-fast.</span></div>
+  </div>
+
+  <!-- 의사결정 -->
+  <div class="card">
+    <h2>새 기능 · 어디에?</h2>
+    <table>
+      <tr><th>기능</th><th>위치</th></tr>
+      <tr><td>웹 읽기 API</td><td class="info">Interface 라우트</td></tr>
+      <tr><td>DB 쓰기 + 트랜잭션</td><td class="ok">Mgmt + Interface proxy</td></tr>
+      <tr><td>PyQt 버튼 (제어/전이)</td><td class="ok">Mgmt gRPC 신규 RPC</td></tr>
+      <tr><td>Admin 알람 push</td><td class="info">DB INSERT → /ws/dashboard polling</td></tr>
+      <tr><td>PyQt 알람 push</td><td class="ok">Mgmt WatchAlerts 스트림</td></tr>
+      <tr><td>ROS2 · Serial</td><td class="ok">Mgmt 전용 (C-4)</td></tr>
+      <tr><td>관리자 전용 액션</td><td class="info">Interface + 권한 가드</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- 자주 하는 실수 + 검증 -->
+<div class="grid">
+
+  <div class="card">
+    <h2>자주 하는 실수 TOP 5</h2>
+    <ul>
+      <li><strong>C-4 위반</strong>: Interface 에서 <code>import rclpy</code>/<code>serial</code> → Mgmt 로 옮길 것</li>
+      <li><strong>C-3 위반</strong>: 요청마다 <code>grpc.insecure_channel()</code> 새로 생성 → 싱글톤 <code>ManagementClient.get()</code> 사용</li>
+      <li><strong>I-3 오해</strong>: <code>export FLAG=1</code> 했는데 안 먹힘 → worker 전체 재시작 필요</li>
+      <li><strong>D-3 위반</strong>: 개발 편의 SQLite → 원격 PG 공유 (Tailscale)</li>
+      <li><strong>D-2 위반</strong>: <code>from app.models.models_legacy import *</code> → Item 클래스 충돌. <code>models_mgmt.py</code> 선별 import</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>빠른 검증 (1분)</h2>
+    <pre style="background:#020617;border-radius:4px;padding:0.5rem;font-size:0.73rem;overflow-x:auto;margin:0"><code># 헬스 + Mgmt 왕복
+curl -s http://localhost:8000/health
+curl -s http://localhost:8000/api/management/health
+
+# 계층 경계 정적 검증 (0 matches 기대)
+grep -rn 'rclpy\|paho\|pyserial' backend/app/ --include='*.py'
+grep -rn 'localhost:8000' backend/management/ --include='*.py'
+
+# 생산 개시 proxy (flag ON 시)
+INTERFACE_PROXY_START_PRODUCTION=1 \
+curl -X POST localhost:8000/api/production/start \
+  -H 'Content-Type: application/json' -d '{"ord_id":1}'</code></pre>
+  </div>
+
+</div>
+
+<div class="foot">
+  상세판: <a href="interface_service_rules_explained.html">interface_service_rules_explained.html</a> ·
+  감사 원문: <a href="interface_service_audit.html">interface_service_audit.html</a> ·
+  배포: <a href="DEPLOY-phase-a-to-c3.md">DEPLOY-phase-a-to-c3.md</a>
+  <br/>V6 canonical · 2026-04-21 · <code>feat/v6-phase-c2-proxy</code>
+</div>
+
+</body>
+</html>

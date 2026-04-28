@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Manager — 한눈에 보는 요약</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-dim: #64748b;
+      --accent: #0891b2;
+      --accent-2: #7c3aed;
+      --good: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 13px; line-height: 1.6;
+    }
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 18mm 16mm;
+      background: var(--panel);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    header {
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    header h1 { font-size: 22px; margin: 0 0 4px; color: var(--accent); }
+    header .subtitle { font-size: 12px; color: var(--text-dim); }
+    h2 {
+      font-size: 15px; color: var(--accent);
+      margin: 18px 0 8px; padding-left: 10px;
+      border-left: 4px solid var(--accent);
+    }
+    h3 { font-size: 13px; color: var(--accent-2); margin: 12px 0 6px; }
+    p { margin: 6px 0; }
+    .hero {
+      background: linear-gradient(135deg, #cffafe, #ede9fe);
+      border-radius: 8px; padding: 14px 18px;
+      margin: 10px 0 16px; font-size: 13.5px;
+    }
+    .hero strong { color: var(--accent); }
+    .layer-flow {
+      background: var(--code-bg); border-radius: 8px;
+      padding: 14px 18px; margin: 10px 0;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px; line-height: 1.8;
+      white-space: pre; overflow-x: auto; color: var(--text);
+    }
+    .concept-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin: 10px 0;
+    }
+    .concept-card {
+      background: var(--panel); border: 1.5px solid var(--border);
+      border-top: 4px solid var(--accent); border-radius: 8px; padding: 10px 12px;
+    }
+    .concept-card:nth-child(2) { border-top-color: var(--accent-2); }
+    .concept-card:nth-child(3) { border-top-color: var(--good); }
+    .concept-card h4 { margin: 0 0 6px; font-size: 12.5px; color: var(--text); }
+    .concept-card .emoji { font-size: 18px; display: block; margin-bottom: 4px; }
+    .concept-card p { font-size: 11.5px; color: var(--text-dim); margin: 0; line-height: 1.5; }
+    .task-seq {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      overflow: hidden; margin: 10px 0;
+    }
+    .task-seq .seq-header {
+      background: var(--accent); color: white;
+      padding: 6px 14px; font-size: 12px; font-weight: 700;
+    }
+    .task-seq .seq-header.prod { background: #0891b2; }
+    .task-seq .seq-header.store { background: var(--accent-2); }
+    .task-seq .seq-header.ship { background: var(--good); }
+    .task-seq ol {
+      margin: 0; padding: 10px 14px 10px 32px;
+      font-size: 12px; line-height: 1.8;
+    }
+    .task-seq ol li { color: var(--text); }
+    .task-seq ol li span { color: var(--text-dim); font-size: 11px; }
+    .step-list {
+      counter-reset: step; list-style: none; padding: 0; margin: 8px 0;
+    }
+    .step-list li {
+      counter-increment: step; position: relative;
+      padding: 6px 0 6px 32px; font-size: 12px;
+    }
+    .step-list li::before {
+      content: counter(step); position: absolute; left: 0; top: 5px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: white;
+      text-align: center; line-height: 22px;
+      font-weight: 600; font-size: 11px;
+    }
+    table {
+      width: 100%; border-collapse: collapse;
+      margin: 8px 0; font-size: 11.5px;
+    }
+    th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+    th { background: var(--code-bg); color: var(--accent); font-weight: 600; }
+    .box { padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-size: 12px; }
+    .box.info { background: #cffafe; border-left: 4px solid var(--accent); }
+    .box.good { background: #d1fae5; border-left: 4px solid var(--good); }
+    .box.warn { background: #fef3c7; border-left: 4px solid var(--warn); }
+    code {
+      background: var(--code-bg); padding: 1px 5px; border-radius: 3px;
+      font-family: "SF Mono", Menlo, monospace; font-size: 11.5px; color: var(--accent-2);
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0; }
+    footer {
+      border-top: 1px solid var(--border); padding-top: 8px;
+      margin-top: 20px; font-size: 10.5px; color: var(--text-dim); text-align: center;
+    }
+    @media print {
+      body { background: white; }
+      .page { box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <h1>Task Manager — 한눈에 보는 요약</h1>
+      <div class="subtitle">
+        큰 주문을 작은 실행 단위로 나누는 작업 분해 엔진 · 2026-04-08
+      </div>
+    </header>
+
+    <!-- ===== HERO ===== -->
+    <div class="hero">
+      <strong>한 문장 요약</strong>:
+      공장 관리자가 승인한 <strong>work_order</strong>(예: A제품 10개 생산)를
+      로봇이 바로 실행할 수 있는 <strong>작은 Task들</strong>(주형 제작, 이송, 탈형…)로 쪼개고,
+      같은 item의 Task는 <strong>정해진 순서를 반드시 지키면서</strong>
+      <strong>Task Allocator</strong>에게 넘겨주는 역할을 합니다.
+    </div>
+
+    <!-- ===== 계층 구조 ===== -->
+    <h2>① 주문 계층 구조</h2>
+    <p>주문이 실제 로봇 명령이 되기까지 4단계를 거칩니다:</p>
+    <div class="layer-flow">customer_order  ← 사무실에서 고객 주문 검토·승인
+      │
+      ▼
+work_order      ← 공장 관리자가 "생산 시작" 버튼 클릭
+  예) A제품 10개 생산 주문
+      │
+      ▼
+item_id         ← work_order의 개별 생산 단위 (1개 = 1개 item)
+  예) A제품 10개 → item_001 ~ item_010  (각각 독립 실행)
+      │
+      ▼
+Task            ← 로봇이 바로 실행할 수 있는 최소 명령 단위
+  예) item_001의 Task 순서: 주형 제작 → 이송 → 탈형 → 적재 …</div>
+
+    <div class="box info">
+      <strong>핵심 규칙</strong>: 같은 <code>item_id</code> 안의 Task들은
+      반드시 <strong>정해진 순서대로</strong> 실행해야 합니다.
+      하지만 서로 다른 item_id(예: item_001과 item_002)는 <strong>동시에</strong> 진행해도 됩니다.
+    </div>
+
+    <!-- ===== 핵심 3가지 ===== -->
+    <h2>② 핵심 개념 3가지</h2>
+    <div class="concept-grid">
+      <div class="concept-card">
+        <span class="emoji">✂️</span>
+        <h4>1. 작업 분해 (Decomposition)</h4>
+        <p>큰 work_order를 item_id 단위로 나누고, 각 item_id마다 실행 순서가 있는 Task 목록을 생성합니다.</p>
+      </div>
+      <div class="concept-card">
+        <span class="emoji">📋</span>
+        <h4>2. 순서 보장 (Sequencing)</h4>
+        <p>같은 item_id의 Task는 앞 Task가 완료된 후에만 다음 Task가 "준비(Ready)" 상태가 됩니다. 선행 조건 없으면 즉시 실행 가능.</p>
+      </div>
+      <div class="concept-card">
+        <span class="emoji">📤</span>
+        <h4>3. 할당 요청 전달</h4>
+        <p>Ready 상태가 된 Task를 <strong>Task Allocator</strong>의 Ready Task Pool에 넣어줍니다. 누가 실행할지는 Allocator가 결정합니다.</p>
+      </div>
+    </div>
+
+    <!-- ===== Task 시퀀스 ===== -->
+    <h2>③ Task 실행 순서 (Confluence 정의 기준)</h2>
+    <p>item_id 하나를 처리하기 위해 아래 순서를 반드시 지켜야 합니다:</p>
+
+    <div class="task-seq">
+      <div class="seq-header prod">🔥 생산 Task (A제품 1개 만들기)</div>
+      <ol>
+        <li>주형 제작 <span>(로봇팔)</span> + 주조 구역 이동 <span>(AMR, 병렬 가능)</span></li>
+        <li>탈형 &amp; 상차 <span>(로봇팔)</span></li>
+        <li>후처리 구역 이동 <span>(AMR)</span></li>
+        <li>자동 수거 위치 이동 <span>(AMR)</span></li>
+        <li>적재 구역 이동 <span>(AMR)</span></li>
+      </ol>
+    </div>
+
+    <div class="task-seq">
+      <div class="seq-header store">📦 적재 Task (AMR이 적재구역 도착 상태에서 시작)</div>
+      <ol>
+        <li>하차 <span>(로봇팔)</span></li>
+        <li>적재 <span>(로봇팔)</span> + 대기구역으로 이동 <span>(AMR, 병렬 가능)</span></li>
+      </ol>
+    </div>
+
+    <div class="task-seq">
+      <div class="seq-header ship">🚛 출고 Task</div>
+      <ol>
+        <li>적재 구역 이동 <span>(AMR)</span></li>
+        <li>출고 &amp; 상차 <span>(로봇팔)</span></li>
+        <li>출고 구역으로 이동 <span>(AMR)</span></li>
+      </ol>
+    </div>
+
+    <!-- ===== 입력/출력 ===== -->
+    <h2>④ 입력과 출력</h2>
+    <div class="two-col">
+      <div>
+        <h3>📥 입력 (받는 것)</h3>
+        <table>
+          <tbody>
+            <tr><td><strong>work_order</strong></td><td>공장 관리자가 승인한 생산 지시</td></tr>
+            <tr><td><strong>task 완료 신호</strong></td><td>Execution Monitor로부터 "Task A 완료" 이벤트</td></tr>
+            <tr><td><strong>task 실패 신호</strong></td><td>재시도 또는 오류 처리 필요 알림</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>📤 출력 (내보내는 것)</h3>
+        <table>
+          <tbody>
+            <tr><td><strong>Ready Task</strong></td><td>지금 당장 실행 가능한 Task → Task Allocator에 전달</td></tr>
+            <tr><td><strong>상태 업데이트</strong></td><td>Task·work_order 진행 상황 → DB 반영, UI 갱신</td></tr>
+            <tr><td><strong>완료 신호</strong></td><td>모든 Task 완료 시 work_order를 "완료"로 전환</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 역할 비교 ===== -->
+    <h2>⑤ 3가지 관제 컴포넌트 비교</h2>
+    <table>
+      <thead>
+        <tr><th>항목</th><th>Task Manager (이 문서)</th><th>Task Allocator</th><th>Traffic Manager</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>역할</strong></td>
+          <td>작업 생성·분해·순서 관리</td>
+          <td>어떤 로봇에 배정할지 결정</td>
+          <td>로봇 간 경로 충돌 방지</td>
+        </tr>
+        <tr>
+          <td><strong>입력</strong></td>
+          <td>work_order (생산 지시)</td>
+          <td>Ready Task (실행 가능 작업)</td>
+          <td>로봇들의 위치·경로 정보</td>
+        </tr>
+        <tr>
+          <td><strong>출력</strong></td>
+          <td>Ready Task → Allocator</td>
+          <td>특정 로봇에 명령 전달</td>
+          <td>이동 허가 / 대기 신호</td>
+        </tr>
+        <tr>
+          <td><strong>핵심 결정</strong></td>
+          <td>Task 순서·우선순위 결정</td>
+          <td>최적 로봇 배정 알고리즘</td>
+          <td>Deadlock 방지 알고리즘</td>
+        </tr>
+        <tr>
+          <td><strong>주요 리스크</strong></td>
+          <td>Task 실패 시 재시도 정책</td>
+          <td>로봇 가용성 판단 기준</td>
+          <td>교착 상태(Deadlock) 처리</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== 구현 순서 ===== -->
+    <h2>⑥ 구현 순서</h2>
+    <ol class="step-list">
+      <li><strong>work_order 감시</strong>: 공장 관리자가 "생산 시작" 누르면 작업 대기열에 등록</li>
+      <li><strong>item_id 생성</strong>: work_order의 수량(10개)만큼 item_id 분할 (item_001~010)</li>
+      <li><strong>Task DAG 생성</strong>: 각 item_id에 대해 실행 순서가 있는 Task 목록 생성</li>
+      <li><strong>Ready Task 발행</strong>: 선행 조건 없는 Task를 즉시 Ready Task Pool에 삽입</li>
+      <li><strong>완료 이벤트 수신</strong>: Task 완료 시 다음 Task를 Ready Pool에 추가</li>
+      <li><strong>work_order 완료 판정</strong>: 모든 item의 모든 Task 완료 시 work_order 종료</li>
+    </ol>
+
+    <div class="box warn">
+      <strong>미결 사항 / 주의</strong>:
+      <ul style="margin:4px 0 0 18px; padding:0;">
+        <li><strong>Task 실패 재시도 정책</strong> — 로봇 이상/센서 실패 시 몇 번 재시도할지 정해야 함</li>
+        <li><strong>후처리 Task</strong> — 사람이 수동 처리 후 "완료" 버튼을 눌러야 다음 Task가 진행됨</li>
+        <li><strong>item_id 수 조정</strong> — A제품 10개 중 일부 실패 시 나머지 item 처리 방침 결정 필요</li>
+      </ul>
+    </div>
+
+    <!-- ===== 용어 사전 ===== -->
+    <h2>⑦ 쉬운 용어 사전</h2>
+    <table>
+      <tbody>
+        <tr><td><strong>customer_order</strong></td><td>고객이 사무실에 넣은 주문. 사무실 직원이 검토·승인</td></tr>
+        <tr><td><strong>work_order</strong></td><td>공장 관리자가 "생산 시작"을 누른 승인된 주문 (예: A제품 10개)</td></tr>
+        <tr><td><strong>item_id</strong></td><td>work_order를 개별 단위로 쪼갠 것 (A제품 1개 = 1개 item_id)</td></tr>
+        <tr><td><strong>Task</strong></td><td>로봇이 바로 실행할 수 있는 최소 명령 단위 (주형 제작, 이송, 탈형 등)</td></tr>
+        <tr><td><strong>Ready Task</strong></td><td>선행 Task가 완료되어 지금 당장 실행 가능한 Task</td></tr>
+        <tr><td><strong>선행 조건</strong></td><td>이 Task 시작 전에 반드시 완료되어야 하는 Task (예: 탈형은 주조 후에만 가능)</td></tr>
+        <tr><td><strong>DAG</strong></td><td>방향성 비순환 그래프 — Task들의 순서 관계를 나타내는 구조</td></tr>
+        <tr><td><strong>Task Allocator</strong></td><td>Task를 받아서 어떤 로봇이 실행할지 결정하는 배정 엔진</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      Casting Factory — Task Manager Quickstart Summary · 2026-04-08 ·
+      상세 설계는 <code>docs/architecture/07_workflow_task_manager.html</code> 참조
+    </footer>
+
+  </div>
+</body>
+</html>
