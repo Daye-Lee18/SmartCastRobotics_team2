@@ -48,3 +48,6 @@ log/
 *.pem
 *.key
 
+
+# OMC plugin runtime (oh-my-claudecode local state)
+.omc/
