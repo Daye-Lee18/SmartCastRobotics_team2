@@ -2,6 +2,27 @@
 
 다른 PC 에서 처음 clone 후 모든 서비스를 띄우는 절차.
 
+## ⚡ 빠른 시작 (자동화 스크립트)
+
+| OS | 설치 | 실행 | 중단 |
+|----|------|------|------|
+| macOS / Linux | `./scripts/setup.sh` | `./scripts/run-all.sh` | `./scripts/stop-all.sh` |
+| Windows | `scripts\setup.bat` | `scripts\run-all.bat` | `scripts\stop-all.bat` |
+
+설치 후 **`server/main_service/.env.local` 의 DATABASE_URL** 비밀번호와 RDS 엔드포인트만 채우면 됩니다 (팀장에게 별도로 받음).
+
+개별 실행 (서비스별 별도 터미널):
+- `run-backend.sh` / `.bat` — FastAPI :8000 + Management gRPC 어댑터
+- `run-pyqt.sh` / `.bat` — PyQt Monitoring 데스크톱
+- `run-web.sh` / `.bat` — Next.js :3001
+
+`run-all.sh` 는 tmux 가 있으면 세션 `smartcast` 에 3 windows, 없으면 `logs/{backend,pyqt,web}.log` 에 백그라운드 출력.
+`run-all.bat` 는 별도 cmd 창 3 개를 띄웁니다.
+
+---
+
+## 수동 절차 (자동화 스크립트 미사용 시)
+
 ## 1. 사전 요구사항
 
 | 항목 | 권장 버전 | 용도 |
