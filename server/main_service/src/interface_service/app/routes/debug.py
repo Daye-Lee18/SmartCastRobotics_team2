@@ -155,7 +155,7 @@ def simulate_handoff_ack(
     )
     if _MGMT_DIR not in sys.path:
         sys.path.insert(0, _MGMT_DIR)
-    from services.handoff_pipeline import apply_handoff  # type: ignore
+    from services.core.handoff_pipeline import apply_handoff  # type: ignore
 
     operator_id = payload.get("operator_id")
     now_ms = int(datetime.now().timestamp() * 1000)
@@ -276,7 +276,7 @@ def simulate_conveyor_tof1(
     )
     if _MGMT_DIR not in sys.path:
         sys.path.insert(0, _MGMT_DIR)
-    from services.handoff_pipeline import apply_tof1  # type: ignore
+    from services.core.handoff_pipeline import apply_tof1  # type: ignore
 
     res_id = (payload.get("res_id") or DEFAULT_CONV_RES_ID).strip()
     explicit_item_id = payload.get("item_id")
@@ -329,7 +329,7 @@ def simulate_conveyor_tof2(
     )
     if _MGMT_DIR not in sys.path:
         sys.path.insert(0, _MGMT_DIR)
-    from services.handoff_pipeline import apply_tof2  # type: ignore
+    from services.core.handoff_pipeline import apply_tof2  # type: ignore
 
     res_id = (payload.get("res_id") or DEFAULT_CONV_RES_ID).strip()
     explicit_item_id = payload.get("item_id")
