@@ -36,7 +36,7 @@ from typing import Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 
 # OrderManager 와 타입 공유
-from services.order_manager import (
+from services.core.order_manager import (
     CreateOrderInput,
     IOrderManager,
     OrderDetailInput,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from services.ai_client import AIServerConfig, AIUploader
+from services.adapters.vision.ai_client import AIServerConfig, AIUploader
 
 
 def test_config_disabled_when_no_env(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from services.command_queue import ConveyorCmd, queue as _queue
+from services.core.command_queue import ConveyorCmd, queue as _queue
 
 logger = logging.getLogger(__name__)
 

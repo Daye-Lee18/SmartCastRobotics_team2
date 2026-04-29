@@ -8,8 +8,8 @@ import grpc
 import management_pb2  # type: ignore
 import management_pb2_grpc  # type: ignore
 
-from services.command_queue import queue as command_queue
-from services.image_sink import sink as image_sink
+from services.core.command_queue import queue as command_queue
+from services.adapters.vision.image_sink import sink as image_sink
 
 logger = logging.getLogger(__name__)
 

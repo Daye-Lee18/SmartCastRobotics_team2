@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 import grpc
 import management_pb2  # type: ignore
 
-from services.rfid_service import RfidServiceError
+from services.adapters.sensors.rfid_service import RfidServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class FieldEventRpcMixin:
     """Handoff, RFID, and conveyor event RPCs."""
 
     def ReportHandoffAck(self, request, context):
-        from services.handoff_pipeline import apply_handoff
+        from services.core.handoff_pipeline import apply_handoff
 
         from smart_cast_db.database import SessionLocal
         from smart_cast_db.models import HandoffAck
@@ -133,7 +133,7 @@ class FieldEventRpcMixin:
         ord_id_int = 0
         pp_options_proto: list = []
         if result.accepted and result.item_id:
-            from services.handoff_pipeline import build_pp_options_view
+            from services.core.handoff_pipeline import build_pp_options_view
 
             from smart_cast_db.database import SessionLocal
             from smart_cast_db.models import Item
@@ -169,7 +169,7 @@ class FieldEventRpcMixin:
         )
 
     def ReportConveyorEvent(self, request, context):
-        from services.handoff_pipeline import apply_tof1, apply_tof2
+        from services.core.handoff_pipeline import apply_tof1, apply_tof2
 
         from smart_cast_db.database import SessionLocal
 

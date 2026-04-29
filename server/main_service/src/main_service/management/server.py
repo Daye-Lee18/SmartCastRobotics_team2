@@ -46,24 +46,24 @@ from rpc.production_rpc import ProductionRpcMixin  # noqa: E402
 from rpc.robot_rpc import RobotRpcMixin  # noqa: E402
 from rpc.task_rpc import TaskRpcMixin  # noqa: E402
 from rpc.traffic_rpc import TrafficRpcMixin  # noqa: E402
-from services.ai_client import AIServerConfig, AIUploader  # noqa: E402
-from services.amr_battery import AmrBatteryService  # noqa: E402
-from services.amr_state_machine import AmrStateMachine  # noqa: E402
-from services.execution_monitor import ExecutionMonitor  # noqa: E402
+from services.adapters.vision.ai_client import AIServerConfig, AIUploader  # noqa: E402
+from services.adapters.robotics.amr_battery import AmrBatteryService  # noqa: E402
+from services.core.amr_state_machine import AmrStateMachine  # noqa: E402
+from services.core.execution_monitor import ExecutionMonitor  # noqa: E402
 
 # Phase B: Interface 로부터 이관된 FMS 자동 진행 시퀀서 + ROS2 publisher
-from services.fms_sequencer import (
+from services.core.fms_sequencer import (
     is_enabled as fms_is_enabled,  # noqa: E402
     run_sequencer as run_fms_sequencer,  # noqa: E402
 )
-from services.image_forwarder import ForwarderConfig, ImageForwarder  # noqa: E402
-from services.image_sink import sink as image_sink  # noqa: E402
-from services.rfid_service import RfidService  # noqa: E402
-from services.robot_executor import RobotExecutor  # noqa: E402
-from services.ros2_publisher import init_ros2, is_real_ros2, shutdown_ros2  # noqa: E402
-from services.task_allocator import TaskAllocator  # noqa: E402
-from services.task_manager import TaskManager  # noqa: E402
-from services.traffic_manager import TrafficManager  # noqa: E402
+from services.adapters.vision.image_forwarder import ForwarderConfig, ImageForwarder  # noqa: E402
+from services.adapters.vision.image_sink import sink as image_sink  # noqa: E402
+from services.adapters.sensors.rfid_service import RfidService  # noqa: E402
+from services.core.robot_executor import RobotExecutor  # noqa: E402
+from services.adapters.robotics.ros2_publisher import init_ros2, is_real_ros2, shutdown_ros2  # noqa: E402
+from services.core.task_allocator import TaskAllocator  # noqa: E402
+from services.core.task_manager import TaskManager  # noqa: E402
+from services.core.traffic_manager import TrafficManager  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

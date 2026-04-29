@@ -10,7 +10,7 @@ import threading
 import time
 
 import pytest
-from services.event_bridge import (
+from services.core.event_bridge import (
     Event,
     EventBridgeImpl,
     EventType,

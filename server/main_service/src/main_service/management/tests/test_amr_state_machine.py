@@ -1,7 +1,7 @@
 """AMR State Machine 단위 테스트."""
 
 import pytest
-from services.amr_state_machine import AmrStateMachine, TaskState
+from services.core.amr_state_machine import AmrStateMachine, TaskState
 
 
 @pytest.fixture

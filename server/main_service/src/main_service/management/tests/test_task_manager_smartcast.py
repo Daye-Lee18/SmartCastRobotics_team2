@@ -14,7 +14,7 @@ DoD (Phase C-2 §13):
 from __future__ import annotations
 
 import pytest
-from services.task_manager import StartProductionResult, TaskManager, TaskManagerError
+from services.core.task_manager import StartProductionResult, TaskManager, TaskManagerError
 
 
 @pytest.fixture

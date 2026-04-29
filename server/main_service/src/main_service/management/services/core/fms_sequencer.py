@@ -46,7 +46,7 @@ from smart_cast_db.models import (
     TransStat,
     TransTaskTxn,
 )
-from services.ros2_publisher import publish_state
+from services.adapters.robotics.ros2_publisher import publish_state
 
 logger = logging.getLogger("management.fms_sequencer")
 

@@ -16,9 +16,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .adapters import select_adapter
-from .adapters.jetson_relay_adapter import JetsonRelayAdapter
-from .adapters.ros2_adapter import Ros2Adapter
+from main_service.management.services.adapters import select_adapter
+from main_service.management.services.adapters.jetson_relay_adapter import JetsonRelayAdapter
+from main_service.management.services.adapters.ros2_adapter import Ros2Adapter
 
 logger = logging.getLogger(__name__)
 

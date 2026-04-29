@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import pytest
-from services.traffic_manager import (
+from services.core.traffic_manager import (
     AMR_SPEED_MPS,
     WAYPOINTS,
     TrafficManager,

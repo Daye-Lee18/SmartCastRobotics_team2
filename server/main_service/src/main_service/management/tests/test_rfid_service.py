@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from services.rfid_service import RfidService
+from services.adapters.sensors.rfid_service import RfidService
 
 from smart_cast_db.models import RfidScanLog
 

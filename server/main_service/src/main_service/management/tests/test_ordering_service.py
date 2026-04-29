@@ -23,7 +23,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
-from services.order_manager import (
+from services.core.order_manager import (
     CreateOrderInput,
     OrderDetailInput,
     OrderEvent,
@@ -32,7 +32,7 @@ from services.order_manager import (
     OrderRecord,
     OrdStat,
 )
-from services.ordering_service import (
+from services.core.ordering_service import (
     HTTP_STATUS_MAP,
     IOrderingService,
     OrderingServiceImpl,
