@@ -310,8 +310,32 @@ class SchedulePage(QWidget):
 
     def refresh(self) -> None:
         self._orders = self._api.get_approved_and_running_orders()
+        if not self._orders:
+            self._orders = self._orders_from_schedule_jobs(self._api.get_production_jobs())
         self._render_orders_table()
         self._update_kpis()
+
+    @staticmethod
+    def _orders_from_schedule_jobs(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Fallback projection for the production schedule queue endpoint."""
+        orders: list[dict[str, Any]] = []
+        for job in jobs:
+            order_id = job.get("order_id") or str(job.get("id", "")).replace("PJ-ORD-", "")
+            if not order_id:
+                continue
+            orders.append(
+                {
+                    "id": str(order_id),
+                    "company_name": "-",
+                    "customer_name": "-",
+                    "total_amount": 0,
+                    "requested_delivery": job.get("estimated_completion") or "",
+                    "confirmed_delivery": job.get("estimated_completion") or "",
+                    "created_at": job.get("created_at") or "",
+                    "status": "in_production" if job.get("started_at") else "approved",
+                }
+            )
+        return orders
 
     def _render_orders_table(self) -> None:
         selected_ids: set[str] = set()

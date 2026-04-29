@@ -107,7 +107,7 @@ class ColorTokens:
 
 @dataclass(frozen=True)
 class TypographyTokens:
-    family: str = '"Pretendard", -apple-system, "Apple SD Gothic Neo", "Segoe UI", sans-serif'
+    family: str = '"Noto Sans CJK KR", "Noto Sans KR", "NanumGothic", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif'
     family_mono: str = '"SF Mono", "Menlo", "Consolas", monospace'
 
     # 크기 (px)
