@@ -63,7 +63,7 @@ def apply_handoff(
       HandoffApplyResult — released=False 인 경우 orphan=True (해제 대상 없음)
     """
     # 지연 import: 순환 회피 + 모델 로딩 한 곳에 묶음
-    from app.models import (
+    from smart_cast_db.models import (
         HandoffAck,
         Item,
         OrdPpMap,
@@ -235,7 +235,7 @@ def apply_tof1(
 
     Returns Tof1ApplyResult (ok=False 면 item 미발견)
     """
-    from app.models import EquipStat, EquipTaskTxn, Item, PpTaskTxn
+    from smart_cast_db.models import EquipStat, EquipTaskTxn, Item, PpTaskTxn
 
     item: Item | None = None
     if item_id is not None:
@@ -345,7 +345,7 @@ def apply_tof2(
 
     item_id 미지정 시 res_id 의 PROC ToINSP equip_task_txn 1건 자동 픽업.
     """
-    from app.models import EquipStat, EquipTaskTxn, InspTaskTxn, Item
+    from smart_cast_db.models import EquipStat, EquipTaskTxn, InspTaskTxn, Item
 
     q = db.query(EquipTaskTxn).filter(
         EquipTaskTxn.res_id == res_id,
@@ -439,7 +439,7 @@ _RFID_PAYLOAD_RE = _re.compile(r"^order_(?P<ord>\d+)_item_(?P<date>\d{8})_(?P<se
 
 def _resolve_item_by_payload(db: Session, payload: str):
     """RFID payload → item (ord_id+item_id 매칭, 실패 시 ord_id 의 최신 item)."""
-    from app.models import Item
+    from smart_cast_db.models import Item
 
     m = _RFID_PAYLOAD_RE.fullmatch((payload or "").strip())
     if m is None:
@@ -457,7 +457,7 @@ def build_pp_options_view(db: Session, item) -> list[dict]:
 
     PyQt 작업자 화면 / Mgmt RfidScanAck 양쪽에서 동일 형식으로 사용.
     """
-    from app.models import OrdPpMap, PpOption, PpTaskTxn
+    from smart_cast_db.models import OrdPpMap, PpOption, PpTaskTxn
 
     rows = (
         db.query(OrdPpMap, PpOption)

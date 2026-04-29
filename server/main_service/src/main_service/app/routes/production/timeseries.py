@@ -16,7 +16,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from smart_cast_db.database import get_db
 
 router = APIRouter(prefix="/api/production", tags=["production"])
 

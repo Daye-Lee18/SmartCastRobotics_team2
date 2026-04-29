@@ -18,13 +18,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-# backend/ 디렉터리를 sys.path 에 추가 (app.models, app.database 의 _load_env_local 재사용)
+# backend/ 디렉터리를 sys.path 에 추가 (smart_cast_db import 용)
 _THIS_DIR = Path(__file__).resolve().parent
 _BACKEND_DIR = _THIS_DIR.parent
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
 
-from app.database import _load_env_local  # noqa: E402
+from smart_cast_db.database import _load_env_local  # noqa: E402
 
 _load_env_local()
 

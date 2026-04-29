@@ -4,7 +4,7 @@ import json
 
 from sqlalchemy.orm import Session
 
-from app.models.models import (
+from smart_cast_db.models.models_legacy import (
     Alert,
     Equipment,
     InspectionRecord,

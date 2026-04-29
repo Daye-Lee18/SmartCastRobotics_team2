@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.clients.management import ManagementClient
-from app.database import Base, SessionLocal, engine
+from smart_cast_db.database import Base, SessionLocal, engine
 from app.routes import (
     alerts,
     auth,

@@ -17,8 +17,8 @@ from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.database import SessionLocal
-from app.models import EquipStat, OrdStat, TransStat
+from smart_cast_db.database import SessionLocal
+from smart_cast_db.models import EquipStat, OrdStat, TransStat
 
 router = APIRouter()
 

@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import (
+from smart_cast_db.database import get_db
+from smart_cast_db.models import (
     EquipErrLog,
     InspTaskTxn,
     Item,

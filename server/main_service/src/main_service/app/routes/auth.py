@@ -12,8 +12,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import UserAccount
+from smart_cast_db.database import get_db
+from smart_cast_db.models import UserAccount
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

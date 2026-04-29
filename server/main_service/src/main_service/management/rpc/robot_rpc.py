@@ -65,8 +65,8 @@ class RobotRpcMixin:
 
     def _sync_repair_to_db(self, robot_id: str) -> None:
         """Sync repaired AMR state back to failed transport tasks."""
-        from app.database import SessionLocal
-        from app.models import TransportTask
+        from smart_cast_db.database import SessionLocal
+        from smart_cast_db.models import TransportTask
 
         now = datetime.now(UTC)
         db = SessionLocal()

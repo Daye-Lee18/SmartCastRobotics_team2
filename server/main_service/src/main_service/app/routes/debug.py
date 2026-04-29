@@ -46,8 +46,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import (
+from smart_cast_db.database import get_db
+from smart_cast_db.models import (
     Item,
     OrdPpMap,
     PpOption,

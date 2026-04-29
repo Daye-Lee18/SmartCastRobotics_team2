@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 from services.rfid_service import RfidService
 
-from app.models import RfidScanLog
+from smart_cast_db.models import RfidScanLog
 
 
 class FakeQuery:

@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Ord, OrdStat
+from smart_cast_db.database import get_db
+from smart_cast_db.models import Ord, OrdStat
 from app.schemas.schemas import OrdStatOut
 
 router = APIRouter(prefix="/api/schedule", tags=["schedule"])

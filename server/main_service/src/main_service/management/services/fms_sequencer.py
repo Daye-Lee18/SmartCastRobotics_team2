@@ -34,8 +34,8 @@ from app.constants.workflow import (
     RA_NEXT_TASK,
     STEP_DELAY_SECONDS,
 )
-from app.database import SessionLocal
-from app.models import (
+from smart_cast_db.database import SessionLocal
+from smart_cast_db.models import (
     EquipErrLog,
     EquipStat,
     EquipTaskTxn,

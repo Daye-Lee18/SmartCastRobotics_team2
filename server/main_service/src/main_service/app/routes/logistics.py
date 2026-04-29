@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import (
+from smart_cast_db.database import get_db
+from smart_cast_db.models import (
     ChgLocationStat,
     ShipLocationStat,
     StrgLocationStat,
@@ -77,7 +77,7 @@ def list_warehouse(db: Session = Depends(get_db)) -> list[dict]:
 # Legacy compat — outbound_orders 는 ord_stat 'SHIP' 또는 'COMP' 발주 목록
 @router.get("/outbound-orders")
 def list_outbound_orders(db: Session = Depends(get_db)) -> list[dict]:
-    from app.models import Ord, OrdStat  # local import to avoid cycle
+    from smart_cast_db.models import Ord, OrdStat  # local import to avoid cycle
 
     out: list[dict] = []
     for o in db.query(Ord).all():

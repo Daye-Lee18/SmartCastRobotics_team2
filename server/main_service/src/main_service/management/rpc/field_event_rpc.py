@@ -20,8 +20,8 @@ class FieldEventRpcMixin:
     def ReportHandoffAck(self, request, context):
         from services.handoff_pipeline import apply_handoff
 
-        from app.database import SessionLocal
-        from app.models import HandoffAck
+        from smart_cast_db.database import SessionLocal
+        from smart_cast_db.models import HandoffAck
 
         zone = request.zone or "postprocessing"
         source_device = request.source_device or "unknown"
@@ -135,8 +135,8 @@ class FieldEventRpcMixin:
         if result.accepted and result.item_id:
             from services.handoff_pipeline import build_pp_options_view
 
-            from app.database import SessionLocal
-            from app.models import Item
+            from smart_cast_db.database import SessionLocal
+            from smart_cast_db.models import Item
 
             db = SessionLocal()
             try:
@@ -171,7 +171,7 @@ class FieldEventRpcMixin:
     def ReportConveyorEvent(self, request, context):
         from services.handoff_pipeline import apply_tof1, apply_tof2
 
-        from app.database import SessionLocal
+        from smart_cast_db.database import SessionLocal
 
         res_id = request.res_id or "CONV-01"
         event = (request.event_type or "").strip().lower()

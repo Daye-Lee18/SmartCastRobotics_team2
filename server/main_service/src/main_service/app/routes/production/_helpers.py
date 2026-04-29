@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.models import (
+from smart_cast_db.models import (
     EquipTaskTxn,
     Item,
     Ord,

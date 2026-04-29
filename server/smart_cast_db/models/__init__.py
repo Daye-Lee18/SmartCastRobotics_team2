@@ -18,19 +18,19 @@ Alert/RfidScanLog 은 public 에 유지.
     transport.py    TransTaskTxn, TransStat, TransErrLog (이송 트랜잭션)
     inspection.py   PpTaskTxn, InspTaskTxn (후처리/검사 트랜잭션)
 
-외부 import 패턴 동일 유지: `from app.models import Ord, Item, ...`.
+공용 import 경로: `from smart_cast_db.models import Ord, Item, ...`.
 """
 
-from app.models._base import SCHEMA
-from app.models.equipment import EquipErrLog, EquipStat, EquipTaskTxn
-from app.models.inspection import InspTaskTxn, PpTaskTxn
-from app.models.item import (
+from smart_cast_db.models._base import SCHEMA
+from smart_cast_db.models.equipment import EquipErrLog, EquipStat, EquipTaskTxn
+from smart_cast_db.models.inspection import InspTaskTxn, PpTaskTxn
+from smart_cast_db.models.item import (
     ChgLocationStat,
     Item,
     ShipLocationStat,
     StrgLocationStat,
 )
-from app.models.master import (
+from smart_cast_db.models.master import (
     Category,
     Equip,
     EquipLoadSpec,
@@ -44,13 +44,13 @@ from app.models.master import (
 )
 
 # Management 전용 테이블 (TransportTask/HandoffAck 은 smartcast, Alert/RfidScanLog 은 public)
-from app.models.models_mgmt import (
+from smart_cast_db.models.models_mgmt import (
     Alert,
     HandoffAck,
     RfidScanLog,
     TransportTask,
 )
-from app.models.order import (
+from smart_cast_db.models.order import (
     Ord,
     OrdDetail,
     OrdLog,
@@ -58,8 +58,8 @@ from app.models.order import (
     OrdStat,
     OrdTxn,
 )
-from app.models.transport import TransErrLog, TransStat, TransTaskTxn
-from app.models.user import UserAccount
+from smart_cast_db.models.transport import TransErrLog, TransStat, TransTaskTxn
+from smart_cast_db.models.user import UserAccount
 
 __all__ = [
     "SCHEMA",

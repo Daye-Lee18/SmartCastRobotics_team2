@@ -21,8 +21,8 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.clients.management import ManagementClient, ManagementUnavailable
-from app.database import get_db
-from app.models import EquipStat, EquipTaskTxn, Item, Ord, OrdStat, Pattern
+from smart_cast_db.database import get_db
+from smart_cast_db.models import EquipStat, EquipTaskTxn, Item, Ord, OrdStat, Pattern
 from app.schemas.schemas import ProductionStartRequest
 
 from ._helpers import _PROXY_START_PRODUCTION, _auto_progress_after_idle

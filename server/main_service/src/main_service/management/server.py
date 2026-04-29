@@ -31,8 +31,9 @@ import grpc
 
 # `python server.py` 로 직접 실행 가능하도록 sys.path 보장
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_BACKEND_DIR = os.path.dirname(_THIS_DIR)  # backend/ — app.models 접근용
-for p in (_THIS_DIR, _BACKEND_DIR):
+_BACKEND_DIR = os.path.dirname(_THIS_DIR)  # backend/ — app/models 접근용
+_SERVER_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(_THIS_DIR))))
+for p in (_THIS_DIR, _BACKEND_DIR, _SERVER_DIR):
     if p not in sys.path:
         sys.path.insert(0, p)
 

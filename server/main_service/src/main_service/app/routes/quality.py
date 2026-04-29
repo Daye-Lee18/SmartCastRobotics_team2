@@ -15,8 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import InspTaskTxn, Item, Ord
+from smart_cast_db.database import get_db
+from smart_cast_db.models import InspTaskTxn, Item, Ord
 from app.schemas.schemas import InspectionSummary, InspTaskTxnOut
 
 router = APIRouter(prefix="/api/quality", tags=["quality"])

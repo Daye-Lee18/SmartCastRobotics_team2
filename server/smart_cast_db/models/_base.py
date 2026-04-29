@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.database import Base
+from smart_cast_db.database import Base
 
 # 모든 신규 테이블이 사용할 schema.
 # 기본은 로컬 smartcast_robotics 의 'smartcast' 스키마.

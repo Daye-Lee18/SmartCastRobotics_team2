@@ -33,7 +33,7 @@ import management_pb2  # type: ignore
 from db_session import SessionLocal
 from sqlalchemy import select
 
-from app.models import Alert, Item  # SPEC-C3: Alert 는 legacy public-schema · Item 은 smartcast
+from smart_cast_db.models import Alert, Item  # SPEC-C3: Alert 는 legacy public-schema · Item 은 smartcast
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ class ExecutionMonitor:
         - 이후: seen_ids 에 없는 row 가 신규 → 모두 emit, seen_ids 갱신
         - seen_ids 는 최근 1000건 cap (메모리 보호)
         """
-        from app.models import Alert  # SPEC-C3: legacy public-schema re-export
+        from smart_cast_db.models import Alert  # SPEC-C3: legacy public-schema re-export
 
         seen_ids: set[str] = set()
         first_pass = True

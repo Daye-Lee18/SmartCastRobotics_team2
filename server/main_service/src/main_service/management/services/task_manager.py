@@ -26,8 +26,8 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from app.database import SessionLocal
-from app.models import (
+from smart_cast_db.database import SessionLocal
+from smart_cast_db.models import (
     EquipTaskTxn,
     Item,
     Ord,

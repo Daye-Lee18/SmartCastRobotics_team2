@@ -27,8 +27,8 @@ _BACKEND_DIR = os.path.dirname(_MANAGEMENT_DIR)
 if _BACKEND_DIR not in sys.path:
     sys.path.insert(0, _BACKEND_DIR)
 
-from app.database import SessionLocal
-from app.models import RfidScanLog
+from smart_cast_db.database import SessionLocal
+from smart_cast_db.models import RfidScanLog
 
 logger = logging.getLogger(__name__)
 

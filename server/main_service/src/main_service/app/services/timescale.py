@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def _schema() -> str:
     """models.SCHEMA 와 동일 (런타임 import 로 순환참조 회피)."""
-    from app.models._base import SCHEMA
+    from smart_cast_db.models._base import SCHEMA
 
     return SCHEMA
 
@@ -36,7 +36,7 @@ def _schema() -> str:
 @lru_cache(maxsize=1)
 def has_timescaledb() -> bool:
     """pg_extension 에 timescaledb 가 있는지 1회 검사 후 캐시."""
-    from app.database import engine
+    from smart_cast_db.database import engine
 
     try:
         with engine.connect() as conn:

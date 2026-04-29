@@ -15,8 +15,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Ord, Pattern
+from smart_cast_db.database import get_db
+from smart_cast_db.models import Ord, Pattern
 from app.schemas.schemas import PatternIn, PatternOut
 
 router = APIRouter(prefix="/api/production", tags=["production"])
