@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backend FastAPI :8000 실행.
+# Management gRPC service :50051 실행.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/server/main_service"
@@ -11,7 +11,7 @@ source .venv/bin/activate
 python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else "backend .venv 가 Python 3.11 미만입니다. Python 3.11 설치 후 ./scripts/setup.sh 를 다시 실행하세요.")'
 export PYTHONPATH=src/interface_service:src/main_service:src
 
-PORT="${PORT:-8000}"
-HOST="${HOST:-0.0.0.0}"
-echo "→ FastAPI on http://$HOST:$PORT (Ctrl+C 종료)"
-exec uvicorn app.main:app --host "$HOST" --port "$PORT" --env-file .env.local --reload
+HOST="${MANAGEMENT_GRPC_HOST:-0.0.0.0}"
+PORT="${MANAGEMENT_GRPC_PORT:-50051}"
+echo "→ Management gRPC on $HOST:$PORT (Ctrl+C 종료)"
+exec python src/main_service/management/server.py
