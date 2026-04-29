@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartCast Robotics — 데이터 플로우 보고서</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --accent: #2563eb;
+    --accent-light: #dbeafe;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --green: #16a34a;
+    --orange: #ea580c;
+    --red: #dc2626;
+    --purple: #7c3aed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ── Header ── */
+  .hero {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+    color: white;
+    padding: 3rem 2rem 2.5rem;
+    text-align: center;
+  }
+  .hero h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+  .hero p { margin-top: 0.5rem; color: #94a3b8; font-size: 0.95rem; }
+  .hero .badge {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.3rem 1rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 3rem; }
+  .section-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--accent);
+  }
+
+  /* ── Mermaid ── */
+  .mermaid-wrap {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+  }
+  .mermaid { text-align: center; }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th, td {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+  th {
+    background: #f1f5f9;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* ── Code ── */
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    margin: 0.75rem 0;
+  }
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+  .inline-code {
+    background: #f1f5f9;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--accent);
+  }
+
+  /* ── Layer badges ── */
+  .layer-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .layer-client { background: #dbeafe; color: #1e40af; }
+  .layer-proxy  { background: #fef3c7; color: #92400e; }
+  .layer-backend { background: #d1fae5; color: #065f46; }
+  .layer-db { background: #ede9fe; color: #5b21b6; }
+
+  /* ── Grid ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Steps ── */
+  .step-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+  }
+  .step-item {
+    flex: 1;
+    min-width: 140px;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+  }
+  .step-item::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 10px solid var(--border);
+    z-index: 1;
+  }
+  .step-item:last-child::after { display: none; }
+  .step-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+  .step-label { font-size: 0.8rem; font-weight: 600; }
+  .step-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .toc h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .toc ol { padding-left: 1.2rem; }
+  .toc li { margin-bottom: 0.35rem; font-size: 0.9rem; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  /* ── Highlight box ── */
+  .highlight-box {
+    background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+    border-left: 4px solid var(--accent);
+    padding: 1rem 1.25rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+
+  .field-map {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0.25rem 0.5rem;
+    align-items: center;
+    font-size: 0.82rem;
+    margin: 0.75rem 0;
+  }
+  .field-map .arrow { color: var(--text-muted); font-size: 1.1rem; text-align: center; }
+  .field-map .col-header {
+    font-weight: 700;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════ HERO ════════════════ -->
+<header class="hero">
+  <h1>데이터 플로우 보고서</h1>
+  <p>Client → Backend → Database 주문 데이터 처리 흐름</p>
+  <div class="badge">SmartCast Robotics · casting-factory v3.4.0 · 2026-04-13</div>
+</header>
+
+<div class="container">
+
+<!-- ════════════════ TOC ════════════════ -->
+<nav class="toc">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">시스템 아키텍처 개요</a></li>
+    <li><a href="#s2">전체 데이터 플로우차트</a></li>
+    <li><a href="#s3">계층별 상세 분석</a></li>
+    <li><a href="#s4">API 요청/응답 명세</a></li>
+    <li><a href="#s5">데이터 변환 매핑</a></li>
+    <li><a href="#s6">데이터베이스 스키마 (ERD)</a></li>
+    <li><a href="#s7">시퀀스 다이어그램</a></li>
+    <li><a href="#s8">주문 상태 머신</a></li>
+    <li><a href="#s9">소스 코드 매핑</a></li>
+  </ol>
+</nav>
+
+<!-- ════════════════ 1. 아키텍처 개요 ════════════════ -->
+<section class="section" id="s1">
+  <h2 class="section-title"><span class="num">1</span> 시스템 아키텍처 개요</h2>
+
+  <div class="step-flow">
+    <div class="step-item">
+      <div class="step-icon" style="background:#dbeafe;color:#1e40af">🖥️</div>
+      <div class="step-label">Client (Next.js 16)</div>
+      <div class="step-sub">React 19 · Turbopack<br>localhost:3000</div>
+    </div>
+    <div class="step-item">
+      <div class="step-icon" style="background:#fef3c7;color:#92400e">🔀</div>
+      <div class="step-label">Proxy (Rewrite)</div>
+      <div class="step-sub">next.config.ts<br>/api/* → :8000/api/*</div>
+    </div>
+    <div class="step-item">
+      <div class="step-icon" style="background:#d1fae5;color:#065f46">⚡</div>
+      <div class="step-label">Backend (FastAPI)</div>
+      <div class="step-sub">Uvicorn · SQLAlchemy<br>localhost:8000</div>
+    </div>
+    <div class="step-item">
+      <div class="step-icon" style="background:#ede9fe;color:#5b21b6">🗄️</div>
+      <div class="step-label">Database</div>
+      <div class="step-sub">PostgreSQL 16<br>+ TimescaleDB</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>기술 스택 요약</h3>
+    <table>
+      <tr><th>계층</th><th>기술</th><th>역할</th></tr>
+      <tr>
+        <td><span class="layer-badge layer-client">Client</span></td>
+        <td>Next.js 16.2.1, React 19.2.4, TypeScript</td>
+        <td>주문 폼 UI, 사용자 입력 수집, 클라이언트 검증</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-proxy">Proxy</span></td>
+        <td>Next.js Rewrites (next.config.ts)</td>
+        <td>/api/* 요청을 백엔드로 프록시 (CORS 우회)</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-backend">Backend</span></td>
+        <td>FastAPI, Uvicorn, SQLAlchemy ORM</td>
+        <td>REST API, 비즈니스 로직, 데이터 검증 (Pydantic)</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-db">Database</span></td>
+        <td>PostgreSQL 16 + TimescaleDB</td>
+        <td>영구 저장, 트랜잭션 관리, 인덱싱</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════ 2. 전체 플로우차트 ════════════════ -->
+<section class="section" id="s2">
+  <h2 class="section-title"><span class="num">2</span> 전체 데이터 플로우차트</h2>
+
+  <div class="mermaid-wrap">
+    <pre class="mermaid">
+flowchart TB
+    subgraph CLIENT["🖥️ Client — Next.js 16 (localhost:3000)"]
+        A[/"사용자: 주문 폼 입력<br>(5 steps)"/]
+        B["handleNext()<br>클라이언트 검증"]
+        C["fetch('/api/orders', POST)<br>주문 헤더 JSON"]
+        D["fetch('/api/orders/{id}/details', POST)<br>품목 상세 JSON"]
+    end
+
+    subgraph PROXY["🔀 Next.js Rewrite Proxy"]
+        E["/api/* → localhost:8000/api/*"]
+    end
+
+    subgraph BACKEND["⚡ Backend — FastAPI (localhost:8000)"]
+        F["POST /api/orders<br>create_order()"]
+        G["Pydantic 검증<br>OrderCreate 스키마"]
+        H["POST /api/orders/{id}/details<br>add_order_detail()"]
+        I["Pydantic 검증<br>OrderDetailCreate 스키마"]
+        J["SQLAlchemy ORM<br>db.add() → db.commit()"]
+    end
+
+    subgraph DB["🗄️ Database — PostgreSQL 16"]
+        K[("orders 테이블")]
+        L[("order_details 테이블")]
+    end
+
+    A --> B
+    B --> C
+    C --> E
+    E --> F
+    F --> G
+    G --> J
+    J --> K
+
+    B --> D
+    D --> E
+    E --> H
+    H --> I
+    I --> J
+    J --> L
+
+    K -.->|"201 Created<br>OrderResponse JSON"| F
+    F -.->|"응답 전달"| C
+    L -.->|"201 Created<br>OrderDetailResponse JSON"| H
+    H -.->|"응답 전달"| D
+
+    style CLIENT fill:#eff6ff,stroke:#2563eb,stroke-width:2px
+    style PROXY fill:#fffbeb,stroke:#d97706,stroke-width:2px
+    style BACKEND fill:#ecfdf5,stroke:#059669,stroke-width:2px
+    style DB fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px
+    </pre>
+  </div>
+</section>
+
+<!-- ════════════════ 3. 계층별 상세 ════════════════ -->
+<section class="section" id="s3">
+  <h2 class="section-title"><span class="num">3</span> 계층별 상세 분석</h2>
+
+  <div class="grid-2">
+    <!-- Client -->
+    <div class="card">
+      <h3><span class="layer-badge layer-client">Client</span> 주문 폼 흐름</h3>
+      <p style="font-size:0.88rem; margin-bottom:0.75rem">
+        <code class="inline-code">src/app/customer/page.tsx</code> 에서 5단계 스텝 위저드로 구현
+      </p>
+      <table>
+        <tr><th>Step</th><th>이름</th><th>수집 데이터</th></tr>
+        <tr><td>1</td><td>주문자 정보</td><td>회사명, 담당자, 연락처, 이메일, 주소</td></tr>
+        <tr><td>2</td><td>제품 선택</td><td>제품 ID (D450, D600, D800, GRATING)</td></tr>
+        <tr><td>3</td><td>사양 입력</td><td>직경, 두께, 하중등급, 재질, 수량, 납기, 후처리</td></tr>
+        <tr><td>4</td><td>견적 확인</td><td>단가·합계 계산 확인 (입력 없음)</td></tr>
+        <tr><td>5</td><td>주문 완료</td><td>서버 응답 표시 (입력 없음)</td></tr>
+      </table>
+      <div class="highlight-box">
+        Step 4 → 5 전환 시 <code class="inline-code">handleNext()</code>가 2번의 순차 <code class="inline-code">fetch()</code> 호출로 주문 헤더 + 품목 상세를 백엔드에 전송합니다.
+      </div>
+    </div>
+
+    <!-- Proxy -->
+    <div class="card">
+      <h3><span class="layer-badge layer-proxy">Proxy</span> Next.js Rewrite 설정</h3>
+      <p style="font-size:0.88rem; margin-bottom:0.75rem">
+        <code class="inline-code">next.config.ts</code>
+      </p>
+      <pre><code>// next.config.ts
+async rewrites() {
+  return [
+    {
+      source: "/api/:path*",
+      destination: "http://localhost:8000/api/:path*",
+    },
+  ];
+}</code></pre>
+      <div class="highlight-box">
+        클라이언트의 <code class="inline-code">/api/*</code> 요청을 동일 도메인에서 보내므로 CORS 문제 없이 백엔드로 프록시됩니다. 브라우저 네트워크 탭에서는 <code class="inline-code">localhost:3000/api/orders</code>로 표시됩니다.
+      </div>
+    </div>
+
+    <!-- Backend -->
+    <div class="card">
+      <h3><span class="layer-badge layer-backend">Backend</span> FastAPI 처리 흐름</h3>
+      <p style="font-size:0.88rem; margin-bottom:0.75rem">
+        <code class="inline-code">backend/app/routes/orders.py</code>
+      </p>
+      <ol style="font-size:0.88rem; padding-left:1.2rem;">
+        <li><strong>요청 수신</strong>: Uvicorn이 HTTP POST 수신</li>
+        <li><strong>Pydantic 검증</strong>: <code class="inline-code">OrderCreate</code> 스키마로 자동 타입/필드 검증</li>
+        <li><strong>중복 체크</strong>: 동일 ID 주문 존재 시 409 Conflict 반환</li>
+        <li><strong>ORM 매핑</strong>: <code class="inline-code">Order(**payload.model_dump())</code></li>
+        <li><strong>DB 저장</strong>: <code class="inline-code">db.add(order)</code> → <code class="inline-code">db.commit()</code></li>
+        <li><strong>응답 반환</strong>: <code class="inline-code">db.refresh(order)</code> 후 201 Created</li>
+      </ol>
+    </div>
+
+    <!-- DB -->
+    <div class="card">
+      <h3><span class="layer-badge layer-db">Database</span> 저장 구조</h3>
+      <p style="font-size:0.88rem; margin-bottom:0.75rem">
+        PostgreSQL 16 + TimescaleDB (개발 시 SQLite 폴백)
+      </p>
+      <table>
+        <tr><th>테이블</th><th>용도</th><th>레코드 생성 시점</th></tr>
+        <tr><td><code class="inline-code">orders</code></td><td>주문 헤더 (고객·금액·상태)</td><td>Step 4 → 5 첫 번째 fetch</td></tr>
+        <tr><td><code class="inline-code">order_details</code></td><td>품목 상세 (제품·사양·가격)</td><td>Step 4 → 5 두 번째 fetch</td></tr>
+      </table>
+      <div class="highlight-box">
+        <code class="inline-code">orders.id</code>는 클라이언트에서 생성한 <code class="inline-code">ORD-YYYYMMDD-XXXX</code> 형식. <code class="inline-code">order_details.order_id</code>가 FK로 연결됩니다.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 4. API 명세 ════════════════ -->
+<section class="section" id="s4">
+  <h2 class="section-title"><span class="num">4</span> API 요청/응답 명세</h2>
+
+  <div class="card">
+    <h3>API Call #1: 주문 헤더 생성</h3>
+    <table>
+      <tr><th style="width:120px">항목</th><th>내용</th></tr>
+      <tr><td>Endpoint</td><td><code class="inline-code">POST /api/orders</code></td></tr>
+      <tr><td>Content-Type</td><td><code class="inline-code">application/json</code></td></tr>
+      <tr><td>Status (성공)</td><td><code class="inline-code">201 Created</code></td></tr>
+      <tr><td>Status (중복)</td><td><code class="inline-code">409 Conflict</code></td></tr>
+    </table>
+
+    <div class="grid-2" style="margin-top:1rem">
+      <div>
+        <strong style="font-size:0.85rem">Request Body</strong>
+        <pre><code>{
+  "id": "ORD-20260413-A3F7",
+  "customer_id": "CUST-847293",
+  "customer_name": "홍길동",
+  "company_name": "주식회사 예시",
+  "contact": "010-1234-5678",
+  "email": "hong@example.com",
+  "shipping_address": "서울시 강남구 ...",
+  "total_amount": 750000,
+  "status": "pending",
+  "requested_delivery": "2026-05-01",
+  "confirmed_delivery": null
+}</code></pre>
+      </div>
+      <div>
+        <strong style="font-size:0.85rem">Response Body</strong>
+        <pre><code>{
+  "id": "ORD-20260413-A3F7",
+  "customer_id": "CUST-847293",
+  "customer_name": "홍길동",
+  "company_name": "주식회사 예시",
+  "contact": "010-1234-5678",
+  "email": "hong@example.com",
+  "shipping_address": "서울시 강남구 ...",
+  "total_amount": 750000,
+  "status": "pending",
+  "requested_delivery": "2026-05-01",
+  "confirmed_delivery": null,
+  "created_at": "2026-04-13T03:08:54Z",
+  "updated_at": "2026-04-13T03:08:54Z",
+  "shipped_at": null
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>API Call #2: 주문 품목 상세 생성</h3>
+    <table>
+      <tr><th style="width:120px">항목</th><th>내용</th></tr>
+      <tr><td>Endpoint</td><td><code class="inline-code">POST /api/orders/{order_id}/details</code></td></tr>
+      <tr><td>Content-Type</td><td><code class="inline-code">application/json</code></td></tr>
+      <tr><td>Status (성공)</td><td><code class="inline-code">201 Created</code></td></tr>
+      <tr><td>Status (주문 없음)</td><td><code class="inline-code">404 Not Found</code></td></tr>
+    </table>
+
+    <div class="grid-2" style="margin-top:1rem">
+      <div>
+        <strong style="font-size:0.85rem">Request Body</strong>
+        <pre><code>{
+  "id": "ORD-20260413-A3F7-DET-001",
+  "order_id": "ORD-20260413-A3F7",
+  "product_id": "D450",
+  "product_name": "맨홀 뚜껑 KS D-450",
+  "quantity": 50,
+  "spec": "직경 450mm / 두께 40mm / 하중 B125",
+  "material": "FC200",
+  "post_processing": "방청 도장, 로고 각인",
+  "logo_data": null,
+  "unit_price": 57000,
+  "subtotal": 2850000
+}</code></pre>
+      </div>
+      <div>
+        <strong style="font-size:0.85rem">Response Body</strong>
+        <pre><code>{
+  "id": "ORD-20260413-A3F7-DET-001",
+  "order_id": "ORD-20260413-A3F7",
+  "product_id": "D450",
+  "product_name": "맨홀 뚜껑 KS D-450",
+  "quantity": 50,
+  "spec": "직경 450mm / 두께 40mm / 하중 B125",
+  "material": "FC200",
+  "post_processing": "방청 도장, 로고 각인",
+  "logo_data": null,
+  "unit_price": 57000,
+  "subtotal": 2850000
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 5. 데이터 변환 매핑 ════════════════ -->
+<section class="section" id="s5">
+  <h2 class="section-title"><span class="num">5</span> 데이터 변환 매핑</h2>
+
+  <div class="card">
+    <h3>폼 필드 → API 필드 → DB 컬럼 매핑 (orders)</h3>
+    <table>
+      <tr>
+        <th><span class="layer-badge layer-client">Form Field</span></th>
+        <th><span class="layer-badge layer-backend">API Field</span></th>
+        <th><span class="layer-badge layer-db">DB Column</span></th>
+        <th>변환</th>
+      </tr>
+      <tr><td>contactPerson</td><td>customer_name</td><td>orders.customer_name</td><td>이름 변경</td></tr>
+      <tr><td>companyName</td><td>company_name</td><td>orders.company_name</td><td>snake_case 변환</td></tr>
+      <tr><td>phone</td><td>contact</td><td>orders.contact</td><td>이름 변경</td></tr>
+      <tr><td>email</td><td>email</td><td>orders.email</td><td>동일</td></tr>
+      <tr><td>address</td><td>shipping_address</td><td>orders.shipping_address</td><td>이름 변경</td></tr>
+      <tr><td>(계산값)</td><td>total_amount</td><td>orders.total_amount</td><td>단가 x 수량</td></tr>
+      <tr><td>desiredDelivery</td><td>requested_delivery</td><td>orders.requested_delivery</td><td>이름 변경</td></tr>
+      <tr><td>—</td><td>customer_id</td><td>orders.customer_id</td><td>클라이언트 생성: CUST-XXXXXX</td></tr>
+      <tr><td>—</td><td>id</td><td>orders.id</td><td>클라이언트 생성: ORD-날짜-랜덤</td></tr>
+      <tr><td>—</td><td>status</td><td>orders.status</td><td>항상 "pending"</td></tr>
+      <tr><td>—</td><td>—</td><td>orders.created_at</td><td>서버 자동 생성 (UTC ISO)</td></tr>
+      <tr><td>—</td><td>—</td><td>orders.updated_at</td><td>서버 자동 생성 (UTC ISO)</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>폼 필드 → API 필드 → DB 컬럼 매핑 (order_details)</h3>
+    <table>
+      <tr>
+        <th><span class="layer-badge layer-client">Form Field</span></th>
+        <th><span class="layer-badge layer-backend">API Field</span></th>
+        <th><span class="layer-badge layer-db">DB Column</span></th>
+        <th>변환</th>
+      </tr>
+      <tr><td>selectedProduct</td><td>product_id</td><td>order_details.product_id</td><td>PRODUCTS 배열 lookup</td></tr>
+      <tr><td>selectedProduct.name</td><td>product_name</td><td>order_details.product_name</td><td>PRODUCTS 배열 lookup</td></tr>
+      <tr><td>quantity</td><td>quantity</td><td>order_details.quantity</td><td>동일</td></tr>
+      <tr><td>diameter + thickness + loadClass</td><td>spec</td><td>order_details.spec</td><td>문자열 조합</td></tr>
+      <tr><td>material</td><td>material</td><td>order_details.material</td><td>동일</td></tr>
+      <tr><td>postProcessing[]</td><td>post_processing</td><td>order_details.post_processing</td><td>배열 → 쉼표 join 문자열</td></tr>
+      <tr><td>(계산값)</td><td>unit_price</td><td>order_details.unit_price</td><td>base + 후처리 합산</td></tr>
+      <tr><td>(계산값)</td><td>subtotal</td><td>order_details.subtotal</td><td>unit_price x quantity</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════ 6. ERD ════════════════ -->
+<section class="section" id="s6">
+  <h2 class="section-title"><span class="num">6</span> 데이터베이스 스키마 (ERD)</h2>
+
+  <div class="mermaid-wrap">
+    <pre class="mermaid">
+erDiagram
+    orders ||--o{ order_details : "1:N"
+    orders ||--o{ production_jobs : "1:N"
+
+    orders {
+        string id PK "ORD-YYYYMMDD-XXXX"
+        string customer_id "CUST-XXXXXX"
+        string customer_name "담당자명"
+        string company_name "회사명"
+        string contact "연락처"
+        string email "이메일 (INDEX)"
+        string shipping_address "배송지"
+        integer total_amount "총 금액"
+        string status "pending/approved/..."
+        string requested_delivery "희망 납기"
+        string confirmed_delivery "확정 납기"
+        string created_at "생성일 (UTC ISO)"
+        string updated_at "수정일 (UTC ISO)"
+        string shipped_at "출고일"
+    }
+
+    order_details {
+        string id PK "ORD-...-DET-001"
+        string order_id FK "orders.id"
+        string product_id "D450/D600/..."
+        string product_name "제품명"
+        integer quantity "수량"
+        string spec "직경/두께/하중"
+        string material "재질"
+        string post_processing "후처리"
+        string logo_data "로고 데이터"
+        integer unit_price "단가"
+        integer subtotal "소계"
+    }
+
+    production_jobs {
+        string id PK
+        string order_id FK "orders.id"
+        float priority_score "우선순위 점수"
+        integer priority_rank "순위"
+        string assigned_stage "공정 단계"
+        string status "queued/running/completed"
+        string estimated_completion "예상 완료일"
+        string started_at "시작일"
+        string completed_at "완료일"
+        string created_at "생성일"
+    }
+
+    products {
+        string id PK "D450/D600/D800/GRATING"
+        string name "제품명"
+        string category "manhole/grating"
+        string category_label "한글 라벨"
+        string spec "요약 스펙"
+        integer base_price "기준가"
+        text diameter_options_json "직경 옵션 JSON"
+        text thickness_options_json "두께 옵션 JSON"
+        text materials_json "재질 옵션 JSON"
+        string load_class_range "하중 등급 범위"
+    }
+    </pre>
+  </div>
+</section>
+
+<!-- ════════════════ 7. 시퀀스 다이어그램 ════════════════ -->
+<section class="section" id="s7">
+  <h2 class="section-title"><span class="num">7</span> 시퀀스 다이어그램</h2>
+
+  <div class="mermaid-wrap">
+    <pre class="mermaid">
+sequenceDiagram
+    actor User as 사용자 (브라우저)
+    participant Client as Next.js Client<br>(localhost:3000)
+    participant Proxy as Next.js Rewrite<br>(next.config.ts)
+    participant API as FastAPI<br>(localhost:8000)
+    participant Pydantic as Pydantic 검증
+    participant ORM as SQLAlchemy ORM
+    participant DB as PostgreSQL 16
+
+    Note over User,Client: Step 1~4: 폼 입력 (클라이언트 사이드)
+
+    User->>Client: Step 4 "주문 제출" 클릭
+    Client->>Client: validateStep(4) 클라이언트 검증
+    Client->>Client: 단가·합계 계산<br>orderId 생성
+
+    Note over Client,DB: API Call #1 — 주문 헤더 저장
+
+    Client->>Proxy: POST /api/orders<br>{id, customer_name, ...}
+    Proxy->>API: POST /api/orders<br>(프록시 전달)
+    API->>Pydantic: OrderCreate 스키마 검증
+    Pydantic-->>API: 검증 완료
+    API->>ORM: Order(**payload.model_dump())
+    ORM->>DB: INSERT INTO orders (...)
+    DB-->>ORM: OK (row created)
+    ORM->>API: db.refresh(order)
+    API-->>Proxy: 201 Created + OrderResponse
+    Proxy-->>Client: 201 Created + JSON
+
+    Note over Client,DB: API Call #2 — 품목 상세 저장
+
+    Client->>Proxy: POST /api/orders/{id}/details<br>{product_id, quantity, spec, ...}
+    Proxy->>API: POST /api/orders/{id}/details
+    API->>API: 주문 존재 확인 (404 가드)
+    API->>Pydantic: OrderDetailCreate 스키마 검증
+    Pydantic-->>API: 검증 완료
+    API->>ORM: OrderDetail(**data)
+    ORM->>DB: INSERT INTO order_details (...)
+    DB-->>ORM: OK (row created)
+    ORM->>API: db.refresh(detail)
+    API-->>Proxy: 201 Created + OrderDetailResponse
+    Proxy-->>Client: 201 Created + JSON
+
+    Client->>Client: setStep(5) — 주문 완료 화면 표시
+    Client->>User: 주문번호 + 확인 메시지 표시
+    </pre>
+  </div>
+</section>
+
+<!-- ════════════════ 8. 상태 머신 ════════════════ -->
+<section class="section" id="s8">
+  <h2 class="section-title"><span class="num">8</span> 주문 상태 머신</h2>
+
+  <div class="mermaid-wrap">
+    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> pending: 고객 발주
+    pending --> approved: 관리자 승인
+    pending --> rejected: 반려
+
+    approved --> in_production: ProductionJob 생성
+    in_production --> production_completed: PyQt5 공정 완료 기록
+
+    production_completed --> shipping_ready: 관리자 '출고 처리'<br>(shipped_at 자동 기록)
+    shipping_ready --> completed: 고객 수령 확인
+
+    completed --> [*]
+    rejected --> [*]
+
+    note right of pending
+      최초 상태
+      웹 주문 시 자동 설정
+    end note
+
+    note right of shipping_ready
+      shipped_at 타임스탬프
+      자동 기록 (1회)
+    end note
+    </pre>
+  </div>
+
+  <div class="card">
+    <h3>상태 전이 상세</h3>
+    <table>
+      <tr><th>상태</th><th>의미</th><th>전이 트리거</th><th>자동 기록</th></tr>
+      <tr><td><code class="inline-code">pending</code></td><td>접수</td><td>고객 웹 발주</td><td>created_at</td></tr>
+      <tr><td><code class="inline-code">approved</code></td><td>승인</td><td>관리자 승인</td><td>updated_at</td></tr>
+      <tr><td><code class="inline-code">in_production</code></td><td>생산 중</td><td>ProductionJob 생성</td><td>updated_at</td></tr>
+      <tr><td><code class="inline-code">production_completed</code></td><td>생산 완료</td><td>PyQt5 공정 시스템</td><td>updated_at</td></tr>
+      <tr><td><code class="inline-code">shipping_ready</code></td><td>출고</td><td>관리자 출고 처리</td><td>shipped_at, updated_at</td></tr>
+      <tr><td><code class="inline-code">completed</code></td><td>완료</td><td>고객 수령 확인</td><td>updated_at</td></tr>
+      <tr><td><code class="inline-code">rejected</code></td><td>반려</td><td>관리자 반려</td><td>updated_at</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ════════════════ 9. 소스 코드 매핑 ════════════════ -->
+<section class="section" id="s9">
+  <h2 class="section-title"><span class="num">9</span> 소스 코드 매핑</h2>
+
+  <div class="card">
+    <h3>핵심 파일 참조</h3>
+    <table>
+      <tr><th>계층</th><th>파일 경로</th><th>핵심 함수/클래스</th><th>라인</th></tr>
+      <tr>
+        <td><span class="layer-badge layer-client">Client</span></td>
+        <td>src/app/customer/page.tsx</td>
+        <td>handleNext() — fetch 호출 로직</td>
+        <td>L1058-1153</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-client">Client</span></td>
+        <td>src/app/customer/page.tsx</td>
+        <td>validateStep() — 폼 검증</td>
+        <td>L1018-1056</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-proxy">Proxy</span></td>
+        <td>next.config.ts</td>
+        <td>rewrites() — /api/* 프록시 설정</td>
+        <td>L5-11</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-backend">Backend</span></td>
+        <td>backend/app/routes/orders.py</td>
+        <td>create_order() — 주문 생성 API</td>
+        <td>L46-56</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-backend">Backend</span></td>
+        <td>backend/app/routes/orders.py</td>
+        <td>add_order_detail() — 품목 상세 API</td>
+        <td>L120-137</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-backend">Backend</span></td>
+        <td>backend/app/schemas/schemas.py</td>
+        <td>OrderCreate, OrderDetailCreate</td>
+        <td>L10-68</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-backend">Backend</span></td>
+        <td>backend/app/database.py</td>
+        <td>engine, SessionLocal, get_db()</td>
+        <td>L68-79</td>
+      </tr>
+      <tr>
+        <td><span class="layer-badge layer-db">DB Model</span></td>
+        <td>backend/app/models/models.py</td>
+        <td>Order, OrderDetail 클래스</td>
+        <td>L25-79</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>전체 REST API 엔드포인트 (30개 + WebSocket 1개)</h3>
+
+    <p style="font-size:0.85rem; margin-bottom:0.75rem; color:var(--text-muted)"><strong>Orders / Products / Load Classes</strong> — 8개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/orders</td><td>list_orders()</td><td>주문 목록 (이메일 필터)</td></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/orders</td><td>create_order()</td><td>주문 생성</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/orders/{id}/status</td><td>update_order_status()</td><td>상태 변경</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/orders/{id}</td><td>update_order()</td><td>필드 수정 (금액, 납기)</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/orders/{id}/details</td><td>get_order_details()</td><td>품목 상세 조회</td></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/orders/{id}/details</td><td>add_order_detail()</td><td>품목 상세 추가</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/products</td><td>list_products()</td><td>제품 마스터 조회</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/load-classes</td><td>list_load_classes()</td><td>하중 등급 조회</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>Production</strong> — 4개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/production/stages</td><td>list_stages()</td><td>공정 단계 목록</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/production/stages/{id}</td><td>update_stage()</td><td>공정 단계 상태 수정</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/production/metrics</td><td>list_metrics()</td><td>일별 생산 통계</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/production/equipment</td><td>list_equipment()</td><td>설비 목록</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>Quality</strong> — 4개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/quality/inspections</td><td>list_inspections()</td><td>검사 기록</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/quality/stats</td><td>get_quality_stats()</td><td>품질 통계 (defect_rate, defect_types, defect_type_codes, inspector_stats)</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/quality/standards</td><td>list_inspection_standards()</td><td>검사 기준</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/quality/sorter-logs</td><td>list_sorter_logs()</td><td>분류기 로그</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>Logistics</strong> — 6개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/logistics/tasks</td><td>list_tasks()</td><td>이송 작업 목록</td></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/logistics/tasks</td><td>create_task()</td><td>이송 작업 생성</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/logistics/tasks/{id}/status</td><td>update_task_status()</td><td>이송 작업 상태 변경</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/logistics/warehouse</td><td>list_warehouse()</td><td>창고 랙 목록</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/logistics/outbound-orders</td><td>list_outbound()</td><td>출고 주문 목록</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/logistics/outbound-orders/{id}/complete</td><td>complete_outbound()</td><td>출고 완료 처리</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>Alerts &amp; Dashboard</strong> — 3개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/alerts</td><td>list_alerts()</td><td>알림 목록</td></tr>
+      <tr><td style="color:var(--purple);font-weight:700">PATCH</td><td>/api/alerts/{id}/acknowledge</td><td>acknowledge_alert()</td><td>알림 확인 처리</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/dashboard/stats</td><td>dashboard_stats()</td><td>대시보드 KPI 통계</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>Schedule</strong> — 5개</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>함수</th><th>설명</th></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/production/schedule/calculate</td><td>calculate_priority()</td><td>우선순위 계산 (7요소)</td></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/production/schedule/start</td><td>start_production()</td><td>생산 시작 (ProductionJob 생성)</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/production/schedule/jobs</td><td>list_jobs()</td><td>생산 작업 목록</td></tr>
+      <tr><td style="color:var(--orange);font-weight:700">POST</td><td>/api/production/schedule/priority-log</td><td>create_log()</td><td>우선순위 변경 기록</td></tr>
+      <tr><td style="color:var(--green);font-weight:700">GET</td><td>/api/production/schedule/priority-log/{id}</td><td>get_log()</td><td>우선순위 변경 이력 조회</td></tr>
+    </table>
+
+    <p style="font-size:0.85rem; margin:1rem 0 0.75rem; color:var(--text-muted)"><strong>WebSocket</strong> — 1개</p>
+    <table>
+      <tr><th>Protocol</th><th>Endpoint</th><th>설명</th></tr>
+      <tr><td style="color:var(--accent);font-weight:700">WS</td><td>/ws/dashboard</td><td>실시간 대시보드 (5초 interval DB 폴링 → 공정·알림·통계 push)</td></tr>
+    </table>
+
+    <div class="highlight-box">
+      WebSocket은 MQTT 브리지가 아니라, 서버 내부에서 5초마다 DB를 조회하여 공정 진행·알림·대시보드 통계를 클라이언트로 push하는 구조입니다. MQTT 브리지(<code class="inline-code">asyncio-mqtt</code>)는 의존성이 등록되어 있으나 Phase 2 이후 구현 예정입니다.
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer class="footer">
+  SmartCast Robotics — 데이터 플로우 보고서 &middot; 자동 생성일: 2026-04-13 &middot; casting-factory v3.4.0
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'neutral',
+    themeVariables: {
+      fontSize: '14px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+    },
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+    sequence: { useMaxWidth: true, mirrorActors: false },
+    er: { useMaxWidth: true },
+  });
+</script>
+</body>
+</html>

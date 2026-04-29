@@ -1,0 +1,440 @@
+// Management Service gRPC API
+// Target: port 50051 (internal factory network)
+// Consumers: Factory Operator PC (PyQt), Interface Service (FastAPI)
+// Rationale: Factory SPOF 제거 + Interface Service AWS 이관 대비
+
+syntax = "proto3";
+
+package casting.management.v1;
+
+// -----------------------------------------------------------------------------
+// 공용 메시지
+// -----------------------------------------------------------------------------
+
+message Timestamp {
+  string iso8601 = 1;  // "2026-04-14T14:30:00Z"
+}
+
+message Empty {}
+
+// Confluence DB v47 의 work_order.work_stat 와 1:1 매핑
+enum WorkOrderStatus {
+  WORK_ORDER_STATUS_UNSPECIFIED = 0;
+  WORK_ORDER_STATUS_QUE         = 1;  // queued (생산 대기)
+  WORK_ORDER_STATUS_PROC        = 2;  // processing (생산중)
+  WORK_ORDER_STATUS_SUCC        = 3;  // success (생산완료)
+  WORK_ORDER_STATUS_FAIL        = 4;  // failed (생산 실패)
+}
+
+// Confluence DB v47 의 Item.cur_stage 와 1:1 매핑 (8 단계)
+// PyQt UI 의 6 컬럼 매핑:
+//   대기→QUE, 주탕→MM, 탈형→DM, 후처리→PP, 검사→IP, 적재→TR_LD
+//   TR_PP, SH 는 내부 단계 (UI 미표시)
+enum ItemStage {
+  ITEM_STAGE_UNSPECIFIED = 0;
+  ITEM_STAGE_QUE   = 1;  // 대기 (생산 대기)
+  ITEM_STAGE_MM    = 2;  // Mold Making (주형 제작 + 주탕)
+  ITEM_STAGE_DM    = 3;  // Demolding (탈형)
+  ITEM_STAGE_TR_PP = 4;  // Transport to Post Processing (후처리 구역 이송)
+  ITEM_STAGE_PP    = 5;  // Post Processing (후처리)
+  ITEM_STAGE_IP    = 6;  // Inspection (검사)
+  ITEM_STAGE_TR_LD = 7;  // Transport to Loading Zone (적재 구역 이송)
+  ITEM_STAGE_SH    = 8;  // Shipping (출고)
+}
+
+enum RobotType {
+  ROBOT_TYPE_UNSPECIFIED = 0;
+  ROBOT_TYPE_AMR         = 1;
+  ROBOT_TYPE_COBOT       = 2;
+  ROBOT_TYPE_CONVEYOR    = 3;
+}
+
+// AMR 운송 작업 상태 (Transport State Machine)
+enum AmrTaskState {
+  AMR_TASK_STATE_UNSPECIFIED      = 0;
+  AMR_TASK_STATE_IDLE             = 1;   // 유휴
+  AMR_TASK_STATE_MOVE_TO_SOURCE   = 2;   // 출발지로 이동
+  AMR_TASK_STATE_AT_SOURCE        = 3;   // 출발지 도착
+  AMR_TASK_STATE_LOADING          = 4;   // 상차
+  AMR_TASK_STATE_LOAD_COMPLETED   = 5;   // 상차 완료
+  AMR_TASK_STATE_MOVE_TO_DEST     = 6;   // 도착지로 이동
+  AMR_TASK_STATE_AT_DESTINATION   = 7;   // 도착지 도착
+  AMR_TASK_STATE_UNLOADING        = 8;   // 하차중
+  AMR_TASK_STATE_UNLOAD_COMPLETED = 9;   // 하차 완료
+  AMR_TASK_STATE_FAILED           = 10;  // 실패
+}
+
+// -----------------------------------------------------------------------------
+// Task Manager
+// -----------------------------------------------------------------------------
+
+// SPEC-C2 Iteration 3 (Option A backward-compatible):
+// - order_ids: PyQt schedule 페이지 legacy 경로 (string 리스트)
+// - ord_id:    Interface smartcast v2 proxy 경로 (단건 정수)
+// Management 측은 ord_id 먼저 확인 후 비어있으면 order_ids[0] 을 int 변환.
+message StartProductionRequest {
+  repeated string order_ids = 1;   // legacy PyQt · 다중 주문 시작
+  int32 ord_id = 2;                // smartcast v2 · 단건 Interface proxy
+}
+
+// Confluence work_order 테이블과 1:1 매핑 (legacy v47 호환 메시지 — 유지)
+message WorkOrder {
+  int64           id          = 1;   // work_ord_id (SERIAL)
+  string          order_id    = 2;   // ord_id FK → order
+  string          pattern_id  = 3;   // pattern_id FK → order_detail
+  int32           qty         = 4;   // 주문 수량
+  WorkOrderStatus status      = 5;   // QUE/PROC/SUCC/FAIL
+  Timestamp       plan_start  = 6;
+  Timestamp       act_start   = 7;
+  Timestamp       act_end     = 8;
+  repeated Item   items       = 9;   // 이 work_order 가 분해해 생성한 Item 목록
+}
+
+// SPEC-C2 신규: smartcast v2 단건 응답 (Interface proxy 용)
+message StartProductionResult {
+  int32  ord_id            = 1;
+  int32  item_id           = 2;   // 생성된 첫 item (smartcast Item.item_id)
+  int32  equip_task_txn_id = 3;   // RA1/MM QUE 트랜잭션 ID
+  string message           = 4;   // "Production started: RA1/MM task queued."
+}
+
+message StartProductionResponse {
+  repeated WorkOrder work_orders = 1;   // legacy PyQt 응답
+  StartProductionResult result   = 2;   // smartcast v2 응답 (ord_id 요청 시 채워짐)
+}
+
+// Confluence Item 테이블과 1:1 매핑
+message Item {
+  int64     id          = 1;   // item_id (SERIAL)
+  string    order_id    = 2;   // ord_id FK
+  ItemStage cur_stage   = 3;   // QUE/MM/DM/TR_PP/PP/IP/TR_LD/SH
+  string    curr_res    = 4;   // res_id FK → resource (현재 점유 자원)
+  int64     insp_id     = 5;   // FK → inspection_result (없으면 0)
+  Timestamp mfg_at      = 6;   // 공정별 시작 시각
+}
+
+message ListItemsRequest {
+  string    order_id     = 1;   // optional filter
+  ItemStage stage_filter = 2;
+  int32     limit        = 3;
+}
+
+message ListItemsResponse {
+  repeated Item items = 1;
+}
+
+// -----------------------------------------------------------------------------
+// Task Allocator
+// -----------------------------------------------------------------------------
+
+message AllocateRequest {
+  int64 item_id = 1;
+}
+
+message AllocateResponse {
+  int64  item_id          = 1;
+  string chosen_robot_id  = 2;
+  double score            = 3;
+  string rationale        = 4;
+}
+
+// -----------------------------------------------------------------------------
+// Traffic Manager
+// -----------------------------------------------------------------------------
+
+message RoutePoint {
+  double x = 1;
+  double y = 2;
+  string waypoint_id = 3;
+}
+
+message PlanRouteRequest {
+  string robot_id = 1;
+  RoutePoint start = 2;
+  RoutePoint goal  = 3;
+}
+
+message PlanRouteResponse {
+  repeated RoutePoint path = 1;
+  repeated string reserved_edges = 2;
+  double estimated_duration_sec = 3;
+}
+
+// -----------------------------------------------------------------------------
+// Robot Executor
+// -----------------------------------------------------------------------------
+
+message ExecuteCommandRequest {
+  int64  item_id  = 1;
+  string robot_id = 2;
+  string command  = 3;   // "navigate" | "pick" | "place" | "charge"
+  bytes  payload  = 4;   // JSON or protobuf serialized
+}
+
+message ExecuteCommandResponse {
+  bool   accepted = 1;
+  string reason   = 2;
+}
+
+// -----------------------------------------------------------------------------
+// Execution Monitor (Server Streaming)
+// -----------------------------------------------------------------------------
+
+message ItemEvent {
+  int64     item_id  = 1;
+  ItemStage stage    = 2;
+  string    robot_id = 3;
+  string    message  = 4;
+  Timestamp at       = 5;
+}
+
+message WatchItemsRequest {
+  string order_id = 1;  // optional filter
+}
+
+// alerts 테이블 신규 row → stream
+message AlertEvent {
+  string    id              = 1;
+  string    type            = 2;   // "stage_timeout" | "equipment_error" | ...
+  string    severity        = 3;   // "info" | "warning" | "critical"
+  string    error_code      = 4;
+  string    message         = 5;
+  string    equipment_id    = 6;
+  string    zone            = 7;
+  Timestamp at              = 8;
+}
+
+message WatchAlertsRequest {
+  string severity_filter = 1;  // "" (모두) | "warning" | "critical"
+}
+
+// -----------------------------------------------------------------------------
+// Robot Status (AMR / Cobot 실시간 상태)
+// -----------------------------------------------------------------------------
+
+message GetRobotStatusRequest {}
+
+message RobotStatusEntry {
+  string       id          = 1;   // "AMR-001", "COBOT-001" 등
+  RobotType    type        = 2;
+  string       host        = 3;   // Tailscale IP
+  string       status      = 4;   // "online" | "offline" | "error"
+  float        battery     = 5;   // 0~100 (AMR 전용, Cobot 은 0)
+  float        voltage     = 6;   // 배터리 전압 (V)
+  string       location    = 7;
+  AmrTaskState task_state  = 8;   // AMR 운송 상태 (Cobot 은 UNSPECIFIED)
+  string       task_id     = 9;   // 현재 수행 중인 작업 ID
+  string       loaded_item = 10;  // 적재 중인 Item ID
+}
+
+message GetRobotStatusResponse {
+  repeated RobotStatusEntry robots = 1;
+}
+
+// AMR 상태 전이 (외부 push — PyQt, RPi, 시뮬레이터)
+message TransitionAmrStateRequest {
+  string       robot_id    = 1;
+  AmrTaskState new_state   = 2;
+  string       task_id     = 3;   // optional: 작업 ID
+  string       loaded_item = 4;   // optional: 적재 Item ID
+}
+
+message TransitionAmrStateResponse {
+  bool   accepted = 1;
+  string reason   = 2;
+}
+
+// -----------------------------------------------------------------------------
+// Service Definition
+// -----------------------------------------------------------------------------
+
+service ManagementService {
+  // Task Manager (work_order + items)
+  rpc StartProduction(StartProductionRequest) returns (StartProductionResponse);
+  rpc ListItems(ListItemsRequest) returns (ListItemsResponse);
+
+  // Task Allocator
+  rpc AllocateItem(AllocateRequest) returns (AllocateResponse);
+
+  // Traffic Manager
+  rpc PlanRoute(PlanRouteRequest) returns (PlanRouteResponse);
+
+  // Robot Executor
+  rpc ExecuteCommand(ExecuteCommandRequest) returns (ExecuteCommandResponse);
+
+  // Execution Monitor — server streaming
+  rpc WatchItems(WatchItemsRequest) returns (stream ItemEvent);
+  rpc WatchAlerts(WatchAlertsRequest) returns (stream AlertEvent);
+
+  // Robot Status
+  rpc GetRobotStatus(GetRobotStatusRequest) returns (GetRobotStatusResponse);
+
+  // AMR State Machine — 외부 상태 전이
+  rpc TransitionAmrState(TransitionAmrStateRequest) returns (TransitionAmrStateResponse);
+
+  // SPEC-AMR-001: 후처리존 인수인계 버튼 이벤트 수신
+  rpc ReportHandoffAck(HandoffAckEvent) returns (HandoffAckResponse);
+
+  // SPEC-RFID-001 Wave 2: RFID 스캔 이벤트 저장 (item lookup 제외)
+  rpc ReportRfidScan(RfidScanEvent) returns (RfidScanAck);
+
+  // 2026-04-26: 컨베이어 TOF 센서 이벤트 (TOF1 진입 / TOF2 도달)
+  // ESP32 conveyor v5 의 STATE:RUNNING (TOF1 entry) / STATE:STOPPED (TOF2 exit)
+  // 토큰을 Jetson 이 파싱해 본 RPC 로 전달한다. Mgmt 는 동일한 DB 트랜잭션
+  // (apply_tof1 / apply_tof2) 을 적용해 가상 모드(/api/debug/sim/conveyor-*) 와
+  // 동일 결과를 보장한다.
+  rpc ReportConveyorEvent(ConveyorEvent) returns (ConveyorEventAck);
+
+  // Health
+  rpc Health(Empty) returns (Empty);
+
+  // Stage B — 카메라 프레임 server streaming (image_sink condvar 기반 push)
+  rpc WatchCameraFrames(WatchFramesRequest) returns (stream CameraFrameResponse);
+
+  // V6 canonical Phase D: Jetson(Vision Controller) 가 Management 에서 ESP32 컨베이어 명령을 수신
+  // Jetson 은 로컬 EspBridge 로 Serial(115200) 을 통해 ESP32(HW Controller) 에 relay.
+  // Management → gRPC(TCP) → Jetson → Serial → ESP32. MQTT 경로는 Phase D 에서 제거됨.
+  rpc WatchConveyorCommands(WatchConveyorCommandsRequest) returns (stream ConveyorCommand);
+}
+
+// -----------------------------------------------------------------------------
+// Conveyor / ESP32 command relay (V6 canonical Phase D)
+// -----------------------------------------------------------------------------
+
+message WatchConveyorCommandsRequest {
+  string subscriber_id = 1;      // "jetson-orin-nx-01" 등 구독자 식별자 (옵션)
+  // 특정 robot_id 만 필터 (비워두면 전체 CONV-*/ESP-* 수신)
+  string robot_id_filter = 2;
+}
+
+message ConveyorCommand {
+  string    robot_id   = 1;      // "CONV-01", "ESP-BTN-01"
+  string    command    = 2;      // "RUN" | "STOP" | "PING" | "STATUS" | ...
+  bytes     payload    = 3;      // 명령 부가 JSON (옵션)
+  int32     item_id    = 4;      // 관련 item (없으면 0)
+  Timestamp issued_at  = 5;
+  string    issued_by  = 6;      // "management.robot_executor" 등 추적용
+}
+
+message WatchFramesRequest {
+  string camera_id      = 1;
+  uint64 after_sequence = 2;   // 재연결 시 이 seq 이후 프레임만
+  // keepalive timeout 은 서버 고정값 (10s). 상위 큰 트래픽 지연 방지.
+}
+
+// -----------------------------------------------------------------------------
+// Handoff Acknowledgment (SPEC-AMR-001)
+// ESP32 버튼 → Jetson → Management. 작업자 인수인계 완료 신호를 수신하여
+// 대기 중인 AMR 태스크를 FIFO 로 해제한다.
+// -----------------------------------------------------------------------------
+
+message HandoffAckEvent {
+  string    source_device = 1;   // "ESP-CONVEYOR-01" 또는 "SIM-KEYBOARD"
+  string    zone          = 2;   // "postprocessing"
+  Timestamp occurred_at   = 3;
+  string    idempotency_key = 4; // 재전송 중복 방지 (source_device + event_ts_millis)
+}
+
+message HandoffAckResponse {
+  bool   accepted = 1;
+  string task_id  = 2;  // 해제된 태스크 ID (orphan 이면 빈 문자열)
+  string amr_id   = 3;  // 해제된 AMR ID (orphan 이면 빈 문자열)
+  string reason   = 4;  // "released" | "orphan_no_waiting_task" | "duplicate" | "error"
+  string ack_at   = 5;  // ISO8601 UTC
+}
+
+// -----------------------------------------------------------------------------
+// RFID Scan Logging (SPEC-RFID-001 Wave 2)
+// ESP32 RC522 → Jetson Serial bridge → Management. 현재 범위는 append-only 로그 저장 +
+// payload 파싱 + idempotency 이며, item lookup / item binding 은 제외.
+// -----------------------------------------------------------------------------
+
+message RfidScanEvent {
+  string    reader_id       = 1;   // "ESP-CONV-01" 등
+  string    zone            = 2;   // "conveyor_in" | "postprocessing" | ...
+  string    raw_payload     = 3;   // "order_1_item_20260417_1"
+  Timestamp scanned_at      = 4;
+  string    idempotency_key = 5;   // "ESP-CONV-01:1713600000000" 권장
+}
+
+message RfidScanAck {
+  bool   accepted     = 1;
+  int64  item_id      = 2;   // Wave 2 범위에서는 0 허용 (item lookup 미구현)
+  string parse_status = 3;   // "ok" | "bad_format" | "duplicate"
+  string reason       = 4;   // human-readable details
+  // Wave 3 (2026-04-26): item 매칭 시 후처리 옵션 정의+진행 현황을 같이 응답.
+  // PyQt 후처리 작업자 화면이 FastAPI 거치지 않고 Mgmt 직결 lookup 가능.
+  string item_cur_stat = 5;  // 매칭된 item.cur_stat ("PP" 등)
+  int32  ord_id        = 6;
+  repeated PpOptionView pp_options = 7;
+}
+
+// PyQt 작업자 화면용 후처리 옵션 뷰 (정의 + 최신 진행 상태)
+message PpOptionView {
+  int32  pp_id       = 1;
+  string pp_nm       = 2;
+  double extra_cost  = 3;
+  string txn_stat    = 4;   // "QUE" | "PROC" | "SUCC" | "FAIL" | "" (미INSERT)
+  int32  txn_id      = 5;
+  int32  map_id      = 6;
+}
+
+// -----------------------------------------------------------------------------
+// Conveyor TOF events (2026-04-26)
+// -----------------------------------------------------------------------------
+
+message ConveyorEvent {
+  string    res_id          = 1;   // "CONV-01"
+  string    event_type      = 2;   // "tof1_entry" | "tof2_exit"
+  string    rfid_payload    = 3;   // 동반 RFID payload (있으면 페어링)
+  int32     item_id         = 4;   // 명시적 item (없으면 0 → 자동 픽업)
+  Timestamp occurred_at     = 5;
+  string    idempotency_key = 6;
+}
+
+message ConveyorEventAck {
+  bool   accepted          = 1;
+  int32  item_id           = 2;
+  string item_cur_stat     = 3;
+  int32  equip_task_txn_id = 4;
+  int32  insp_task_txn_id  = 5;   // tof2 시 채워짐
+  string reason            = 6;
+}
+
+message CameraFrameResponse {
+  bool      available   = 1;   // 프레임 존재 여부
+  string    camera_id   = 2;
+  string    encoding    = 3;   // "jpeg" | "png" | ...
+  uint32    width       = 4;
+  uint32    height      = 5;
+  bytes     data        = 6;   // JPEG 바이트 등
+  uint64    sequence    = 7;
+  Timestamp captured_at = 8;
+  Timestamp received_at = 9;
+}
+
+// -----------------------------------------------------------------------------
+// Image Publishing Service (V6 결정 2026-04-14)
+// HW Image Publisher (Jetson) → Server. ROS2 image transport 부담 회피 위해 gRPC streaming + JPEG.
+// -----------------------------------------------------------------------------
+
+message ImageFrame {
+  string    camera_id    = 1;   // "CAM-INSP-01" 등
+  Timestamp captured_at  = 2;
+  string    encoding     = 3;   // "jpeg" | "png" | "raw_rgb"
+  uint32    width        = 4;
+  uint32    height       = 5;
+  bytes     data         = 6;   // 압축 이미지 바이트 (JPEG 권장)
+  uint64    sequence     = 7;   // 카메라별 순번 (drop 감지)
+}
+
+message ImageAck {
+  uint64 sequence = 1;          // 처리한 마지막 sequence
+  bool   accepted = 2;
+  string message  = 3;
+}
+
+service ImagePublisherService {
+  // Image Publisher → Server: client streaming (서버는 ack 단건 응답)
+  rpc PublishFrames(stream ImageFrame) returns (ImageAck);
+}

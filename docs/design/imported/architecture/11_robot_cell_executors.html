@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. Robot / Cell Executors</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Execution Layer</div>
+      <h1>11. Robot / Cell Executors<span class="badge exec">Exec</span></h1>
+      <div class="subtitle">
+        AMR · Manipulator · Station PLC · 실제 명령 송출 (ROS2 Action / MQTT / Serial)
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">Executor 카테고리</a></li>
+        <li><a href="#s3">AMR Executor (Pinkypro)</a></li>
+        <li><a href="#s4">Manipulator Executor (MyCobot280)</a></li>
+        <li><a href="#s5">Station Executor (ESP32 PLC)</a></li>
+        <li><a href="#s6">공통 인터페이스</a></li>
+        <li><a href="#s7">구현 스케치</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Robot / Cell Executors</strong>는 추상적인 task를 <strong>실제 하드웨어 명령</strong>으로 변환하여 송출하는 최하위 계층입니다. 각 장비 타입별로 별도의 executor가 존재합니다.</p>
+
+      <h3>1.1 책임</h3>
+      <ul>
+        <li>Allocator로부터 assigned task 수신</li>
+        <li>task.payload를 실제 장비 명령으로 변환</li>
+        <li>장비 프로토콜(ROS2/MQTT/Serial)로 송출</li>
+        <li>실행 결과를 Execution Monitor에 보고</li>
+      </ul>
+
+      <h3>1.2 범위 밖</h3>
+      <ul>
+        <li>의사결정 — Allocator가 이미 결정</li>
+        <li>경로 계획 — Traffic Manager + Nav2가 담당</li>
+        <li>재시도 판단 — Execution Monitor가 담당</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② Executor 카테고리</h2>
+      <table>
+        <thead><tr><th>Executor</th><th>대상 장비</th><th>프로토콜</th><th>capability</th></tr></thead>
+        <tbody>
+          <tr><td>AMR Executor</td><td>Pinkypro × 3</td><td>ROS 2 Action (<code>navigate_to_pose</code>)</td><td>amr</td></tr>
+          <tr><td>Manipulator Executor #1</td><td>MyCobot280 (주탕)</td><td>ROS 2 Action + Python SDK</td><td>manipulator, pouring</td></tr>
+          <tr><td>Manipulator Executor #2</td><td>MyCobot280 (탈형/후처리)</td><td>ROS 2 Action + Python SDK</td><td>manipulator, demolding</td></tr>
+          <tr><td>Conveyor Executor</td><td>ESP32 Controller</td><td>MQTT (<code>conveyor/{id}/cmd</code>)</td><td>conveyor</td></tr>
+          <tr><td>Furnace Executor</td><td>ESP32 Controller</td><td>MQTT / Serial</td><td>furnace_control</td></tr>
+          <tr><td>Vision Executor</td><td>Jetson Orin NX + Camera</td><td>gRPC / REST</td><td>vision, ai</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s3">
+      <h2>③ AMR Executor (Pinkypro)</h2>
+
+      <h3>3.1 하드웨어 스펙</h3>
+      <ul>
+        <li><strong>크기</strong>: 0.12 × 0.12 m</li>
+        <li><strong>구동</strong>: Differential drive (제자리 회전 가능)</li>
+        <li><strong>컨트롤러</strong>: Raspberry Pi 4</li>
+        <li><strong>미들웨어</strong>: ROS 2 Jazzy + Nav2</li>
+        <li><strong>통신</strong>: WiFi + DDS</li>
+      </ul>
+
+      <h3>3.2 주요 Action</h3>
+      <pre><span class="comment"># ROS 2 Nav2 action client</span>
+<span class="kw">from</span> nav2_msgs.action <span class="kw">import</span> NavigateToPose
+<span class="kw">from</span> rclpy.action <span class="kw">import</span> ActionClient
+
+<span class="kw">class</span> AMRExecutor:
+    <span class="kw">def</span> __init__(self, node, amr_id: str):
+        self.amr_id = amr_id
+        self._client = ActionClient(
+            node, NavigateToPose,
+            f<span class="str">"/{amr_id}/navigate_to_pose"</span>
+        )
+
+    <span class="kw">async def</span> execute_transport(self, task: Task):
+        target = task.payload[<span class="str">"destination"</span>]
+
+        goal = NavigateToPose.Goal()
+        goal.pose.pose.position.x = target[<span class="num">0</span>]
+        goal.pose.pose.position.y = target[<span class="num">1</span>]
+
+        <span class="kw">await</span> self._client.wait_for_server()
+        future = <span class="kw">await</span> self._client.send_goal_async(
+            goal, feedback_callback=self._on_feedback
+        )
+
+        result = <span class="kw">await</span> future.get_result_async()
+        <span class="kw">if</span> result.status == <span class="str">"SUCCEEDED"</span>:
+            report_completion(task.task_id, success=<span class="kw">True</span>)
+        <span class="kw">else</span>:
+            report_completion(task.task_id, success=<span class="kw">False</span>,
+                              reason=result.message)</pre>
+    </section>
+
+    <section id="s4">
+      <h2>④ Manipulator Executor (MyCobot280)</h2>
+
+      <h3>4.1 하드웨어 스펙</h3>
+      <ul>
+        <li><strong>제조사</strong>: Elephant Robotics</li>
+        <li><strong>DOF</strong>: 6</li>
+        <li><strong>Payload</strong>: 250g</li>
+        <li><strong>컨트롤러</strong>: Raspberry Pi 5 (per robot)</li>
+        <li><strong>SDK</strong>: pymycobot (Python) + ROS 2 bridge</li>
+      </ul>
+
+      <h3>4.2 작업 타입별 명령</h3>
+      <pre><span class="kw">from</span> pymycobot.mycobot <span class="kw">import</span> MyCobot
+<span class="kw">import</span> rclpy
+
+<span class="kw">class</span> ManipulatorExecutor:
+    <span class="kw">def</span> __init__(self, cobot_port: str):
+        self.mc = MyCobot(cobot_port, <span class="num">115200</span>)
+
+    <span class="kw">def</span> execute_pouring(self, task: Task):
+        <span class="comment"># 1. 안전 홈으로 복귀</span>
+        self.mc.send_angles([<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>], <span class="num">50</span>)
+
+        <span class="comment"># 2. 래들 그립 위치로 이동</span>
+        ladle_pose = task.payload[<span class="str">"ladle_pose"</span>]
+        self.mc.send_coords(ladle_pose, <span class="num">30</span>, <span class="num">1</span>)
+        self.mc.set_gripper_state(<span class="num">1</span>, <span class="num">50</span>)  <span class="comment"># close</span>
+        time.sleep(<span class="num">0.5</span>)
+
+        <span class="comment"># 3. 주형 입구로 이동</span>
+        mold_pose = task.payload[<span class="str">"mold_pose"</span>]
+        self.mc.send_coords(mold_pose, <span class="num">30</span>, <span class="num">1</span>)
+
+        <span class="comment"># 4. 기울여 주탕 (설정된 각도 시퀀스)</span>
+        <span class="kw">for</span> angle, duration <span class="kw">in</span> POURING_SEQUENCE:
+            self.mc.send_angle(<span class="num">5</span>, angle, <span class="num">20</span>)  <span class="comment"># wrist tilt</span>
+            time.sleep(duration)
+
+        <span class="comment"># 5. 수평 복귀</span>
+        self.mc.send_angle(<span class="num">5</span>, <span class="num">0</span>, <span class="num">30</span>)
+
+        <span class="comment"># 6. 래들 복귀 + 그립 해제</span>
+        self.mc.send_coords(ladle_pose, <span class="num">30</span>, <span class="num">1</span>)
+        self.mc.set_gripper_state(<span class="num">0</span>, <span class="num">50</span>)  <span class="comment"># open</span>
+
+        <span class="comment"># 7. 홈 복귀</span>
+        self.mc.send_angles([<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>], <span class="num">50</span>)
+        report_completion(task.task_id, success=<span class="kw">True</span>)</pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ Station Executor (ESP32 PLC)</h2>
+
+      <p>컨베이어, 용해로 등은 ESP32 마이크로컨트롤러에서 직접 제어됩니다. Executor는 MQTT를 통해 명령을 전달합니다.</p>
+
+      <h3>5.1 컨베이어 명령 예시</h3>
+      <pre><span class="kw">import</span> json
+<span class="kw">import</span> paho.mqtt.client <span class="kw">as</span> mqtt
+
+<span class="kw">class</span> ConveyorExecutor:
+    <span class="kw">def</span> __init__(self, conveyor_id: int, mqtt_host: str):
+        self.id = conveyor_id
+        self.client = mqtt.Client(client_id=f<span class="str">"exec_conv_{conveyor_id}"</span>)
+        self.client.connect(mqtt_host, <span class="num">1883</span>)
+        self.client.loop_start()
+
+        <span class="comment"># status 토픽 구독 (실행 완료 판단용)</span>
+        self.client.subscribe(f<span class="str">"conveyor/{conveyor_id}/status"</span>)
+        self.client.on_message = self._on_status
+
+    <span class="kw">def</span> execute_run(self, task: Task):
+        cmd = {<span class="str">"cmd"</span>: <span class="str">"start"</span>, <span class="str">"speed"</span>: task.payload.get(<span class="str">"speed"</span>, <span class="num">80</span>)}
+        self.client.publish(
+            f<span class="str">"conveyor/{self.id}/cmd"</span>,
+            json.dumps(cmd)
+        )
+        <span class="comment"># status 토픽 기다림 (asyncio + Future)</span>
+
+    <span class="kw">def</span> execute_stop(self, task: Task):
+        self.client.publish(
+            f<span class="str">"conveyor/{self.id}/cmd"</span>,
+            json.dumps({<span class="str">"cmd"</span>: <span class="str">"stop"</span>})
+        )</pre>
+
+      <h3>5.2 ESP32 펌웨어 측 (요약)</h3>
+      <p>실제 펌웨어는 <code>firmware/conveyor_controller/</code>에 구현. v3.4 기준:</p>
+      <ul>
+        <li>MQTT 구독: <code>conveyor/{id}/cmd</code></li>
+        <li>L298N 모터 드라이버 제어 (JGB37-555 6V 모터)</li>
+        <li>TOF250 ×2 센서 (ASCII UART 9600) 기반 상태 머신</li>
+        <li>MQTT publish: <code>conveyor/{id}/status</code>, <code>conveyor/{id}/event</code></li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 공통 인터페이스</h2>
+
+      <p>모든 Executor는 동일한 기본 인터페이스를 구현:</p>
+
+      <pre><span class="kw">from</span> abc <span class="kw">import</span> ABC, abstractmethod
+
+<span class="kw">class</span> Executor(ABC):
+    executor_id: str
+    capabilities: list[str]
+
+    @abstractmethod
+    <span class="kw">async def</span> execute(self, task: Task) -&gt; ExecutionResult: ...
+
+    @abstractmethod
+    <span class="kw">async def</span> cancel(self, task_id: str) -&gt; <span class="kw">None</span>: ...
+
+    @abstractmethod
+    <span class="kw">def</span> health(self) -&gt; HealthStatus: ...
+
+@dataclass
+<span class="kw">class</span> ExecutionResult:
+    task_id: str
+    success: bool
+    elapsed_sec: float
+    output: dict  <span class="comment"># 예: inspection 결과, 주탕 각도 기록</span>
+    failure_reason: str | <span class="kw">None</span> = <span class="kw">None</span></pre>
+
+      <h3>6.1 Executor Registry</h3>
+      <pre><span class="kw">class</span> ExecutorRegistry:
+    <span class="kw">def</span> __init__(self):
+        self._executors: dict[str, Executor] = {}
+
+    <span class="kw">def</span> register(self, executor: Executor):
+        self._executors[executor.executor_id] = executor
+
+    <span class="kw">def</span> for_capability(self, cap: str) -&gt; list[Executor]:
+        <span class="kw">return</span> [
+            e <span class="kw">for</span> e <span class="kw">in</span> self._executors.values()
+            <span class="kw">if</span> cap <span class="kw">in</span> e.capabilities <span class="kw">and</span> e.health().available
+        ]
+
+    <span class="kw">async def</span> dispatch(self, robot_id: str, task: Task):
+        executor = self._executors[robot_id]
+        result = <span class="kw">await</span> executor.execute(task)
+        emit_event(<span class="str">"task.completed"</span>, result=result)</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> AMRExecutor(Executor):
+    executor_id: str
+    capabilities = [<span class="str">"amr"</span>]
+
+    <span class="kw">def</span> __init__(self, robot_id: str, node):
+        self.executor_id = robot_id
+        self.robot_id = robot_id
+        self.node = node
+        self._nav_client = ActionClient(
+            node, NavigateToPose,
+            f<span class="str">"/{robot_id}/navigate_to_pose"</span>
+        )
+
+    <span class="kw">async def</span> execute(self, task: Task) -&gt; ExecutionResult:
+        start = time.time()
+
+        <span class="kw">try</span>:
+            <span class="kw">if</span> task.type == TaskType.TRANSPORT:
+                <span class="kw">await</span> self._navigate(task.payload[<span class="str">"destination"</span>])
+            <span class="kw">elif</span> task.type == TaskType.CHARGING:
+                <span class="kw">await</span> self._navigate(task.payload[<span class="str">"charging_station"</span>])
+                <span class="kw">await</span> self._dock_and_charge()
+            <span class="kw">else</span>:
+                <span class="kw">raise</span> ValueError(f<span class="str">"Unsupported task type: {task.type}"</span>)
+
+            <span class="kw">return</span> ExecutionResult(
+                task_id=task.task_id,
+                success=<span class="kw">True</span>,
+                elapsed_sec=time.time() - start,
+                output={<span class="str">"final_position"</span>: self._get_position()},
+            )
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            <span class="kw">return</span> ExecutionResult(
+                task_id=task.task_id,
+                success=<span class="kw">False</span>,
+                elapsed_sec=time.time() - start,
+                output={},
+                failure_reason=str(e),
+            )
+
+    <span class="kw">def</span> health(self) -&gt; HealthStatus:
+        <span class="kw">return</span> HealthStatus(
+            available=self._battery &gt; <span class="num">15</span>,
+            battery=self._battery,
+            last_heartbeat=self._last_heartbeat,
+        )</pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="09_global_task_allocator.html"><strong>09 Allocator</strong></a>: 배정된 task 수신</li>
+      </ul>
+      <h3>협력</h3>
+      <ul>
+        <li><a href="10_resource_reservation_manager.html"><strong>10 Reservation</strong></a>: 작업 완료 후 release</li>
+        <li><a href="../fleet_traffic_management.html"><strong>Traffic Manager</strong></a>: AMR 경로 확보 (Executor 외부에서 이미 보장됨)</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: 실행 결과 보고</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="10_resource_reservation_manager.html">
+          <div class="label">← 이전</div>
+          <div class="name">10. Resource Reservation Manager</div>
+        </a>
+        <a href="12_execution_monitor.html">
+          <div class="label">다음 →</div>
+          <div class="name">12. Execution Monitor</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 11. Robot / Cell Executors · 2026-04-08</footer>
+  </div>
+</body>
+</html>

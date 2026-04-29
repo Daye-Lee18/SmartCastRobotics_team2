@@ -1,0 +1,48 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%   # 1% 미만 하락은 fail 안 함 (점진 도입)
+    patch:
+      default:
+        target: 70%     # PR 패치는 70% 커버 권장 (강제는 아님)
+        if_not_found: success
+
+  precision: 1
+  round: down
+  range: "60...90"
+
+flags:
+  management:
+    paths:
+      - backend/management/
+    carryforward: true
+  backend:
+    paths:
+      - backend/app/
+    carryforward: true
+  monitoring:
+    paths:
+      - monitoring/app/styles/
+    carryforward: true
+  jetson:
+    paths:
+      - jetson_publisher/
+    carryforward: true
+
+comment:
+  layout: "header, diff, files, flags"
+  behavior: default
+  require_changes: true
+  show_carryforward_flags: true
+
+ignore:
+  - "**/_pb2.py"
+  - "**/_pb2_grpc.py"
+  - "**/generated/**"
+  - "**/tests/**"
+  - "**/migrations/**"
+  - "blender/**"
+  - "tools/**"
+  - "scripts/**"

@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Interface Service 구현 감사 — V6 canonical (2026-04-21)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --fail: #ef4444;
+    --info: #818cf8;
+    --border: #475569;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 2px solid var(--accent);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--accent);
+  }
+  header p {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--panel2);
+    color: var(--text);
+  }
+  .badge.ok { background: var(--ok); color: #052e16; }
+  .badge.warn { background: var(--warn); color: #422006; }
+  .badge.fail { background: var(--fail); color: #450a0a; }
+  .badge.info { background: var(--info); color: #1e1b4b; }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    background: rgba(15,23,42,0.95);
+    backdrop-filter: blur(6px);
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    z-index: 10;
+  }
+  nav.toc a {
+    color: var(--accent);
+    margin-right: 1.25rem;
+    text-decoration: none;
+  }
+  nav.toc a:hover { text-decoration: underline; }
+
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  section {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+  }
+  section h2 {
+    margin-top: 0;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    font-size: 1.25rem;
+  }
+  section h3 {
+    color: var(--text);
+    font-size: 1.05rem;
+    margin-top: 1.5rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.75rem;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--panel2);
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+  }
+  tr:hover { background: rgba(56,189,248,0.05); }
+
+  code {
+    background: var(--panel2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    color: #fde68a;
+  }
+  pre {
+    background: #020617;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+  }
+  pre code { background: transparent; color: var(--text); padding: 0; }
+
+  .status-ok::before { content: "✅ "; }
+  .status-warn::before { content: "⚠️ "; }
+  .status-fail::before { content: "❌ "; }
+  .status-info::before { content: "ℹ️ "; }
+  .status-todo::before { content: "🟡 "; }
+
+  .mermaid-wrap {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .mermaid { text-align: center; }
+
+  .checklist li {
+    list-style: none;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist .rule {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .checklist .evidence {
+    display: block;
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-top: 0.15rem;
+  }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 760px) {
+    .grid2 { grid-template-columns: 1fr; }
+    nav.toc { font-size: 0.75rem; padding: 0.5rem 1rem; }
+    main { padding: 1rem; }
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    padding: 2rem 1rem 3rem;
+    font-size: 0.82rem;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Interface Service 구현 감사</h1>
+  <p>V6 canonical 아키텍처 · <code>backend/app/</code> FastAPI <code>:8000</code> · 감사 일자 2026-04-21</p>
+  <div class="badges">
+    <span class="badge info">Branch: feat/v6-phase-c2-proxy</span>
+    <span class="badge info">HEAD: 62322f0</span>
+    <span class="badge ok">Phase A–D 완료</span>
+    <span class="badge ok">SPEC-C2 / C3 머지</span>
+    <span class="badge warn">SPEC-RFID-001 Wave 2 진행</span>
+    <span class="badge ok">전체 판정: 양호 (1 운영 blocker)</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#arch">① 아키텍처 관계도</a>
+  <a href="#responsibility">② 책임 분담</a>
+  <a href="#endpoints">③ 엔드포인트 인벤토리</a>
+  <a href="#checklist">④ 구현 체크리스트</a>
+  <a href="#gaps">⑤ 식별된 격차</a>
+  <a href="#verify">⑥ 검증 명령</a>
+</nav>
+
+<main>
+
+<!-- ============ 1. Architecture Diagram ============ -->
+<section id="arch">
+  <h2>① 아키텍처 관계도</h2>
+  <p>
+    본 감사의 대상 구조는 <strong>Management Service ← Interface Service ↔ (Ordering Management Service, Ordering Service)</strong> 이다.
+    Interface Service 는 3 계층 사이의 유일한 HTTP REST 게이트웨이이며, Management 로는 <em>gRPC(:50051) 단방향 호출</em> 만 수행한다.
+  </p>
+
+  <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart TB
+  subgraph CustomerTier["외부 소비자 (Next.js 16 · :3000)"]
+    direction LR
+    OMS["Ordering Management Service<br/>/admin · /orders · /quality<br/>관리자 포털"]
+    OS["Ordering Service<br/>/customer · /customer/lookup<br/>고객 포털"]
+  end
+
+  subgraph Interface["Interface Service · FastAPI :8000<br/>(backend/app/)"]
+    direction TB
+    ROUTES["REST Routers<br/>orders · production · quality<br/>logistics · alerts · schedule · dashboard"]
+    MGMTR["management.py router<br/>/api/management/*"]
+    WSR["websocket.py<br/>/ws/dashboard (polling)"]
+    CLIENT["clients/management.py<br/>gRPC 싱글톤"]
+    ROUTES --> MGMTR
+    MGMTR --> CLIENT
+  end
+
+  subgraph Backend["Factory Backend"]
+    MGMT["Management Service<br/>gRPC :50051<br/>(backend/management/)"]
+    DB[("PostgreSQL 16 + TimescaleDB<br/>100.107.120.14<br/>smartcast + public")]
+  end
+
+  OMS <-- "HTTPS REST (bi-dir)" --> ROUTES
+  OS  <-- "HTTPS REST (bi-dir)" --> ROUTES
+  ROUTES <-- "SQLAlchemy 2.0" --> DB
+  CLIENT <-- "gRPC TCP (bi-dir · streaming)" --> MGMT
+  MGMT   <-- "SQLAlchemy 2.0"   --> DB
+
+  classDef ext fill:#4338ca,stroke:#312e81,color:#fff
+  classDef iface fill:#0891b2,stroke:#0e7490,color:#fff
+  classDef mgmt fill:#16a34a,stroke:#166534,color:#fff
+  classDef db fill:#a16207,stroke:#713f12,color:#fff
+  class OMS,OS ext
+  class ROUTES,MGMTR,WSR,CLIENT iface
+  class MGMT mgmt
+  class DB db
+</pre>
+  </div>
+
+  <p style="color: var(--muted); font-size: 0.85rem;">
+    * Canonical 이미지는 Interface ↔ Management 사이에 <strong>양방향 TCP 화살표</strong>를 그린다.
+    이는 같은 gRPC TCP 연결 위의 데이터 흐름 양방향성을 의미한다 —
+    <em>Interface → Management</em> 는 <code>Health</code>, <code>StartProduction</code> 등 단항 RPC 호출이고,
+    <em>Management → Interface</em> 는 <code>WatchItems</code>, <code>WatchAlerts</code>, <code>WatchCameraFrames</code> 등
+    server-streaming 응답(이벤트 push)이다. Management 가 별도 HTTP 로 Interface 를 역호출하는 경로는
+    canonical 에도 없다 (C-5 체크와 일치).
+  </p>
+  <p style="color: var(--muted); font-size: 0.85rem;">
+    * <strong>구현 현황</strong>: Interface→Mgmt 방향은 Phase C-1 (<code>Health</code>) · SPEC-C2 (<code>StartProduction</code>) 로 실체화.
+    Mgmt→Interface stream push 경로는 <strong>의도적으로 미도입</strong> (설계 옵션 · §4.4 M-4 · §5 설계 결정 참조) —
+    현재 웹 Admin/Customer 대시보드는 Interface <code>/ws/dashboard</code> 5초 polling 으로 충분한 반응성 제공.
+    실시간을 실제로 필요로 하는 PyQt(Monitoring Service) 는 canonical 의 Factory Operator PC ↔ Management TCP 화살표를 따라
+    <code>WatchItems</code>/<code>WatchAlerts</code> 를 직접 구독한다. Canonical 의 양방향 TCP 는 프로토콜 레벨 full-duplex 를
+    반영한 것이며, push 의 의무 도입을 의미하지 않는다.
+  </p>
+</section>
+
+<!-- ============ 2. Responsibility ============ -->
+<section id="responsibility">
+  <h2>② 책임 분담 매트릭스</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>책임</th>
+        <th>Ordering Service<br/>(고객 포털)</th>
+        <th>Ordering Management<br/>(관리자 포털)</th>
+        <th>Interface Service<br/>(FastAPI)</th>
+        <th>Management Service<br/>(gRPC)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>발주 등록 폼 UI</td>
+        <td class="status-ok">주요 책임</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>발주 승인·반려·출고 UI</td>
+        <td>-</td>
+        <td class="status-ok">주요 책임</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>HTTP REST 수신 (발주 CRUD)</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-ok">주요 책임</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>발주 → DB (smartcast schema)</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-ok">직접 write</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>생산 개시 (StartProduction)</td>
+        <td>-</td>
+        <td>호출만</td>
+        <td class="status-warn">gRPC proxy (flag-gated)</td>
+        <td class="status-ok">트랜잭션 보유</td>
+      </tr>
+      <tr>
+        <td>AMR · Cobot · Conveyor 제어</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-fail">관여 금지</td>
+        <td class="status-ok">단일 책임</td>
+      </tr>
+      <tr>
+        <td>실시간 스트림 (Items / Alerts / Camera)</td>
+        <td>-</td>
+        <td>WebSocket polling (5s)</td>
+        <td class="status-ok">/ws/dashboard (polling, 설계 선택)</td>
+        <td class="status-ok">gRPC server streaming (PyQt 직결)</td>
+      </tr>
+      <tr>
+        <td>ROS2 publish · MQTT 제거 · ESP32 relay</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-fail">관여 금지</td>
+        <td class="status-ok">단일 책임</td>
+      </tr>
+      <tr>
+        <td>RFID 스캔 수신 (SPEC-RFID-001)</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-ok">ReportRfidScan RPC</td>
+      </tr>
+      <tr>
+        <td>읽기 조회 (품질, 물류, 재고, 대시보드)</td>
+        <td>-</td>
+        <td>주 소비자</td>
+        <td class="status-ok">DB 직결 조회</td>
+        <td>-</td>
+      </tr>
+      <tr>
+        <td>인증 / 권한</td>
+        <td>-</td>
+        <td>-</td>
+        <td class="status-fail">미구현 (클라이언트 password gate 만)</td>
+        <td class="status-warn">mTLS flag 존재, 미활성</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 3. Endpoint Inventory ============ -->
+<section id="endpoints">
+  <h2>③ Interface Service 엔드포인트 인벤토리</h2>
+  <p style="color: var(--muted); font-size: 0.85rem;">
+    2026-04-21 기준, <code>backend/app/routes/</code> 의 <code>@router</code> 선언 67건 중 active (non-legacy) 48건을 소비자 계층으로 매핑.
+  </p>
+
+  <h3>3.1 Ordering Service (고객 포털) 가 호출하는 엔드포인트</h3>
+  <table>
+    <thead><tr><th>메서드</th><th>경로</th><th>소스</th><th>구현 상태</th></tr></thead>
+    <tbody>
+      <tr><td>POST</td><td><code>/api/orders/customer</code></td><td>orders.py:137</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/orders/lookup?email=</code></td><td>orders.py:244</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/products</code></td><td>orders.py (products_router)</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/load-classes</code></td><td>orders.py (load_classes_router)</td><td class="status-ok">구현</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 Ordering Management (관리자 포털) 가 호출하는 엔드포인트</h3>
+  <table>
+    <thead><tr><th>메서드</th><th>경로</th><th>소스</th><th>구현 상태</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/api/orders</code> / <code>/api/orders/{id}</code></td><td>orders.py:117, 266</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/orders/{id}/status</code></td><td>orders.py:274</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/production/patterns</code> + GET 2건</td><td>production.py:76, 92, 97</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/production/start</code></td><td>production.py:170</td><td class="status-warn">SPEC-C2 flag-gated proxy</td></tr>
+      <tr><td>GET</td><td><code>/api/production/items</code> / <code>/equip-tasks</code> / <code>/equip-stats</code></td><td>production.py:188, 199, 212</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/production/metrics</code> / <code>/stages</code> / <code>/equipment</code></td><td>production.py:238, 266, 286</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/production/hourly</code> / <code>/weekly</code> / <code>/temperature</code> / <code>/live</code></td><td>production.py:325–347</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/production/equip-tasks/{id}/advance</code></td><td>production.py:363</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/production/schedule/jobs</code></td><td>production.py:423</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/production/schedule/calculate</code> / <code>/start</code></td><td>production.py:429, 434</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/quality/*</code> 11건</td><td>quality.py:24–165</td><td class="status-ok">구현</td></tr>
+      <tr><td>POST</td><td><code>/api/quality/inspections/{id}/result</code></td><td>quality.py:165</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/logistics/*</code> 6건</td><td>logistics.py:30–100</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/alerts</code></td><td>alerts.py:21</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/dashboard/stats</code></td><td>dashboard.py:28</td><td class="status-ok">구현</td></tr>
+      <tr><td>GET</td><td><code>/api/schedule</code> / <code>/{ord_id}</code></td><td>schedule.py:22, 38</td><td class="status-ok">구현</td></tr>
+      <tr><td>WS</td><td><code>/ws/dashboard</code></td><td>websocket.py:92</td><td class="status-ok">5초 polling (설계 선택 · §5.1 M-4a)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.3 Interface → Management gRPC proxy</h3>
+  <table>
+    <thead><tr><th>메서드</th><th>경로</th><th>proxy 대상 RPC</th><th>구현 상태</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/api/management/health</code></td><td><code>ManagementService.Health</code></td><td class="status-ok">구현 (Phase C-1, b3b185e)</td></tr>
+      <tr><td>POST</td><td><code>/api/production/start</code> (flag ON)</td><td><code>ManagementService.StartProduction</code></td><td class="status-ok">구현 (SPEC-C2, 476e86b)</td></tr>
+      <tr><td>GET</td><td><code>/api/management/items</code></td><td><code>ManagementService.ListItems</code></td><td class="status-todo">예정 (SPEC-C2 §후속)</td></tr>
+      <tr><td>WS</td><td><code>/api/management/items/stream</code></td><td><code>ManagementService.WatchItems</code></td><td class="status-info">설계 옵션 (§5.1 M-4a · 현 단계 도입 안 함)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.4 Legacy routers (<code>/app/routes/legacy/</code>) — 제거 대기</h3>
+  <table>
+    <thead><tr><th>모듈</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td><code>legacy/orders.py</code> (v47)</td><td class="status-warn">smartcast orders.py 로 대체됨, 제거 대기</td></tr>
+      <tr><td><code>legacy/production.py</code> · <code>legacy/quality.py</code> · <code>legacy/logistics.py</code> · <code>legacy/schedule.py</code></td><td class="status-warn">smartcast 버전 존재, 제거 대기</td></tr>
+      <tr><td><code>legacy/websocket.py</code></td><td class="status-warn">현 websocket.py 로 대체</td></tr>
+      <tr><td><code>legacy/alerts.py</code></td><td class="status-warn">alerts.py 로 대체</td></tr>
+      <tr><td><code>legacy/debug.py</code></td><td class="status-info">개발 전용 (APP_ENV=development 에서만 라우터 등록, <code>debug.py</code> 에도 존재)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 4. Checklist ============ -->
+<section id="checklist">
+  <h2>④ 구현 체크리스트 (V6 canonical 기준)</h2>
+
+  <h3>4.1 계층 경계 (Separation of Concerns)</h3>
+  <ul class="checklist">
+    <li class="status-ok"><span class="rule">C-1. Ordering Service 와 Ordering Management 는 Management Service(:50051) 와 직접 통신하지 않는다.</span>
+      <span class="evidence">Evidence: <code>src/lib/api.ts</code> 전체에서 <code>grpc</code>/<code>50051</code> 참조 0건. 모든 API 호출이 <code>/api/*</code>(HTTP) 로만 라우팅.</span>
+    </li>
+    <li class="status-ok"><span class="rule">C-2. Interface Service 는 HTTP REST 이외의 프로토콜을 외부 소비자에게 노출하지 않는다.</span>
+      <span class="evidence">Evidence: <code>backend/app/main.py</code> 가 포트 8000 하나만 사용, gRPC servicer 등록 없음.</span>
+    </li>
+    <li class="status-ok"><span class="rule">C-3. Interface → Management 화살표는 <code>app/clients/management.py</code> 싱글톤을 통해서만 생성된다.</span>
+      <span class="evidence">Evidence: 코드베이스 전체에서 <code>management_pb2</code>/<code>grpc.insecure_channel</code> 이 <code>backend/app/</code> 안에서는 <code>app/clients/management.py</code> 1곳에만 존재.</span>
+    </li>
+    <li class="status-ok"><span class="rule">C-4. Interface Service 는 ROS2 · MQTT · ESP32 Serial 과 직접 통신하지 않는다.</span>
+      <span class="evidence">Evidence: <code>backend/app/</code> 안에 <code>rclpy</code>/<code>paho</code>/<code>pyserial</code> import 0건.</span>
+    </li>
+    <li class="status-ok"><span class="rule">C-5. Management Service 는 Interface 의 HTTP 를 호출하지 않는다 (화살표 단방향).</span>
+      <span class="evidence">Evidence: <code>backend/management/</code> 안에 <code>requests</code>/<code>httpx</code>/<code>localhost:8000</code> 참조 0건.</span>
+    </li>
+  </ul>
+
+  <h3>4.2 Interface Service 내부 구조</h3>
+  <ul class="checklist">
+    <li class="status-ok"><span class="rule">I-1. Management gRPC 채널은 <em>lazy</em> 생성 + 프로세스 lifetime 동안 재사용한다.</span>
+      <span class="evidence">Evidence: <code>ManagementClient._ensure_channel()</code> (clients/management.py:90-104) + <code>_instance</code> 싱글톤.</span>
+    </li>
+    <li class="status-ok"><span class="rule">I-2. Management 장애 시 503 으로 매핑되며 Interface 프로세스는 죽지 않는다.</span>
+      <span class="evidence">Evidence: <code>ManagementUnavailable</code> → <code>HTTPException(503)</code> (management.py:40, production.py:157-161).</span>
+    </li>
+    <li class="status-ok"><span class="rule">I-3. 생산 개시 proxy 플래그가 <em>모듈 import 시점</em> 고정이어야 한다 (SPEC-C2 §11.2).</span>
+      <span class="evidence">Evidence: <code>_PROXY_START_PRODUCTION = os.environ.get(...)</code> 가 module top-level 상수, production.py:179 에서 참조.</span>
+    </li>
+    <li class="status-ok"><span class="rule">I-4. FastAPI lifespan 이 Management 채널을 shutdown 시 정리한다.</span>
+      <span class="evidence">Evidence: main.py:35 <code>ManagementClient.get().close()</code> in lifespan yield 후.</span>
+    </li>
+    <li class="status-ok"><span class="rule">I-5. proto stubs 부재 시 graceful degradation.</span>
+      <span class="evidence">Evidence: clients/management.py:39-49 <code>_PROTO_AVAILABLE=False</code> + <code>ManagementUnavailable</code>.</span>
+    </li>
+    <li class="status-warn"><span class="rule">I-6. mTLS (<code>MGMT_GRPC_TLS_ENABLED=1</code>) 가 운영 환경에서 활성화되어야 한다.</span>
+      <span class="evidence">Evidence: TLS 코드 경로는 구현 (clients/management.py:97-128) — 현재 default OFF. v6_review.md S-001 에서 ✅ 권장조치 완료로 기록.</span>
+    </li>
+  </ul>
+
+  <h3>4.3 Ordering Service 계약 (고객 포털 요구)</h3>
+  <ul class="checklist">
+    <li class="status-ok"><span class="rule">O-1. 고객 발주 폼 제출이 <code>POST /api/orders/customer</code> 단일 엔드포인트로 수신된다.</span>
+      <span class="evidence">Evidence: orders.py:137 <code>@router.post("/customer")</code> + <code>CustomerOrderResponse</code>.</span>
+    </li>
+    <li class="status-ok"><span class="rule">O-2. 이메일로 주문 조회 <code>GET /api/orders/lookup?email=</code> 가 빈 배열로 fallback.</span>
+      <span class="evidence">Evidence: orders.py:244 + src/lib/api.ts:170 통합.</span>
+    </li>
+    <li class="status-ok"><span class="rule">O-3. 제품 / EN-124 하중 등급 마스터가 공개 읽기 전용.</span>
+      <span class="evidence">Evidence: orders.products_router, orders.load_classes_router — main.py:59-60 에서 register.</span>
+    </li>
+    <li class="status-fail"><span class="rule">O-4. 발주 상태 변경은 Ordering Service 로부터 수신되지 않는다.</span>
+      <span class="evidence">Evidence: <code>POST /api/orders/{id}/status</code> 는 admin 포털에서만 호출되도록 권한 가드 필요 — 현재는 CORS allow-all + password gate 만.</span>
+    </li>
+  </ul>
+
+  <h3>4.4 Ordering Management 계약 (관리자 포털 요구)</h3>
+  <ul class="checklist">
+    <li class="status-ok"><span class="rule">M-1. 주문 파이프라인 6단계 (접수→승인→생산→생산완료→출고→완료) 가 Interface 에서 지원.</span>
+      <span class="evidence">Evidence: orders.py:274 <code>POST /api/orders/{id}/status?new_stat=...</code> + README §주문 상태 파이프라인.</span>
+    </li>
+    <li class="status-ok"><span class="rule">M-2. 생산 모니터링에 필요한 smartcast v2 실시간 뷰 (items, equip_tasks, equip_stats) 가 REST 로 제공.</span>
+      <span class="evidence">Evidence: production.py:188-212.</span>
+    </li>
+    <li class="status-ok"><span class="rule">M-3. 품질 / 물류 / 재고 조회가 REST 로 제공.</span>
+      <span class="evidence">Evidence: quality.py 11건, logistics.py 6건, dashboard.py.</span>
+    </li>
+    <li class="status-ok"><span class="rule">M-4. 실시간 요구가 있는 소비자가 적절한 채널로 이벤트를 수신한다 (소비자 적합형 디자인).</span>
+      <span class="evidence">Evidence: 실시간을 실제로 필요로 하는 PyQt(Monitoring Service) 는 Mgmt <code>WatchItems</code>/<code>WatchAlerts</code> 스트림을 <strong>직접 구독</strong> (canonical Factory Operator PC ↔ Management TCP 화살표). 웹 Admin/Customer 대시보드는 Interface <code>/ws/dashboard</code> 5초 polling 으로 동작 — 비동기 모니터링 특성상 충분한 반응성 제공. Mgmt→Interface stream relay 는 설계 옵션 (§5 참조).</span>
+    </li>
+    <li class="status-info"><span class="rule">M-4a. Mgmt→Interface stream relay 는 현 단계에서 <em>도입하지 않는다</em> (설계 결정).</span>
+      <span class="evidence">근거: ① 실시간 필요 소비자(PyQt) 는 이미 canonical 직접 화살표로 처리됨 ② Admin 동시접속 ≤ 10 범위에서 5초 polling 의 DB 부하 (6~20 query/s) 가 trivial ③ stream relay 도입 시 connection mgmt + backpressure + stale client 처리로 복잡도 상승 ④ canonical 의 양방향 TCP 화살표는 gRPC full-duplex 프로토콜 레벨 속성이며 push 의무 도입을 의미하지 않음.</span>
+    </li>
+    <li class="status-info"><span class="rule">M-4b. 다음 조건 중 하나라도 성립하면 Phase C-3 로 승격하여 push relay 도입.</span>
+      <span class="evidence">트리거: ① Critical alert SLA &lt; 2초 요구 명시 · ② Admin 동시접속 ≥ 30 상시 · ③ 웹에서 현장 제어 UX 필요. 도입 시 설계: Interface 가 <code>ManagementClient</code> 로 <code>WatchItems</code>/<code>WatchAlerts</code> 구독 → 인메모리 fan-out → WebSocket relay.</span>
+    </li>
+    <li class="status-ok"><span class="rule">M-5. 생산 개시가 Management 로 위임된다 (flag=1 시).</span>
+      <span class="evidence">Evidence: production.py:170-167 proxy 분기 + DEPLOY §4.</span>
+    </li>
+  </ul>
+
+  <h3>4.5 데이터 계약 / 스키마</h3>
+  <ul class="checklist">
+    <li class="status-ok"><span class="rule">D-1. Interface 와 Management 는 동일 PG 인스턴스 + 동일 <code>DATABASE_URL</code> 사용.</span>
+      <span class="evidence">Evidence: backend/.env.local 단일 소스, Mgmt 의 <code>sys.path</code> hack 으로 <code>app.database</code> 재사용.</span>
+    </li>
+    <li class="status-ok"><span class="rule">D-2. smartcast v2 스키마 (27 테이블) 가 우선, <code>public</code> schema 의 legacy 4 테이블은 선별 import.</span>
+      <span class="evidence">Evidence: <code>app/models/models_mgmt.py</code> 에서 Alert · HandoffAck · TransportTask · RfidScanLog 만 re-export (<code>__init__.py</code>).</span>
+    </li>
+    <li class="status-ok"><span class="rule">D-3. SQLite 폴백 없음.</span>
+      <span class="evidence">Evidence: feedback_db_postgresql_only 2026-04-14 이후 정책 · backend 는 <code>DATABASE_URL</code> 미설정 시 fail-fast.</span>
+    </li>
+  </ul>
+</section>
+
+<!-- ============ 5. Gaps ============ -->
+<section id="gaps">
+  <h2>⑤ 식별된 격차 (PASS 가 아닌 항목 요약)</h2>
+
+  <table>
+    <thead><tr><th>ID</th><th>격차</th><th>영향</th><th>제안 조치</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="status-warn">I-6</td>
+        <td>mTLS 운영 환경 비활성</td>
+        <td>공장 내부망 전용이라 단기 위험 낮음. 외부 노출 시 trivial MITM.</td>
+        <td>배포 시 <code>MGMT_GRPC_TLS_ENABLED=1</code> + <code>certs/</code> 준비. 체크리스트는 DEPLOY §3.3 에 포함시킬 것.</td>
+      </tr>
+      <tr>
+        <td class="status-fail">O-4</td>
+        <td>관리자 권한 가드 부재</td>
+        <td>누구나 <code>POST /api/orders/{id}/status</code> 호출 가능.</td>
+        <td>별도 SPEC: JWT/세션 미들웨어 + <code>Depends(require_admin)</code>. 단기로는 Interface 앞단 reverse proxy (nginx) basic auth.</td>
+      </tr>
+      <tr>
+        <td class="status-warn">E-1</td>
+        <td>legacy router 6건 잔존</td>
+        <td>ruff 경고 / 혼동 가능 / 빈 테이블 조회로 오답.</td>
+        <td>SPEC-C2 §6.2 로드맵대로 운영 rollout + 2주 유예 후 <code>legacy/</code> 디렉터리 삭제 PR.</td>
+      </tr>
+      <tr>
+        <td class="status-todo">P-1</td>
+        <td><code>/api/management/items</code>, <code>/api/management/items/stream</code> 미구현</td>
+        <td>Ordering Management 가 Interface 경유로 Mgmt 실시간 데이터를 얻을 수 없음.</td>
+        <td>SPEC-C2 §후속 또는 Phase C-3 에서 추가.</td>
+      </tr>
+      <tr>
+        <td class="status-warn">Q-1</td>
+        <td>CORS <code>allow_origins=["*"]</code></td>
+        <td>개발 편의, 운영 위험 (크레덴셜 없는 경우에도 정책 권장).</td>
+        <td>배포 시 화이트리스트 전환 (<code>https://admin.smartcast.local</code> 등).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>5.1 의식적으로 도입하지 않은 설계 옵션 (gap 아님)</h3>
+  <table>
+    <thead><tr><th>ID</th><th>설계 옵션</th><th>현 단계 결정</th><th>승격 트리거</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="status-info">M-4a</td>
+        <td>Mgmt → Interface server-streaming relay (<code>WatchItems</code>/<code>WatchAlerts</code> 구독 + WS fan-out)</td>
+        <td><strong>도입하지 않음</strong>. 근거: (a) 실시간 필요 소비자(PyQt)는 canonical Factory Operator PC ↔ Mgmt 직결 화살표로 이미 처리 (b) Admin 동시 ≤ 10 범위에서 5초 polling DB 부하 trivial (c) stream relay 는 connection mgmt · backpressure · stale client 추가 복잡도 (d) canonical 의 bi-dir TCP 화살표는 gRPC full-duplex 프로토콜 속성일 뿐 push 의무 도입 의미 아님</td>
+        <td>Phase C-3 (가칭) 로 승격: <ol style="margin:0;padding-left:1.2em;"><li>Critical alert SLA &lt; 2초 요구 명시</li><li>Admin 동시접속 ≥ 30 상시</li><li>웹에서 현장 제어 UX 필요</li></ol></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 6. Verification ============ -->
+<section id="verify">
+  <h2>⑥ 검증 명령 (Interface Service가 살아 있는지)</h2>
+  <pre><code># 1. 기본 헬스
+curl -s http://localhost:8000/health
+# → {"status":"ok","service":"casting-factory-api"}
+
+# 2. Interface → Management 화살표 (Phase C-1)
+curl -s http://localhost:8000/api/management/health
+# → {"status":"ok","service":"management","grpc":"localhost:50051"}
+#    Mgmt 미가동 시 → 503
+
+# 3. Ordering Service 경로 (고객 발주 조회)
+curl -s "http://localhost:8000/api/orders/lookup?email=test@example.com"
+
+# 4. Ordering Management 경로 (주문 목록)
+curl -s http://localhost:8000/api/orders | head -c 400
+
+# 5. SPEC-C2 proxy (flag ON 시)
+INTERFACE_PROXY_START_PRODUCTION=1 \
+curl -X POST http://localhost:8000/api/production/start \
+     -H 'Content-Type: application/json' \
+     -d '{"ord_id":1}'
+# → {"ord_id":1,"item_id":N,"equip_task_txn_id":M,"message":"Production started: RA1/MM task queued."}
+
+# 6. 계층 경계 정적 검증 (Interface 코드가 ROS2/MQTT import 하지 않음)
+grep -rn 'rclpy\|paho\|pyserial\|\bserial\.' backend/app/ --include='*.py'
+# 0 matches 기대
+
+# 7. Management → Interface 역호출 없음
+grep -rn 'requests\.\|httpx\.\|localhost:8000' backend/management/ --include='*.py'
+# 0 matches 기대 (docstring 제외)</code></pre>
+
+  <h3>6.1 자동화 제안</h3>
+  <p>위 grep 2건은 <code>backend/tests/test_architecture_boundary.py</code> 로 고정 가능:</p>
+  <pre><code>def test_interface_has_no_hw_protocol_imports():
+    import pathlib, re
+    for p in pathlib.Path("backend/app").rglob("*.py"):
+        src = p.read_text()
+        assert not re.search(r"\b(rclpy|paho|pyserial)\b", src), p
+
+def test_management_does_not_call_interface():
+    import pathlib, re
+    for p in pathlib.Path("backend/management").rglob("*.py"):
+        src = p.read_text()
+        assert not re.search(r"localhost:8000|127\.0\.0\.1:8000", src), p</code></pre>
+</section>
+
+</main>
+
+<footer>
+  <p>
+    Generated 2026-04-21 · Branch <code>feat/v6-phase-c2-proxy</code> · HEAD <code>62322f0</code>
+  </p>
+  <p>
+    관련 문서: <a href="management_service_design.md">management_service_design.md</a> ·
+    <a href="DEPLOY-phase-a-to-c3.md">DEPLOY-phase-a-to-c3.md</a> ·
+    <a href="SPEC-C2-schema-migration.md">SPEC-C2-schema-migration.md</a>
+  </p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: {
+      fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif',
+      fontSize: '14px'
+    },
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+  });
+</script>
+
+</body>
+</html>

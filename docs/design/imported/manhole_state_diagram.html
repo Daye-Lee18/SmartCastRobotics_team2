@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manhole for SmartCast Robotics — State Diagram</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --purple: #a855f7;
+    --orange: #f97316;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+  h2 { font-size: 1.4rem; margin: 2rem 0 1rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; color: var(--muted); }
+  .subtitle { color: var(--muted); margin-bottom: 2rem; }
+  .flow-overview {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    background: var(--surface); padding: 1rem 1.5rem; border-radius: 8px;
+    margin-bottom: 2rem; border: 1px solid var(--border);
+  }
+  .flow-step {
+    background: var(--accent); color: #fff; padding: 0.4rem 0.8rem;
+    border-radius: 6px; font-size: 0.85rem; font-weight: 600; white-space: nowrap;
+  }
+  .flow-step.active { background: var(--green); }
+  .flow-arrow { color: var(--muted); font-size: 1.2rem; }
+
+  .states-grid {
+    display: grid; grid-template-columns: 1fr; gap: 1rem;
+  }
+  .state-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.2rem 1.5rem; position: relative;
+    transition: border-color 0.2s;
+  }
+  .state-card:hover { border-color: var(--accent); }
+  .state-card .phase-tag {
+    position: absolute; top: -10px; left: 16px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    padding: 2px 10px; border-radius: 4px; letter-spacing: 0.5px;
+  }
+  .tag-plan { background: var(--purple); color: #fff; }
+  .tag-material { background: var(--orange); color: #fff; }
+  .tag-casting { background: var(--red); color: #fff; }
+  .tag-cooling { background: var(--accent); color: #fff; }
+  .tag-transfer { background: var(--yellow); color: #000; }
+  .tag-post { background: var(--muted); color: #000; }
+  .tag-inspect { background: var(--green); color: #000; }
+  .tag-sort { background: #ec4899; color: #fff; }
+
+  .state-card h4 { font-size: 1rem; margin-bottom: 0.6rem; margin-top: 0.3rem; }
+  .state-card .state-name { color: var(--accent); font-family: monospace; font-size: 0.95rem; }
+  .composite-label { font-size: 0.75rem; color: var(--yellow); margin-bottom: 0.3rem; }
+
+  .actions-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  .actions-table th {
+    text-align: left; font-size: 0.75rem; color: var(--muted);
+    padding: 4px 8px; border-bottom: 1px solid var(--border);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .actions-table td {
+    font-size: 0.85rem; padding: 4px 8px;
+    border-bottom: 1px solid rgba(51,65,85,0.5);
+  }
+  .actions-table td:first-child { font-weight: 600; width: 60px; color: var(--muted); }
+
+  .sub-states { margin-top: 0.8rem; padding-left: 1rem; border-left: 2px solid var(--border); }
+  .sub-state { margin-bottom: 0.8rem; }
+  .sub-state-name { font-family: monospace; font-size: 0.85rem; color: var(--green); font-weight: 600; }
+
+  .transition-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  .transition-table th {
+    text-align: left; font-size: 0.75rem; color: var(--muted);
+    padding: 8px 10px; border-bottom: 2px solid var(--border);
+    text-transform: uppercase; background: var(--surface);
+    position: sticky; top: 0;
+  }
+  .transition-table td {
+    font-size: 0.85rem; padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .transition-table tr:hover td { background: rgba(59,130,246,0.08); }
+  .transition-table .mono { font-family: monospace; color: var(--accent); }
+  .transition-table .guard { color: var(--yellow); font-style: italic; }
+
+  .hw-table { width: 100%; border-collapse: collapse; }
+  .hw-table th {
+    text-align: left; font-size: 0.75rem; color: var(--muted);
+    padding: 8px 10px; border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+  }
+  .hw-table td { font-size: 0.85rem; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .hw-table tr:hover td { background: rgba(59,130,246,0.08); }
+  .hw-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .hw-robot { background: rgba(168,85,247,0.2); color: var(--purple); }
+  .hw-amr { background: rgba(234,179,8,0.2); color: var(--yellow); }
+  .hw-esp { background: rgba(34,197,94,0.2); color: var(--green); }
+  .hw-jetson { background: rgba(239,68,68,0.2); color: var(--red); }
+  .hw-manual { background: rgba(148,163,184,0.2); color: var(--muted); }
+
+  @media (min-width: 768px) {
+    .states-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media print {
+    body { background: #fff; color: #000; }
+    .state-card { border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Manhole for SmartCast Robotics</h1>
+<p class="subtitle">State Diagram Reference — 맨홀 뚜껑(Manhole Cover) 사형 주조 공정 | 8단계 생산 공정 기반</p>
+
+<h2>공정 흐름 (8단계)</h2>
+<div class="flow-overview">
+  <span class="flow-step">1. 주문/계획</span><span class="flow-arrow">→</span>
+  <span class="flow-step">2. 원자재 처리</span><span class="flow-arrow">→</span>
+  <span class="flow-step">3. 주형 및 주조</span><span class="flow-arrow">→</span>
+  <span class="flow-step">4. 냉각 및 탈형</span><span class="flow-arrow">→</span>
+  <span class="flow-step">5. 이송</span><span class="flow-arrow">→</span>
+  <span class="flow-step">6. 후처리</span><span class="flow-arrow">→</span>
+  <span class="flow-step">7. 검사</span><span class="flow-arrow">→</span>
+  <span class="flow-step active">8. 분류/출하</span>
+</div>
+
+<h2>상태 정의 (State Definitions)</h2>
+<div class="states-grid">
+
+  <!-- 1. Idle -->
+  <div class="state-card">
+    <span class="phase-tag tag-plan">시작</span>
+    <h4><span class="state-name">Idle</span> — 대기</h4>
+    <table class="actions-table">
+      <tr><th>액션</th><th>내용</th></tr>
+      <tr><td>Entry</td><td>시스템 초기화, 센서 셀프 체크</td></tr>
+      <tr><td>Do</td><td>주문 수신 대기 (WebSocket 모니터링)</td></tr>
+      <tr><td>Exit</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <!-- 2. Order_Received -->
+  <div class="state-card">
+    <span class="phase-tag tag-plan">1단계</span>
+    <h4><span class="state-name">Order_Received</span> — 주문 접수</h4>
+    <table class="actions-table">
+      <tr><th>액션</th><th>내용</th></tr>
+      <tr><td>Entry</td><td>BOM 확인 (제품/수량/자재)</td></tr>
+      <tr><td>Do</td><td>생산 오더 생성</td></tr>
+      <tr><td>Exit</td><td>자재 요청 발행</td></tr>
+    </table>
+  </div>
+
+  <!-- 3. Raw Material - Composite -->
+  <div class="state-card">
+    <span class="phase-tag tag-material">2단계</span>
+    <div class="composite-label">복합 상태 (Composite State)</div>
+    <h4>Raw_Material_Processing — 원자재 처리</h4>
+    <div class="sub-states">
+      <div class="sub-state">
+        <span class="sub-state-name">Ingot_Loading</span> — 주괴 적재
+        <table class="actions-table">
+          <tr><td>Entry</td><td>주괴(Ingot) 적재</td></tr>
+          <tr><td>Do</td><td>중량 계측</td></tr>
+          <tr><td>Exit</td><td>투입 확인</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Melting</span> — 용해
+        <table class="actions-table">
+          <tr><td>Entry</td><td>용해로 가열 시작</td></tr>
+          <tr><td>Do</td><td>온도 모니터링 (목표 온도까지)</td></tr>
+          <tr><td>Exit</td><td>슬래그 제거</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Mold and Casting - Composite -->
+  <div class="state-card">
+    <span class="phase-tag tag-casting">3단계</span>
+    <div class="composite-label">복합 상태 (Composite State)</div>
+    <h4>Mold_And_Casting — 주형 및 주조</h4>
+    <div class="sub-states">
+      <div class="sub-state">
+        <span class="sub-state-name">Molding</span> — 조형
+        <table class="actions-table">
+          <tr><td>Entry</td><td>사형(Sand Mold) 제작 시작</td></tr>
+          <tr><td>Do</td><td>코어(Core) 세팅, 주형사 다짐</td></tr>
+          <tr><td>Exit</td><td>주형 검사</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Pouring</span> — 주탕
+        <table class="actions-table">
+          <tr><td>Entry</td><td>래들 이동, 탕구 정렬</td></tr>
+          <tr><td>Do</td><td>용탕 주입 (유량/온도 제어)</td></tr>
+          <tr><td>Exit</td><td>유량 기록</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Cooling and Shakeout - Composite -->
+  <div class="state-card">
+    <span class="phase-tag tag-cooling">4단계</span>
+    <div class="composite-label">복합 상태 (Composite State)</div>
+    <h4>Cooling_And_Shakeout — 냉각 및 탈형</h4>
+    <div class="sub-states">
+      <div class="sub-state">
+        <span class="sub-state-name">Cooling</span> — 냉각
+        <table class="actions-table">
+          <tr><td>Entry</td><td>냉각 타이머 시작</td></tr>
+          <tr><td>Do</td><td>온도 센서 모니터링</td></tr>
+          <tr><td>Exit</td><td>냉각 완료 로그</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Shakeout</span> — 탈형
+        <table class="actions-table">
+          <tr><td>Entry</td><td>로봇암(MyCobot280) 호출</td></tr>
+          <tr><td>Do</td><td>주형 파쇄, 주물 분리</td></tr>
+          <tr><td>Exit</td><td>주물 상태 기록</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Transferring -->
+  <div class="state-card">
+    <span class="phase-tag tag-transfer">5단계</span>
+    <h4><span class="state-name">Transferring</span> — 이송 (AMR)</h4>
+    <table class="actions-table">
+      <tr><th>액션</th><th>내용</th></tr>
+      <tr><td>Entry</td><td>AMR(Pinkypro) 배정</td></tr>
+      <tr><td>Do</td><td>이송 위치 추적 (Nav2)</td></tr>
+      <tr><td>Exit</td><td>후처리 구역 도착 확인</td></tr>
+    </table>
+  </div>
+
+  <!-- 7. Post Processing -->
+  <div class="state-card">
+    <span class="phase-tag tag-post">6단계</span>
+    <h4><span class="state-name">Post_Processing</span> — 후처리 (수작업)</h4>
+    <table class="actions-table">
+      <tr><th>액션</th><th>내용</th></tr>
+      <tr><td>Entry</td><td>작업대 배치</td></tr>
+      <tr><td>Do</td><td>버(Burr) 제거, 그라인딩, 표면 청소</td></tr>
+      <tr><td>Exit</td><td>완료 후 컨베이어 이송 요청</td></tr>
+    </table>
+  </div>
+
+  <!-- 8. Inspection - Composite -->
+  <div class="state-card">
+    <span class="phase-tag tag-inspect">7단계</span>
+    <div class="composite-label">복합 상태 (Composite State)</div>
+    <h4>Inspection — 검사</h4>
+    <div class="sub-states">
+      <div class="sub-state">
+        <span class="sub-state-name">Conveyor_Moving</span> — 컨베이어 이송
+        <table class="actions-table">
+          <tr><td>Entry</td><td>컨베이어 벨트 구동</td></tr>
+          <tr><td>Do</td><td>이송 중 (ESP32 제어)</td></tr>
+          <tr><td>Exit</td><td>—</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Vision_Inspecting</span> — 비전 검사
+        <table class="actions-table">
+          <tr><td>Entry</td><td>벨트 정지 (TOF250 감지, 0.5초 이내)</td></tr>
+          <tr><td>Do</td><td>YOLO + PatchCore 촬영 및 판정</td></tr>
+          <tr><td>Exit</td><td>판정 결과 DB 저장</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Sorting - Composite -->
+  <div class="state-card">
+    <span class="phase-tag tag-sort">8단계</span>
+    <div class="composite-label">복합 상태 (Composite State) — 분기</div>
+    <h4>Sorting_And_Shipping — 분류/출하</h4>
+    <div class="sub-states">
+      <div class="sub-state">
+        <span class="sub-state-name">Good_Palletizing</span> — 양품 적재 [결과 == PASS]
+        <table class="actions-table">
+          <tr><td>Entry</td><td>양품 트레이 적재 (로봇암)</td></tr>
+          <tr><td>Do</td><td>트레이 배치</td></tr>
+          <tr><td>Exit</td><td>출하 대기</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Shipping</span> — 출하
+        <table class="actions-table">
+          <tr><td>Entry</td><td>AMR 배정</td></tr>
+          <tr><td>Do</td><td>출하 구역 이송</td></tr>
+          <tr><td>Exit</td><td>주문 상태 → completed ◉</td></tr>
+        </table>
+      </div>
+      <div class="sub-state">
+        <span class="sub-state-name">Defect_Disposal</span> — 불량 폐기 [결과 == FAIL]
+        <table class="actions-table">
+          <tr><td>Entry</td><td>불량품 폐기함 적재 (로봇암)</td></tr>
+          <tr><td>Do</td><td>폐기함 이송</td></tr>
+          <tr><td>Exit</td><td>폐기 기록 저장 ◉</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<h2>State Transition Table (상태 전이 규칙)</h2>
+<table class="transition-table">
+  <thead>
+    <tr><th>#</th><th>현재 상태</th><th>이벤트</th><th>가드</th><th>다음 상태</th><th>액션</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td class="mono">Idle</td><td>주문 접수</td><td>—</td><td class="mono">Order_Received</td><td>BOM 확인, 생산 오더 생성</td></tr>
+    <tr><td>2</td><td class="mono">Order_Received</td><td>생산 오더 확정</td><td>—</td><td class="mono">Ingot_Loading</td><td>자재 요청, 주괴 준비</td></tr>
+    <tr><td>3</td><td class="mono">Ingot_Loading</td><td>투입 완료</td><td>—</td><td class="mono">Melting</td><td>용해로 가열 시작</td></tr>
+    <tr><td>4</td><td class="mono">Melting</td><td>용탕 온도 도달</td><td class="guard">[temp &gt;= 목표 온도]</td><td class="mono">Molding</td><td>슬래그 제거, 주형 준비 요청</td></tr>
+    <tr><td>5</td><td class="mono">Molding</td><td>주형 완성</td><td class="guard">[주형 검사 통과]</td><td class="mono">Pouring</td><td>래들 이동, 주탕 시작</td></tr>
+    <tr><td>6</td><td class="mono">Pouring</td><td>주탕 완료</td><td class="guard">[유량 목표 달성]</td><td class="mono">Cooling</td><td>유량 기록, 타이머 시작</td></tr>
+    <tr><td>7</td><td class="mono">Cooling</td><td>냉각 완료</td><td class="guard">[temp &lt; 안전 온도]</td><td class="mono">Shakeout</td><td>로봇암(MyCobot280) 호출</td></tr>
+    <tr><td>8</td><td class="mono">Shakeout</td><td>탈형 완료</td><td>—</td><td class="mono">Transferring</td><td>주물 분리, AMR 배정</td></tr>
+    <tr><td>9</td><td class="mono">Transferring</td><td>후처리 구역 도착</td><td>—</td><td class="mono">Post_Processing</td><td>작업대 배치</td></tr>
+    <tr><td>10</td><td class="mono">Post_Processing</td><td>후처리 완료</td><td>—</td><td class="mono">Conveyor_Moving</td><td>컨베이어 적재, 이송 요청</td></tr>
+    <tr><td>11</td><td class="mono">Conveyor_Moving</td><td>검사 구간 도착</td><td class="guard">[TOF250 &lt; 임계값]</td><td class="mono">Vision_Inspecting</td><td>벨트 정지 (0.5초 이내)</td></tr>
+    <tr><td>12</td><td class="mono">Vision_Inspecting</td><td>판정 완료 — 양품</td><td class="guard">[결과 == PASS]</td><td class="mono">Good_Palletizing</td><td>양품 트레이 적재</td></tr>
+    <tr><td>13</td><td class="mono">Vision_Inspecting</td><td>판정 완료 — 불량</td><td class="guard">[결과 == FAIL]</td><td class="mono">Defect_Disposal</td><td>불량품 폐기함 적재</td></tr>
+    <tr><td>14</td><td class="mono">Good_Palletizing</td><td>적재 완료</td><td>—</td><td class="mono">Shipping</td><td>AMR 배정, 출하 구역 이송</td></tr>
+    <tr><td>15</td><td class="mono">Shipping</td><td>출하 완료</td><td>—</td><td>◉ 종료</td><td>주문 상태 → completed</td></tr>
+    <tr><td>16</td><td class="mono">Defect_Disposal</td><td>폐기 완료</td><td>—</td><td>◉ 종료</td><td>폐기 기록 저장</td></tr>
+  </tbody>
+</table>
+
+<h2>하드웨어 매핑</h2>
+<table class="hw-table">
+  <thead>
+    <tr><th>공정 단계</th><th>주요 장비</th><th>컨트롤러</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>원자재 처리 (Melting)</td><td>용해로</td><td><span class="hw-badge hw-manual">수동</span></td></tr>
+    <tr><td>주형 및 주조 (Molding/Pouring)</td><td>래들, 주형</td><td><span class="hw-badge hw-robot">MyCobot280 + RPi5</span></td></tr>
+    <tr><td>냉각 및 탈형 (Shakeout)</td><td>로봇암</td><td><span class="hw-badge hw-robot">MyCobot280 + RPi5</span></td></tr>
+    <tr><td>이송 (Transferring)</td><td>Pinkypro AMR x3</td><td><span class="hw-badge hw-amr">RPi4 + ROS2 + Nav2</span></td></tr>
+    <tr><td>후처리 (Post_Processing)</td><td>수작업 도구</td><td><span class="hw-badge hw-manual">수동</span></td></tr>
+    <tr><td>검사 (Inspection)</td><td>컨베이어 + 카메라</td><td><span class="hw-badge hw-esp">ESP32</span> + <span class="hw-badge hw-jetson">Jetson Orin NX</span></td></tr>
+    <tr><td>분류/출하 (Sorting)</td><td>로봇암 + AMR</td><td><span class="hw-badge hw-robot">MyCobot280</span> + <span class="hw-badge hw-amr">Pinkypro</span></td></tr>
+  </tbody>
+</table>
+
+<p style="margin-top:3rem; color:var(--muted); font-size:0.8rem; text-align:center;">
+  SmartCast Robotics — Manhole Casting State Diagram Reference | 2026-04-10
+</p>
+
+</body>
+</html>

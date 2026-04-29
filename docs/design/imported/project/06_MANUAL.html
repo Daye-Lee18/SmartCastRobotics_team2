@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>06. MANUAL — SmartCast Robotics 프로젝트 문서</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2229;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --accent-2: #f0883e;
+  --ok: #56d364;
+  --warn: #d29922;
+  --ng: #f85149;
+  --purple: #bc8cff;
+  --cyan: #79c0ff;
+  --code-bg: #0d1117;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo",
+               "Noto Sans KR", "Segoe UI", sans-serif;
+  line-height: 1.7;
+  padding: 2rem 1rem 6rem;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 3rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.nav {
+  max-width: 1080px;
+  margin: 0 auto 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.nav a:hover { background: #24292f; }
+.nav a.current {
+  background: #1f6feb;
+  color: #fff;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #f0f6fc;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2rem; margin-top: 0; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; border-bottom: none; }
+h4 { font-size: 1.05rem; border-bottom: none; color: var(--cyan); }
+h5 { font-size: 0.98rem; border-bottom: none; color: var(--purple); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p { margin: 0.8em 0; }
+
+blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1.2em;
+  border-left: 4px solid var(--accent-2);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p { margin: 0.3em 0; }
+
+ul, ol {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+li { margin: 0.3em 0; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+
+code {
+  background: #24292f;
+  color: var(--cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.88em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+pre code {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.codehilite {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.1em 0;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.codehilite pre {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0.9em 1.2em;
+}
+
+/* pygments inline tokens (monokai-ish) */
+.codehilite .k, .codehilite .kd, .codehilite .kr { color: #ff7b72; }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sb,
+.codehilite .sc, .codehilite .se, .codehilite .si, .codehilite .sx { color: #a5d6ff; }
+.codehilite .c, .codehilite .c1, .codehilite .cm, .codehilite .cs { color: #8b949e; font-style: italic; }
+.codehilite .nf, .codehilite .nc, .codehilite .nt { color: #d2a8ff; }
+.codehilite .nb, .codehilite .bp { color: #79c0ff; }
+.codehilite .m, .codehilite .mi, .codehilite .mf { color: #f0883e; }
+.codehilite .o, .codehilite .ow { color: #ff7b72; }
+
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+
+table thead { background: var(--panel-2); }
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.55em 0.85em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #f0f6fc;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td { background: rgba(177, 186, 196, 0.04); }
+
+img { max-width: 100%; height: auto; border-radius: 6px; }
+
+strong { color: #f0f6fc; }
+
+.footer {
+  max-width: 1080px;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .container { padding: 1.5rem 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  table { font-size: 0.85em; }
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<a class="" href="README.html">00. 문서 인덱스</a>
+<a class="" href="01_PRD.html">01. PRD</a>
+<a class="" href="02_DESIGN.html">02. DESIGN</a>
+<a class="" href="03_PROCESS.html">03. PROCESS</a>
+<a class="" href="04_DEVELOPMENT.html">04. DEVELOPMENT</a>
+<a class="" href="05_TRAINING.html">05. TRAINING</a>
+<a class="current" href="06_MANUAL.html">06. MANUAL</a>
+</div>
+<main class="container">
+<h1 id="06">06. 사용자 매뉴얼</h1>
+<blockquote>
+<p><strong>버전</strong>: V6 (2026-04-24)<br>
+<strong>대상 독자</strong>: 고객, 관리자(Admin), 공장 운영자(Factory Operator)<br>
+<strong>관련</strong>: <a href="./01_PRD.html">01_PRD.md</a>, <a href="./03_PROCESS.html">03_PROCESS.md</a></p>
+</blockquote>
+<hr>
+<h2 id="1">1. 사용자 유형별 매뉴얼 개요</h2>
+<table>
+<thead>
+<tr>
+<th>사용자</th>
+<th>주 사용 시스템</th>
+<th>주요 업무</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>고객 (Customer)</strong></td>
+<td>Next.js 웹 (customer 라우트)</td>
+<td>제품 조회, 주문 제출, 주문 상태 확인</td>
+</tr>
+<tr>
+<td><strong>관리자 (Admin)</strong></td>
+<td>Next.js 웹 (admin 라우트)</td>
+<td>주문 검토/승인, 제품·장비 관리, 분석</td>
+</tr>
+<tr>
+<td><strong>공장 운영자 (Factory Operator)</strong></td>
+<td>PyQt5 데스크톱</td>
+<td>실시간 모니터링, 생산 시작, AMR/장비 대응</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-customer">2. 고객 매뉴얼 (Customer)</h2>
+<h3 id="21">2.1 로그인</h3>
+<ol>
+<li>접속: https://smartcast-robotics.example (예정) 또는 내부 LAN URL</li>
+<li>이메일 + 비밀번호 입력 → 로그인</li>
+<li>세션 자동 갱신</li>
+</ol>
+<h3 id="22-5">2.2 주문 흐름 (5단계 이내 완료 원칙)</h3>
+<h4 id="step-1">Step 1: 표준 제품 조회</h4>
+<ul>
+<li><code>카테고리별 필터</code> 활용 (CMH 원형 / RMH 사각 / EMH 경량)</li>
+<li>제품 카드: 이미지, 이름, 재질, 기본 가격대, 하중 등급 확인</li>
+</ul>
+<h4 id="step-2">Step 2: 제품 옵션 선택</h4>
+<ul>
+<li>규격: 직경(600~1400mm), 두께(40~80mm)</li>
+<li>하중 등급: D400 / E600 / F900</li>
+<li>재질: GC200 / GC250 / GCD500 등</li>
+<li>후처리 옵션 선택</li>
+<li>수량 입력</li>
+<li>희망 납기일 선택</li>
+<li>(선택) 비고란</li>
+</ul>
+<h4 id="step-3">Step 3: 디자인 미리보기</h4>
+<ul>
+<li>선택한 사양에 따른 제품 요약 확인</li>
+<li>기본 디자인 시안 확인</li>
+</ul>
+<h4 id="step-4">Step 4: 견적 확인</h4>
+<ul>
+<li>자동 계산된 예상 합계 = [제품 기본 단가 + 옵션 가산비] × 수량</li>
+<li>예상 납기 범위 표시</li>
+<li>"최종 견적은 관리자 검토 후 확정됩니다" 안내 확인</li>
+</ul>
+<h4 id="step-5">Step 5: 주문서 제출</h4>
+<ul>
+<li>필수 입력: 회사명, 연락처, 배송지 주소, 담당자명, 이메일</li>
+<li>요약 페이지에서 전체 확인</li>
+<li>"제출" 클릭 → 주문 ID 부여</li>
+</ul>
+<h3 id="23">2.3 주문 상태 조회</h3>
+<p><code>/customer/orders</code> 접속.</p>
+<p>6단계 상태 확인:<br>
+1. <strong>접수 (RCVD)</strong>: 관리자 검토 전<br>
+2. <strong>검토 중</strong>: 관리자 검토 진행<br>
+3. <strong>승인됨 (APPR)</strong>: 생산 시작 대기<br>
+4. <strong>생산 중 (MFG)</strong>: 공장에서 제작 중<br>
+5. <strong>출하 준비 (DONE/SHIP)</strong>: 검사 완료, 출고 준비<br>
+6. <strong>완료 (COMP)</strong>: 배송 완료</p>
+<p>상태 변경 시 등록된 이메일로 알림 발송.</p>
+<h3 id="24">2.4 과거 주문 이력</h3>
+<ul>
+<li><code>내 주문</code> 페이지에서 제출한 모든 주문 상시 열람</li>
+<li>상세 옵션 내역 재확인 가능</li>
+</ul>
+<h3 id="25-faq">2.5 FAQ</h3>
+<table>
+<thead>
+<tr>
+<th>질문</th>
+<th>답</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>주문 후 취소할 수 있나요?</td>
+<td>RCVD / APPR 단계에서만 가능. MFG 이후는 관리자 문의</td>
+</tr>
+<tr>
+<td>수량을 변경할 수 있나요?</td>
+<td>APPR 전까지 관리자에게 수정 요청</td>
+</tr>
+<tr>
+<td>견적이 예상보다 높습니다</td>
+<td>관리자가 생산 여건에 따라 수정할 수 있음. 수정 요청 상태에서 재검토</td>
+</tr>
+<tr>
+<td>납기가 지연되고 있어요</td>
+<td>상태를 확인하세요. 필요 시 관리자에게 문의</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-admin">3. 관리자 매뉴얼 (Admin)</h2>
+<h3 id="31">3.1 로그인</h3>
+<ul>
+<li>일반 로그인과 동일한 페이지에서 관리자 계정 (role=admin) 로그인</li>
+<li>로그인 후 자동 <code>/admin</code> 리다이렉트</li>
+</ul>
+<h3 id="32-admindashboard">3.2 대시보드 (<code>/admin/dashboard</code>)</h3>
+<ul>
+<li>오늘의 주문 건수 (RCVD / APPR / MFG / DONE)</li>
+<li>생산 진행 요약</li>
+<li>장비 가동률</li>
+<li>최근 알람</li>
+</ul>
+<h3 id="33-adminorders">3.3 주문 관리 (<code>/admin/orders</code>)</h3>
+<h4 id="_1">주문 검토</h4>
+<ol>
+<li>주문 리스트에서 선택</li>
+<li>상세 사양 확인</li>
+<li>생산 가능 여부 판단 (기술적 제약 확인)</li>
+<li>예상 견적 수동 수정 가능</li>
+<li>예상 납기 확정</li>
+</ol>
+<h4 id="_2">승인 / 반려 / 수정 요청</h4>
+<ul>
+<li><strong>승인 (APPR)</strong>: 정상 진행</li>
+<li><strong>반려 (REJT)</strong>: 생산 불가 사유 명시</li>
+<li><strong>수정 요청</strong>: 고객에게 옵션 수정 요청</li>
+</ul>
+<h4 id="_3">상태 전이 기록</h4>
+<ul>
+<li><code>ord_log</code> 테이블에 자동 기록 (prev_stat, new_stat, changed_by=관리자 user_id)</li>
+</ul>
+<h3 id="34">3.4 제품 관리</h3>
+<ul>
+<li>신규 제품 카탈로그 등록</li>
+<li>제품 옵션 (<code>product_option</code>) 수정</li>
+<li>기본 가격 조정</li>
+<li>이미지 업로드</li>
+</ul>
+<h3 id="35-adminequipment">3.5 장비 관리 (<code>/admin/equipment</code>)</h3>
+<ul>
+<li>장비 목록 (res_id, res_type, 상태)</li>
+<li>장비별 작업 내역 (equip_task_txn)</li>
+<li>에러 로그 (equip_err_log)</li>
+</ul>
+<h3 id="36-adminanalytics">3.6 분석 리포트 (<code>/admin/analytics</code>)</h3>
+<ul>
+<li>리드타임 분포</li>
+<li>검사 통과율</li>
+<li>AMR 가동률</li>
+<li>주문별 KPI</li>
+</ul>
+<h3 id="37">3.7 주의 사항</h3>
+<ul>
+<li>주문자 정보·연락처는 안전하게 저장됨 (SR-ORD-03 비기능)</li>
+<li>관리자 액션은 모두 audit log 에 기록됨</li>
+<li>고객에게 영향을 주는 변경은 알림 자동 발송</li>
+</ul>
+<hr>
+<h2 id="4-factory-operator-pyqt">4. 공장 운영자 매뉴얼 (Factory Operator - PyQt)</h2>
+<h3 id="41">4.1 시작 전 체크리스트</h3>
+<ol>
+<li>Factory Operator PC 부팅</li>
+<li>Tailscale 연결 확인 (메뉴바 아이콘 초록)</li>
+<li>DB 접근 가능 여부 (<code>monitoring/app/management_client.py</code> 가 gRPC 연결)</li>
+<li>Management Service 기동 여부 (공장 네트워크 내 <code>:50051</code>)</li>
+<li>Jetson Publisher 기동 여부 (카메라 프리뷰 확인)</li>
+</ol>
+<h3 id="42-pyqt">4.2 PyQt 앱 실행</h3>
+<div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>monitoring
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+python<span class="w"> </span>main.py
+</code></pre></div>
+
+<h3 id="43">4.3 메인 대시보드</h3>
+<ul>
+<li><strong>공정 흐름 뷰</strong>: 주형→주조→냉각→탈형→후처리→검사→출고 단계별 진행 상황</li>
+<li><strong>AMR 상태판</strong>: 각 AMR의 위치·배터리·현재 태스크</li>
+<li><strong>장비 상태판</strong>: 각 장비의 cur_stat (IDLE/RUNNING/FAILED)</li>
+<li><strong>알람 영역</strong>: 실시간 에러/경고</li>
+</ul>
+<h3 id="44">4.4 주요 작업</h3>
+<h4 id="441-start-production">4.4.1 생산 시작 (Start Production)</h4>
+<ol>
+<li><code>주문 관리</code> 탭으로 이동</li>
+<li><strong>대기 주문 목록</strong> 확인 (상태 APPR)</li>
+<li>시작할 주문 선택 (다중 선택 가능)</li>
+<li><strong>"생산 시작" 버튼</strong> 클릭</li>
+<li>확인 다이얼로그에서 <strong>YES</strong></li>
+<li>시스템 자동 처리:<br>
+   - <code>ord_stat.ord_stat</code> = 'APPR' → 'MFG'<br>
+   - <code>ord_log</code> 에 전이 기록 (changed_by=운영자 user_id)<br>
+   - <code>item</code> 테이블에 qty만큼 아이템 INSERT<br>
+   - TaskManager 가 순차 작업 생성 (주형→주조→...→검사)</li>
+</ol>
+<h4 id="442-amr">4.4.2 AMR 수리 완료 처리</h4>
+<ol>
+<li><code>AMR 관리</code> 탭 또는 메인 대시보드의 AMR 카드</li>
+<li><strong>FAILED 상태</strong>의 AMR 확인</li>
+<li>물리적 복구 완료 후 <strong>"수리 완료" 버튼</strong> 클릭</li>
+<li>시스템 처리:<br>
+   - <code>trans_stat.cur_stat</code> = 'FAILED' → 'IDLE'<br>
+   - FSM 전이 기록<br>
+   - AMR 다시 배차 대상에 편입</li>
+</ol>
+<p><strong>2026-04-22 이후 개선</strong>: 수리 완료 버튼은 <strong>항상 표시</strong> (이전: 특정 상태에서만 표시). 독립 버튼으로 분리.</p>
+<h4 id="443-handoff-button">4.4.3 Handoff Button 이벤트 확인</h4>
+<p>ESP32 물리 버튼은 공장 바닥에서 작업자가 누름. PyQt는 결과만 표시:<br>
+- <code>handoff_acks</code> 테이블에 이벤트 INSERT<br>
+- <code>transport_tasks.status</code> = 'handoff_complete'<br>
+- AMR FSM: <code>AT_DESTINATION/UNLOADING</code> → <code>UNLOAD_COMPLETED</code><br>
+- PyQt 대시보드에 알림 배지</p>
+<p><strong>Orphan Handoff</strong> (활성 태스크 없이 버튼이 눌린 경우):<br>
+- <code>handoff_acks.orphan=true</code><br>
+- 로그만 기록, 실제 FSM 전이 없음<br>
+- 알람 영역에 경고 표시</p>
+<h4 id="444">4.4.4 검사 결과 모니터링</h4>
+<ul>
+<li>실시간 <code>WatchItems</code> gRPC stream 으로 검사 결과 표시</li>
+<li>양품: 녹색 체크 표시 + 출고 팔레트 할당</li>
+<li>불량품: 빨간색 X + 폐기 이송 태스크 자동 생성</li>
+<li>검사 실패: 노란색 경고 + 운영자 개입 요청</li>
+</ul>
+<h3 id="45">4.5 에러 대응</h3>
+<h4 id="amr">AMR 에러</h4>
+<ul>
+<li>알람 영역에 AMR-XX 에러 표시</li>
+<li>에러 코드 확인 (<code>trans_err_log</code>)</li>
+<li>배터리 부족 (battery_pct &lt; 20%): 자동 충전소 이동</li>
+<li>경로 막힘: 물리 점검 후 "수리 완료" 버튼</li>
+</ul>
+<h4 id="_4">장비 에러</h4>
+<ul>
+<li>알람에 equip-XX 표시</li>
+<li><code>equip_err_log.err_msg</code> 확인</li>
+<li>해당 장비 담당 정비사 호출</li>
+<li>복구 후 PyQt에서 상태 업데이트</li>
+</ul>
+<h4 id="jetson">Jetson / 비전 에러</h4>
+<ul>
+<li>카메라 프레임 끊김 감지</li>
+<li>Jetson SSH 접속 (<code>ssh jetson-conveyor</code>)</li>
+<li><code>journalctl -u image_publisher.service</code> 로그 확인</li>
+<li>재시작: <code>sudo systemctl restart image_publisher.service</code></li>
+</ul>
+<h4 id="management-service">Management Service 장애</h4>
+<ul>
+<li>PyQt gRPC 연결 실패 알림</li>
+<li>Management PC 확인</li>
+<li>재시작 후 자동 reconnect</li>
+</ul>
+<h3 id="46">4.6 공정 중단 / 재개</h3>
+<h4 id="_5">긴급 중단</h4>
+<ol>
+<li>메인 대시보드 상단 <strong>"긴급 중단" 버튼</strong></li>
+<li>확인 후 실행:<br>
+   - 모든 진행 중 <code>MFG</code> 주문 보류 (<code>ord_stat.ord_stat</code>은 그대로 MFG 유지, <code>pp_task_txn.txn_stat</code>를 PROC→HOLD로 전환 — HOLD 지원 여부 확인 필요)<br>
+   - AMR 현재 위치 정지<br>
+   - 컨베이어 STOPPED</li>
+</ol>
+<h4 id="_6">재개</h4>
+<ol>
+<li>원인 해결 후 <strong>"재개" 버튼</strong></li>
+<li>Management → Jetson <code>ResumeConveyor</code> RPC 전송</li>
+<li>대기 중 태스크 순차 재시작</li>
+</ol>
+<h3 id="47-shift-handover">4.7 교대 인수인계 (Shift Handover)</h3>
+<ul>
+<li>이전 교대의 알람 해결 여부 확인</li>
+<li>진행 중 주문 목록 인계</li>
+<li>장비별 이상 여부 브리핑</li>
+<li>인수 시각 로그 기록 (수기 또는 UI)</li>
+</ul>
+<hr>
+<h2 id="5">5. 일상 운영 플로우 (하루 예시)</h2>
+<h3 id="51">5.1 오전 시작</h3>
+<ol>
+<li>Factory Operator: PyQt 기동, 시스템 상태 점검</li>
+<li>Admin: 야간 접수된 주문 검토, 승인</li>
+<li>Factory Operator: 승인된 주문 확인 후 우선순위 정리</li>
+<li><strong>생산 시작 버튼</strong> 클릭 → 첫 주문 착수</li>
+</ol>
+<h3 id="52">5.2 주간 운영</h3>
+<ul>
+<li>30분마다 대시보드 확인</li>
+<li>AMR 배터리 모니터링</li>
+<li>불량품 발생 시 원인 기록 (재료? 온도? 장비?)</li>
+<li>중간 교대 시 간략 인계</li>
+</ul>
+<h3 id="53">5.3 오후 마감</h3>
+<ul>
+<li>당일 생산 실적 집계</li>
+<li>Admin 이 리포트 확인</li>
+<li>내일 생산 계획 사전 점검</li>
+<li>긴급 유지보수 스케줄</li>
+</ul>
+<hr>
+<h2 id="6-troubleshooting">6. 문제 대응 (Troubleshooting)</h2>
+<h3 id="61">6.1 "생산 시작 버튼을 눌렀는데 반응이 없어요"</h3>
+<ul>
+<li>Management Service 연결 확인 (PyQt 상태 표시줄)</li>
+<li>네트워크 (Tailscale) 확인</li>
+<li>Management 로그 확인: <code>tail -f backend/management/logs/server.log</code></li>
+</ul>
+<h3 id="62-amr-failed">6.2 "AMR이 계속 FAILED 상태예요"</h3>
+<ul>
+<li>물리적 장애물 확인</li>
+<li>배터리 확인 (충전 필요 여부)</li>
+<li><code>trans_err_log</code> 마지막 행 err_msg 확인</li>
+<li>복구 후 "수리 완료" 버튼</li>
+</ul>
+<h3 id="63">6.3 "컨베이어가 안 움직여요"</h3>
+<ul>
+<li>ESP32 전원 / 케이블 확인</li>
+<li>Jetson Serial 연결 (<code>/dev/ttyUSB0</code>)</li>
+<li>Management <code>WatchConveyorCommands</code> stream 활성 여부</li>
+<li>Jetson 로그: <code>journalctl -u esp_bridge.service</code></li>
+</ul>
+<h3 id="64-fail">6.4 "검사 결과가 계속 FAIL이에요"</h3>
+<ul>
+<li>카메라 렌즈 청결 확인</li>
+<li>조명 상태 확인</li>
+<li>제품 표면 이상 여부 (작업자 육안 확인)</li>
+<li>AI 모델 임계값 확인 (개발팀 문의)</li>
+</ul>
+<h3 id="65">6.5 "주문을 제출했는데 상태가 안 변해요"</h3>
+<ul>
+<li>Interface Service 상태 확인 (<code>/api/management/health</code> 확인)</li>
+<li>관리자에게 수동 검토 요청</li>
+<li>DB <code>ord_stat</code> 직접 조회 (Admin)</li>
+</ul>
+<h3 id="66-pyqt">6.6 "PyQt 창이 종료될 때 크래시가 납니다"</h3>
+<ul>
+<li>2026-04 경험: QThread 정리 누락</li>
+<li>정상 종료: 창의 X 버튼이 아닌 메뉴 <code>파일 &gt; 종료</code> 사용</li>
+<li>기술팀에 로그 공유 (exit 134 SIGABRT)</li>
+</ul>
+<hr>
+<h2 id="7">7. 지원 채널</h2>
+<h3 id="71">7.1 기술 지원</h3>
+<ul>
+<li><strong>개발팀 리드</strong>: ibkim (kiminbean@gmail.com)</li>
+<li><strong>Jetson/펌웨어</strong>: 공장 운영팀</li>
+<li><strong>DB 서버</strong>: yejin-laptop 소유자</li>
+</ul>
+<h3 id="72">7.2 응급 복구</h3>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>즉시 조치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AWS RDS 접속 안됨</td>
+<td>Tailscale 재연결, DB Beaver 로 수동 확인</td>
+</tr>
+<tr>
+<td>로컬 PG 다운</td>
+<td>yejin-laptop 점검 요청</td>
+</tr>
+<tr>
+<td>Factory Operator PC 부팅 실패</td>
+<td>교대 PC 로 대체</td>
+</tr>
+<tr>
+<td>공장 전력 차단</td>
+<td>수동 프로토콜 (물리 안전 우선)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73">7.3 버그 리포트</h3>
+<p>GitHub Issues (내부 저장소) 에 다음 정보 포함:<br>
+- 발생 시각<br>
+- 사용자 (Customer/Admin/Operator)<br>
+- 재현 단계<br>
+- 스크린샷 / 로그<br>
+- 기대 동작 vs 실제 동작</p>
+<hr>
+<h2 id="8">8. 보안 / 데이터 보호 (사용자 가이드)</h2>
+<h3 id="81">8.1 비밀번호</h3>
+<ul>
+<li>최소 12자, 대소문자·숫자·특수문자 조합</li>
+<li>정기 변경 (분기별)</li>
+<li>공유 금지</li>
+</ul>
+<h3 id="82">8.2 접근 권한</h3>
+<ul>
+<li>고객: 자신의 주문만 조회 가능</li>
+<li>관리자: 전체 주문 + 제품·장비 관리</li>
+<li>공장 운영자: 공정 관리 + 로컬 DB 읽기/쓰기</li>
+</ul>
+<h3 id="83">8.3 외부 공유 금지</h3>
+<ul>
+<li>고객 정보, 주문 상세</li>
+<li>Confluence 내부 페이지 (READ-ONLY)</li>
+<li>DB 자격증명 (평문)</li>
+</ul>
+<h3 id="84">8.4 정기 백업</h3>
+<ul>
+<li>DB 스냅샷: 일일 (운영팀 자동화 예정)</li>
+<li>주요 문서: Git 저장소</li>
+<li>Confluence: launchd 매일 09:07 동기화</li>
+</ul>
+<hr>
+<h2 id="9">9. 용어 빠른 참조 (사용자 관점)</h2>
+<table>
+<thead>
+<tr>
+<th>용어</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>접수 / RCVD</td>
+<td>고객이 제출한 상태</td>
+</tr>
+<tr>
+<td>승인 / APPR</td>
+<td>관리자가 승인, 생산 대기</td>
+</tr>
+<tr>
+<td>생산 중 / MFG</td>
+<td>공장에서 제작 중</td>
+</tr>
+<tr>
+<td>출하 준비 / DONE</td>
+<td>검사 통과, 출고 준비</td>
+</tr>
+<tr>
+<td>출하 중 / SHIP</td>
+<td>배송 진행</td>
+</tr>
+<tr>
+<td>완료 / COMP</td>
+<td>고객 인수 완료</td>
+</tr>
+<tr>
+<td>AMR</td>
+<td>자율주행 로봇 (이송)</td>
+</tr>
+<tr>
+<td>RA</td>
+<td>로봇팔</td>
+</tr>
+<tr>
+<td>INSP</td>
+<td>검사</td>
+</tr>
+<tr>
+<td>패턴</td>
+<td>주형용 원형 모델</td>
+</tr>
+<tr>
+<td>탈형</td>
+<td>냉각 후 주형 제거</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="10">10. 변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>일자</th>
+<th>버전</th>
+<th>변경 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-04-24</td>
+<td>V6</td>
+<td>초기 작성. 고객 / 관리자 / 공장 운영자 매뉴얼 통합</td>
+</tr>
+</tbody>
+</table>
+</main>
+<div class="footer">
+  SmartCast Robotics 프로젝트 문서 · V6 (2026-04-24) ·
+  <a href="README.html">문서 인덱스</a>
+</div>
+</body>
+</html>

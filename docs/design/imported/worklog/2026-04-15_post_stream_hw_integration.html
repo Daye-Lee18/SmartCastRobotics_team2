@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>2026-04-15 저녁 · HW 통합 (cleanup, keepalive, JetCobot, ESP32)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--line:#30363d;--ink:#e6edf3;--mute:#8b949e;
+        --accent:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--purple:#d2a8ff;--code:#0d1117;--chip:#1f6feb33;}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.65 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+  .crumb{color:var(--mute);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  h1{font:700 26px/1.3 inherit;margin:6px 0 8px}
+  h2{font:600 19px/1.4 inherit;margin:32px 0 10px;padding-top:12px;border-top:2px solid var(--line);color:#e6edf3}
+  h2::before{content:"§ ";color:var(--accent);font-weight:400}
+  h3{font:600 15px/1.4 inherit;margin:18px 0 6px;color:#c9d1d9}
+  h4{font:600 14px/1.4 inherit;margin:12px 0 4px;color:#c9d1d9}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  code{background:#1f252e;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+  .muted{color:var(--mute)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--chip);color:#79c0ff;font-size:11.5px;margin-right:4px}
+  .chip.ok{background:#1f6b2d33;color:#7ee787}
+  .chip.warn{background:#bb800933;color:#e3b341}
+  .chip.bad{background:#8e232933;color:#ffa198}
+  .chip.pur{background:#68389533;color:#d2a8ff}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#171d25;font-weight:600}
+  tr:nth-child(even) td{background:#12161d}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:12px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .card h4{margin:0 0 6px;font-size:13.5px;color:#c9d1d9}
+  .kvs{list-style:none;padding:0;margin:0;font-size:13px}
+  .kvs li{padding:3px 0;border-bottom:1px dotted var(--line)}
+  .kvs li:last-child{border:none}
+  .kvs b{color:#c9d1d9;margin-right:6px;font-weight:600}
+  .ascii{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;white-space:pre;overflow-x:auto;color:#c9d1d9}
+  .note{background:#112538;border-left:3px solid var(--accent);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .warn-box{background:#2a2010;border-left:3px solid var(--warn);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .bad-box{background:#2d1416;border-left:3px solid var(--bad);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .commit{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;margin:14px 0}
+  .commit .hash{font-family:"SF Mono",monospace;color:var(--purple);font-size:12px}
+  .commit .time{color:var(--mute);font-size:12px;margin-left:10px}
+  .commit h4{margin:4px 0 8px;color:#e6edf3;font-size:15px}
+  footer{margin-top:48px;padding-top:12px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="crumb">Casting Factory · Worklog</div>
+  <h1>2026-04-15 저녁 · HW 통합 확장 <span class="chip">POST-STAGE-B</span></h1>
+  <p class="muted">Stage B 카메라 스트리밍(<code>af80f09</code>) 이후 이어진 7 개 커밋을 한 묶음으로 정리. 데이터 정리, 불필요 RPC 제거, 장기 연결 안정화(keepalive), JetCobot 280 원격 어댑터, 그리고 V6 새 아키텍처에 맞춘 ESP32 컨베이어 펌웨어 v5.0 + Jetson Serial bridge 까지.</p>
+  <p><span class="chip pur">7 commits</span><span class="chip ok">E2E 검증</span><span class="chip warn">HW 배선 대기</span><span class="chip">JetCobot + ESP32 원격 제어 준비</span></p>
+</header>
+
+<h2>1. 커밋 타임라인</h2>
+<table>
+  <thead><tr><th>시각</th><th>Hash</th><th>카테고리</th><th>제목</th></tr></thead>
+  <tbody>
+    <tr><td>오후</td><td><code>7e047db</code></td><td>data</td><td>레거시 4종 제품 + 연관 데이터 완전 삭제</td></tr>
+    <tr><td>오후</td><td><code>4f5490a</code></td><td>refactor</td><td>GetLatestFrame RPC 완전 제거 (Stage B 만 사용)</td></tr>
+    <tr><td>오후</td><td><code>ff3d796</code></td><td>feat(grpc)</td><td>keep-alive ping 전 구간 적용</td></tr>
+    <tr><td>오후</td><td><code>4eda11b</code></td><td>feat(adapters)</td><td>JetCobot 280 어댑터 (pymycobot SSH)</td></tr>
+    <tr><td>저녁</td><td><code>6034604</code></td><td>feat(firmware)</td><td>conveyor v5.0 Serial 전용 스켈레톤</td></tr>
+    <tr><td>저녁</td><td><code>e2beee5</code></td><td>feat(jetson)</td><td>Jetson Serial bridge (EspBridge)</td></tr>
+    <tr><td>저녁</td><td><code>bee8880</code></td><td>feat(firmware)</td><td>conveyor v5.0 재작성 — v4.0 기반 + Jetson 프로토콜</td></tr>
+  </tbody>
+</table>
+
+<!-- ========== cleanup ========== -->
+<h2>2. 데이터 정리 — 레거시 제품 4종 삭제</h2>
+<div class="commit"><span class="hash">7e047db</span>
+  <h4>UI 9종 외 레거시 완전 제거</h4>
+
+  <h4>삭제 대상</h4>
+  <ul>
+    <li><b>products 4건</b>: D450, D600, D800, GRATING</li>
+    <li><b>orders 23건</b> (이들 product_id 참조) — status: in_production 10 · approved 3 · pending 5 · completed 1 · production_completed 2 · rejected 2</li>
+    <li><b>order_details 23건</b>, <b>work_orders 3건</b>, <b>items 150건</b>, <b>production_jobs 7건</b></li>
+  </ul>
+
+  <h4>FK 계단식 삭제 순서</h4>
+  <pre>items → production_jobs → work_orders → order_details → (transport_tasks) → orders → products</pre>
+
+  <h4>DB 상태 변화</h4>
+  <table>
+    <tr><th>테이블</th><th>Before</th><th>After</th></tr>
+    <tr><td>products</td><td>13</td><td><b>9</b> (UI 9종만)</td></tr>
+    <tr><td>orders</td><td>43</td><td>20</td></tr>
+    <tr><td>items</td><td>862</td><td>712</td></tr>
+    <tr><td>production_jobs</td><td>7</td><td>0</td></tr>
+  </table>
+
+  <h4>안전장치</h4>
+  <ul>
+    <li>git tag <code>pre-legacy-delete-20260415_154643</code></li>
+    <li>pg_dump <code>/tmp/casting-bak/pre_legacy_delete_20260415_154643.dump</code> (653KB)</li>
+    <li>단일 트랜잭션 내 순차 DELETE</li>
+  </ul>
+</div>
+
+<!-- ========== GetLatestFrame removal ========== -->
+<h2>3. 미사용 RPC 제거 — GetLatestFrame</h2>
+<div class="commit"><span class="hash">4f5490a</span>
+  <h4>Stage B 전환 이후 호출 지점 0 — 완전 제거</h4>
+  <p>Stage A(폴링) 단계에서 만든 <code>GetLatestFrame</code> unary RPC 가 Stage B 이후 호출되지 않고 남아있던 것을 확인, 프로토·서버·클라이언트에서 완전 제거.</p>
+
+  <table>
+    <tr><th>파일</th><th>변경</th></tr>
+    <tr><td><code>proto/management.proto</code></td><td>GetLatestFrame RPC + LatestFrameRequest 제거, LatestFrameResponse → <b>CameraFrameResponse</b> rename</td></tr>
+    <tr><td><code>server.py</code></td><td>GetLatestFrame servicer 제거, <code>_frame_to_response</code> 는 WatchCameraFrames 전용으로 유지</td></tr>
+    <tr><td><code>management_client.py</code></td><td><code>get_latest_frame()</code> 메서드 제거</td></tr>
+    <tr><td>*_pb2*.py</td><td>재생성 (backend + monitoring)</td></tr>
+  </table>
+
+  <h4>검증</h4>
+  <ul>
+    <li><code>grep GetLatestFrame</code> → 0 건</li>
+    <li>pytest 44/44 통과</li>
+    <li>WatchCameraFrames 스트리밍 그대로 동작</li>
+  </ul>
+  <p class="muted">LOC: +46 / -186 = <b>140 줄 감소</b></p>
+</div>
+
+<!-- ========== keepalive ========== -->
+<h2>4. gRPC keep-alive 전 구간 적용</h2>
+<div class="commit"><span class="hash">ff3d796</span>
+  <h4>PyQt 카메라 뷰 "멈춤" 사건 재발 방지</h4>
+
+  <h4>문제 배경</h4>
+  <div class="bad-box">
+    <b>현상:</b> GetLatestFrame 제거 커밋 후 서버 재기동 직후, 기존 PyQt 인스턴스의 카메라 뷰가 멈춤.<br>
+    <b>원인:</b> 서버 재기동으로 TCP 가 단절됐지만 PyQt 측 worker 의 자동 재연결이 오래 걸림 (OS TCP timeout 의존). stale connection 을 빠르게 감지할 수단 없음.
+  </div>
+
+  <h4>적용 옵션</h4>
+  <pre>options = [
+  ("grpc.keepalive_time_ms",          30000),   # 30s 마다 HTTP/2 PING
+  ("grpc.keepalive_timeout_ms",       10000),   # 10s 내 PONG 없으면 단절로 판정
+  ("grpc.keepalive_permit_without_calls", 1),   # idle stream 에서도 ping 허용
+  ("grpc.http2.max_pings_without_data",   0),   # 무제한 허용 (서버 거부 방지)
+  # 서버 전용 추가:
+  ("grpc.http2.min_ping_interval_without_data_ms", 20000),  # 클라 ping 수용 기준
+]</pre>
+
+  <h4>적용 지점 (3 곳)</h4>
+  <ul>
+    <li><code>backend/management/server.py</code> — <code>grpc.server(..., options=[...])</code> + ThreadPool <b>max_workers 10 → 32</b> (스트림 워커 점유 여유)</li>
+    <li><code>monitoring/app/management_client.py</code> — insecure/mTLS 채널 모두</li>
+    <li><code>jetson_publisher/publisher.py</code> — insecure/mTLS 채널 모두</li>
+  </ul>
+
+  <h4>효과</h4>
+  <ul>
+    <li>서버 재기동·Tailscale 단절 시 <b>최대 40초</b> 내 예외 발생 → worker 재연결 트리거</li>
+    <li>이전엔 OS TCP 타임아웃(~수분) 까지 silent hang</li>
+  </ul>
+</div>
+
+<!-- ========== JetCobot ========== -->
+<h2>5. JetCobot 280 어댑터 (pymycobot SSH)</h2>
+
+<h3>조사 결과</h3>
+<div class="grid">
+  <div class="card">
+    <h4>대상 하드웨어</h4>
+    <ul class="kvs">
+      <li><b>로봇:</b> Elephant Robotics MyCobot 280 (JetCobot 에디션)</li>
+      <li><b>제어기:</b> Raspberry Pi (aarch64, Ubuntu 24.04, hostname <code>raspi</code>)</li>
+      <li><b>Tailscale:</b> 100.94.152.67</li>
+      <li><b>시리얼:</b> <code>/dev/ttyJETCOBOT</code> (→ <code>/dev/ttyUSB0</code>, CH340)</li>
+      <li><b>Baud:</b> 1,000,000 bps</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>소프트웨어 상태</h4>
+    <ul class="kvs">
+      <li>pymycobot 4.0.4 + pyserial 3.5 (<code>~/venv/mycobot</code>)</li>
+      <li>ROS2 Jazzy 설치만 — <b>mycobot_ros2 패키지 없음</b></li>
+      <li>DDS 도메인에 Open RMF demo 노드들 관찰 (다른 기기의 publish)</li>
+      <li>현재 제어 방식: Jupyter Lab 에서 pymycobot API 직접</li>
+    </ul>
+  </div>
+</div>
+
+<div class="commit"><span class="hash">4eda11b</span>
+  <h4>services/adapters/jetcobot_adapter.py (171 LOC)</h4>
+  <ul>
+    <li><code>JetCobotConfig.from_env()</code> — MGMT_JETCOBOT_HOST/USER/PASS/PORT/SERIAL/BAUD/VENV_PY</li>
+    <li><code>JetCobotAdapter</code>: SSH paramiko → venv python → pymycobot 원격 실행 → JSON 파싱</li>
+    <li>API: <code>get_angles / get_coords / is_power_on / send_angles / send_coords / power_on / power_off / health_check</code></li>
+  </ul>
+
+  <h4>검증 (로봇 실 라이브 응답)</h4>
+  <pre>enabled=True  host=100.94.152.67  user=jetcobot  auth=password
+angles  [22.41, 15.55, -16.78,  7.03, -0.61,  45.61]  (2.3s)
+coords  [66.5,  74.2,  401.1, -100.2, 45.06, -9.04]  (2.3s)
+power_on=True   health_check=True</pre>
+
+  <p class="muted">왕복 ~2.3s = SSH open + python import + pymycobot 초기화 포함. 고빈도 루프는 커넥션 풀 필요.</p>
+</div>
+
+<!-- ========== ESP32 Serial Bridge ========== -->
+<h2>6. 새 V6 · ESP32 ↔ Jetson Serial 체인</h2>
+
+<h3>아키텍처 전환</h3>
+<div class="warn-box">
+<b>이전:</b> Management Service → ESP32 (MQTT 직통) · "HW MQTT 체인 대기" 메모리에 기록됨<br>
+<b>새 V6 (사용자 제공 이미지):</b> <b>Management ↔ Image Publisher(Jetson) ↔ HW Controller(ESP32) 의 Serial 브리지</b> 체인. MQTT 계획 폐기.
+</div>
+
+<div class="ascii">
+[Mgmt Server 100.77.239.25:50051] ── gRPC (TCP, 주황) ──▶ [Jetson Image Publisher]
+                                                                  │
+                                                                  │ USB Serial
+                                                                  │ /dev/ttyUSB0 @ 115200
+                                                                  ▼
+                                                         [ESP32 Conveyor v5.0]
+                                                           TOF1 GPIO16 (진입)
+                                                           TOF2 GPIO17 (카메라 앞)
+                                                           Motor L298N (ENA/IN1/IN2)
+</div>
+
+<h3>센서-주도 주물 검사 시나리오</h3>
+<div class="ascii">
+[주물이 TOF2 앞 도착]
+        │
+        ▼
+  ESP32: 모터 정지 + "STOPPED\n" TX
+        │
+        ▼
+  Jetson EspBridge: STOPPED 수신 → (INSPECTION_DELAY_MS=700ms 대기)
+                     └─ publisher 가 최신 프레임 서버로 push 완료
+        │
+        ▼
+  Jetson: "RUN\n" TX
+        │
+        ▼
+  ESP32: "STARTED\n" TX + 모터 ON
+        │ 4초 POST_RUN
+        ▼
+  ESP32: "DONE\n" TX + 모터 OFF
+        │
+        ▼ TOF2 clear
+  ESP32: IDLE 복귀
+</div>
+
+<h3>조사 결과 (2026-04-15 오후)</h3>
+<div class="grid">
+  <div class="card">
+    <h4>Jetson USB 연결</h4>
+    <ul class="kvs">
+      <li><b>USB:</b> Silicon Labs CP210x (ID 10c4:ea60) ✅</li>
+      <li><b>장치:</b> <code>/dev/ttyUSB0</code></li>
+      <li><b>권한:</b> jetson 유저 <code>dialout</code> 그룹 (usermod)</li>
+      <li><b>pyserial:</b> 3.5 설치됨</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Serial 에코 테스트 (baud 탐지)</h4>
+    <ul class="kvs">
+      <li>9600 → 1 byte 노이즈 ❌</li>
+      <li>57600 → 6 byte 노이즈 ❌</li>
+      <li>38400 → 4 byte 노이즈 ❌</li>
+      <li><b>115200 → "Hello World\r\n" ASCII 100% ✅</b></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>기존 펌웨어</h4>
+    <ul class="kvs">
+      <li>Arduino 기본 Hello World 데모</li>
+      <li>실제 제어 로직 없음 → 교체 필요</li>
+      <li>프로젝트 <code>firmware/conveyor_controller/v4.0.0</code> 소스 발견 (WiFi+MQTT)</li>
+    </ul>
+  </div>
+</div>
+
+<h3>arduino-cli 원격 설치 · 컴파일 · 플래시</h3>
+<pre># 1) Jetson 에 arduino-cli 설치
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
+  | BINDIR=$HOME/bin sh
+# → arduino-cli 1.4.1 (ARM64)
+
+# 2) ESP32 core 설치
+arduino-cli core install esp32:esp32          # esp32:esp32@3.3.8
+
+# 3) 스케치 업로드 & flash
+arduino-cli compile --fqbn esp32:esp32:esp32 .
+arduino-cli upload  --fqbn esp32:esp32:esp32 -p /dev/ttyUSB0 .
+# → 298,671 bytes (22% flash 사용), 165KB compressed @ 851 kbit/s</pre>
+
+<h3>펌웨어 v5.0 (v4.0 기반 재작성)</h3>
+<div class="commit"><span class="hash">6034604 → bee8880</span>
+  <h4>firmware/conveyor_v5_serial/</h4>
+  <p>첫 커밋(6034604)은 스켈레톤 — v4.0 의 성숙한 센서 로직(anti-crosstalk, debounce, MIN_RUN_MS)을 놓침. <b>사용자 피드백 후 bee8880 에서 v4.0 기반으로 재작성.</b></p>
+
+  <h4>v4.0 에서 유지</h4>
+  <ul>
+    <li>TOF250 ASCII 파서 + 500ms debounce</li>
+    <li><b>Anti-crosstalk</b> — TOF1 감지 중엔 TOF2 raw 무시 (IR 940nm 교란 방지)</li>
+    <li><code>MIN_RUN_MS</code> 1초 motor start 후 TOF2 false trigger 차단</li>
+    <li>5-state: IDLE/RUNNING/STOPPED/POST_RUN/CLEARING</li>
+    <li>CLEARING timeout 5s 안전장치</li>
+    <li>sim_entry / sim_exit / reset / status 명령</li>
+  </ul>
+
+  <h4>v4.0 → v5.0 변경</h4>
+  <ul>
+    <li>WiFi/MQTT 기본 비활성 (<code>#define ENABLE_WIFI_MQTT 0</code>) — 1 로 바꾸면 v4.0 동작 복원</li>
+    <li>ST_STOPPED 5초 자동 탈출 제거 — <b>Jetson RUN 수신 시에만</b> POST_RUN</li>
+    <li>POST_RUN 4s (사용자 요구)</li>
+    <li>Serial 간단 토큰 라인 추가: BOOT / STATE:&lt;NAME&gt; / STOPPED / STARTED / DONE / PONG / ERR</li>
+    <li>명령 alias 확장: RUN / camera_ok / inspect_done / PING / STATUS (대/소문자 모두)</li>
+  </ul>
+
+  <h4>Serial 프로토콜 표</h4>
+  <table>
+    <tr><th>방향</th><th>메시지</th><th>의미</th></tr>
+    <tr><td>ESP → Jetson</td><td><code>BOOT:conveyor_v5_serial 1.1.0</code></td><td>부팅</td></tr>
+    <tr><td>ESP → Jetson</td><td><code>STATE:&lt;NAME&gt;</code></td><td>상태 전이</td></tr>
+    <tr><td>ESP → Jetson</td><td><code>STOPPED</code></td><td>TOF2 감지 → 정지 완료 (촬영 요청)</td></tr>
+    <tr><td>ESP → Jetson</td><td><code>STARTED</code></td><td>RUN 수신 → 모터 ON</td></tr>
+    <tr><td>ESP → Jetson</td><td><code>DONE</code></td><td>POST_RUN 4s 경과</td></tr>
+    <tr><td>Jetson → ESP</td><td><code>RUN\n</code></td><td>재시작 명령</td></tr>
+    <tr><td>Jetson → ESP</td><td><code>PING / STATUS / STOP / reset</code></td><td>진단·수동 제어</td></tr>
+    <tr><td>Jetson → ESP</td><td><code>sim_entry / sim_exit</code></td><td>센서 없이 상태기 테스트</td></tr>
+  </table>
+</div>
+
+<h3>Jetson EspBridge (publisher 내 스레드)</h3>
+<div class="commit"><span class="hash">e2beee5</span>
+  <h4>jetson_publisher/esp_bridge.py</h4>
+  <ul>
+    <li>QThread 수준의 독립 스레드 — publisher.py 에 opt-in (<code>ESP_BRIDGE_ENABLED=1</code>)</li>
+    <li>환경변수: <code>ESP_BRIDGE_PORT / BAUD / AUTO_RUN / INSPECTION_DELAY_MS</code></li>
+    <li>핵심 로직:
+      <ul>
+        <li>STOPPED 수신 → (INSPECTION_DELAY_MS 대기, 기본 700ms) → <code>RUN\n</code> 송신</li>
+        <li>STARTED / DONE / STATE / BOOT / PONG / ERR 는 로그</li>
+        <li>Serial 끊기면 10s backoff 재연결</li>
+      </ul>
+    </li>
+    <li>단위 테스트 6/6 통과 (tests/test_esp_bridge.py, mock serial)</li>
+  </ul>
+</div>
+
+<h3>실배포 검증</h3>
+<table>
+  <tr><th>테스트</th><th>결과</th></tr>
+  <tr><td>arduino-cli + ESP32 core 3.3.8 설치</td><td>✅</td></tr>
+  <tr><td>v5.0 flash (298KB, 22%)</td><td>✅</td></tr>
+  <tr><td>PING → PONG</td><td>✅</td></tr>
+  <tr><td>sim_entry → STATE:RUNNING (모터 ON, entry event)</td><td>✅</td></tr>
+  <tr><td>RUN → ack:run + visionResultReceived=true</td><td>✅</td></tr>
+  <tr><td><b>ST_STOPPED 에서 5초 자동 탈출 없음</b></td><td>✅ (3초 대기 중 STARTED 미발생)</td></tr>
+  <tr><td>systemd 재기동 후 EspBridge 정상 연결</td><td>✅ <code>EspBridge connected to /dev/ttyUSB0 @ 115200</code></td></tr>
+  <tr><td>실제 TOF 센서 + 모터 E2E</td><td>⏳ 배선 후 (사용자 작업)</td></tr>
+</table>
+
+<!-- ========== 종합 ========== -->
+<h2>7. 세션 끝 현재 상태</h2>
+
+<h3>운영 중 프로세스</h3>
+<div class="ascii">
+[Mac 100.77.239.25]
+├── Management Server (:50051)
+│     ├── keepalive active (30s ping)
+│     ├── WatchCameraFrames streaming
+│     └── ThreadPool max_workers=32
+│
+└── PyQt monitoring
+      └── CameraFrameWorker (Stage B stream, live frame rendering)
+
+[Jetson 100.77.62.67]
+└── casting-image-publisher.service (systemd)
+      ├── publisher 메인: Logitech C920 → gRPC 2fps JPEG
+      └── EspBridge 스레드: /dev/ttyUSB0 @ 115200
+            │  STOPPED → 700ms → RUN\n (auto)
+
+[ESP32]
+└── conveyor_v5_serial 1.1.0 (v4.0 로직 + Jetson 프로토콜)
+      ├── TOF GPIO16/17 ← 배선 대기
+      ├── Motor L298N GPIO25/26/27 ← 배선 대기
+      └── 대기 중: sim_entry/sim_exit 으로 상태기 동작 가능
+
+[JetCobot 100.94.152.67]
+└── MyCobot 280 (pymycobot 제어, ROS2 드라이버 별도)
+      └── Mgmt 어댑터 services/adapters/jetcobot_adapter.py 로 원격 호출 가능
+
+[AI Server 100.66.177.119]
+└── SSH 업로드 목적지 /home/team2/datasets/inspection/
+      ├── 데이터셋 학습 대기
+      └── Stage B 추론 RPC 스펙 미정
+</div>
+
+<h3>메모리 갱신 내용</h3>
+<ul>
+  <li><code>project_mqtt_hw_chain.md</code> — <b>MQTT 체인 폐기 / Serial 체인 확정</b></li>
+  <li><code>project_jetcobot.md</code> — 신규 (JetCobot 280 pymycobot SSH 어댑터)</li>
+  <li><code>project_jetson_pipeline.md</code> — Stage A 제거 + keepalive 반영</li>
+</ul>
+
+<h3>남은 작업 (물리)</h3>
+<ol>
+  <li>TOF250 x2 배선 (Red→3.3V, Black→GND, White→GPIO16/17)</li>
+  <li>L298N + JGB37 모터 배선 (ENA/IN1/IN2/12V)</li>
+  <li>센서 앞에 주물 모형 가림 → <b>STOPPED → 촬영 → RUN → 4s 구동</b> 전 구간 리허설</li>
+  <li>AI Server 학습용 데이터셋 수집 시작</li>
+</ol>
+
+<h3>남은 작업 (소프트)</h3>
+<ul>
+  <li>JetCobot 커넥션 풀링 (2.3s → ms 단위)</li>
+  <li>Mgmt gRPC <code>ExecuteCommand</code> → jetcobot_adapter 라우팅 (ARM-JETCOBOT-* prefix)</li>
+  <li>mycobot_ros2 빌드 + systemd (선택)</li>
+  <li>Stage C 추론 결과 연동 (AI Server 모델 준비 후)</li>
+</ul>
+
+<footer>
+생성: 2026-04-15 저녁 · 커밋 범위 <code>af80f09</code> ~ <code>bee8880</code> · 작업자: ibkim · Claude Code 지원<br>
+경로: <code>docs/worklog/2026-04-15_post_stream_hw_integration.html</code> · <a href="./index.html">인덱스</a> · <a href="./2026-04-15_stageB_stream.html">이전: Stage B</a>
+</footer>
+
+</div>
+</body>
+</html>

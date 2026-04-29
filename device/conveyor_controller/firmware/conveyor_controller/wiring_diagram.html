@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Conveyor Controller Wiring Diagram v5.0 (Serial Bridge + RFID)</title>
+<style>
+  body { margin: 0; padding: 20px; background: #1a1a2e; font-family: 'Segoe UI', sans-serif; color: #eee; }
+  h1 { text-align: center; color: #e94560; margin-bottom: 5px; }
+  h2 { text-align: center; color: #aaa; font-weight: normal; font-size: 14px; margin-top: 0; }
+  .verified { text-align: center; color: #2ecc71; font-weight: bold; font-size: 13px; margin-top: 4px; }
+  .container { display: flex; flex-direction: column; align-items: center; gap: 30px; }
+  svg { filter: drop-shadow(0 4px 20px rgba(0,0,0,0.5)); }
+  .table-section { max-width: 920px; width: 100%; }
+  table { width: 100%; border-collapse: collapse; background: #16213e; border-radius: 8px; overflow: hidden; }
+  th { background: #0f3460; padding: 10px 14px; text-align: left; font-size: 13px; color: #e94560; }
+  td { padding: 8px 14px; border-bottom: 1px solid #1a1a2e; font-size: 13px; }
+  .pin { font-family: monospace; font-weight: bold; }
+  .red { color: #ff6b6b; }
+  .black { color: #aaa; }
+  .blue { color: #4ea8ff; }
+  .green { color: #2ecc71; }
+  .yellow { color: #ffd93d; }
+  .white { color: #ffffff; }
+  .orange { color: #ff9f43; }
+  .nc { color: #555; text-decoration: line-through; }
+  .wire-legend { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin: 10px 0; }
+  .wire-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .wire-color { width: 30px; height: 4px; border-radius: 2px; }
+  .note { background: #16213e; border-left: 3px solid #e94560; padding: 12px 16px; border-radius: 0 8px 8px 0; max-width: 920px; width: 100%; box-sizing: border-box; font-size: 13px; line-height: 1.6; }
+  .note strong { color: #e94560; }
+  .success { border-left-color: #2ecc71; }
+  .success strong { color: #2ecc71; }
+  .warn { border-left-color: #ffd93d; }
+  .warn strong { color: #ffd93d; }
+  code { background: #0f3460; padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #ffd93d; }
+</style>
+</head>
+<body>
+
+<h1>Conveyor Belt Controller - Final Wiring Diagram</h1>
+<h2>ESP32 DevKitC V4 + L298N + TOF250 x2 + JGB37-555 Motor + RC522 RFID + Handoff ACK Button</h2>
+<div class="verified">✓ TOF/Motor verified 2026-04-06 (v3.0.0) &nbsp;|&nbsp; RC522 + GP33 Button added 2026-04-17 (v5.0 → v1.4.0, SPEC-AMR-001)</div>
+
+<div class="container">
+
+<svg width="960" height="680" viewBox="0 0 960 680" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="960" height="680" rx="12" fill="#0f3460"/>
+
+  <!-- Title bar -->
+  <rect x="30" y="18" width="900" height="48" rx="8" fill="#16213e" opacity="0.85"/>
+  <text x="480" y="38" text-anchor="middle" fill="#ffd93d" font-size="12" font-weight="bold">
+    Casting Factory Conveyor Control — Final Verified Wiring
+  </text>
+  <text x="480" y="56" text-anchor="middle" fill="#2ecc71" font-size="10">
+    Only White wire carries data (ASCII UART @ 9600 baud). Yellow/Blue/Green NOT CONNECTED on each sensor.
+  </text>
+
+  <!-- ==================== ESP32 ==================== -->
+  <rect x="370" y="200" width="220" height="310" rx="10" fill="#1a1a2e" stroke="#4ecdc4" stroke-width="2"/>
+  <rect x="450" y="190" width="60" height="20" rx="4" fill="#333" stroke="#4ecdc4" stroke-width="1"/>
+  <text x="480" y="204" text-anchor="middle" fill="#4ecdc4" font-size="9" font-weight="bold">USB</text>
+  <text x="480" y="230" text-anchor="middle" fill="#4ecdc4" font-size="14" font-weight="bold">ESP32</text>
+  <text x="480" y="246" text-anchor="middle" fill="#4ecdc4" font-size="10">DevKitC V4</text>
+
+  <!-- ESP32 Left Pins -->
+  <text x="385" y="286" fill="#ff6b6b" font-size="10" font-family="monospace">3V3</text>
+  <text x="385" y="306" fill="#aaa" font-size="10" font-family="monospace">GND</text>
+  <text x="378" y="340" fill="#fff" font-size="10" font-family="monospace">GP16</text>
+  <text x="385" y="354" fill="#888" font-size="8" font-family="monospace">(TOF1 RX)</text>
+  <text x="378" y="388" fill="#fff" font-size="10" font-family="monospace">GP17</text>
+  <text x="385" y="402" fill="#888" font-size="8" font-family="monospace">(TOF2 RX)</text>
+
+  <!-- ESP32 Left Pin dots -->
+  <circle cx="370" cy="282" r="4" fill="#ff6b6b"/>
+  <circle cx="370" cy="302" r="4" fill="#aaa"/>
+  <circle cx="370" cy="336" r="4" fill="#fff"/>
+  <circle cx="370" cy="384" r="4" fill="#fff"/>
+
+  <!-- ESP32 Right Pins (Motor Control) -->
+  <text x="525" y="286" fill="#aaa" font-size="10" font-family="monospace">VIN</text>
+  <text x="525" y="306" fill="#aaa" font-size="10" font-family="monospace">GND</text>
+  <text x="525" y="340" fill="#ff9f43" font-size="10" font-family="monospace">GP25</text>
+  <text x="525" y="354" fill="#888" font-size="8" font-family="monospace">(ENA/PWM)</text>
+  <text x="525" y="388" fill="#ff9f43" font-size="10" font-family="monospace">GP26</text>
+  <text x="525" y="402" fill="#888" font-size="8" font-family="monospace">(IN1)</text>
+  <text x="525" y="436" fill="#ff9f43" font-size="10" font-family="monospace">GP27</text>
+  <text x="525" y="450" fill="#888" font-size="8" font-family="monospace">(IN2)</text>
+
+  <!-- ESP32 Right Pin dots -->
+  <circle cx="590" cy="282" r="4" fill="#ff6b6b"/>
+  <circle cx="590" cy="302" r="4" fill="#aaa"/>
+  <circle cx="590" cy="336" r="4" fill="#ff9f43"/>
+  <circle cx="590" cy="384" r="4" fill="#ff9f43"/>
+  <circle cx="590" cy="432" r="4" fill="#ff9f43"/>
+
+  <!-- ==================== TOF250 #1 (Entry) ==================== -->
+  <rect x="40" y="90" width="230" height="170" rx="10" fill="#1a1a2e" stroke="#a8e6cf" stroke-width="2"/>
+  <text x="155" y="118" text-anchor="middle" fill="#a8e6cf" font-size="13" font-weight="bold">TOF250 #1 (Entry)</text>
+  <text x="155" y="134" text-anchor="middle" fill="#a8e6cf" font-size="10">ASCII UART @ 9600 baud</text>
+  <text x="155" y="148" text-anchor="middle" fill="#888" font-size="9">"NNN\r\n" format</text>
+
+  <!-- Pin labels with active/NC distinction -->
+  <text x="60" y="175" fill="#aaa" font-size="9" font-family="monospace">Black</text>
+  <text x="60" y="190" fill="#ff6b6b" font-size="9" font-family="monospace">Red</text>
+  <text x="60" y="205" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Yellow</text>
+  <text x="60" y="220" fill="#fff" font-size="9" font-family="monospace" font-weight="bold">White ★</text>
+  <text x="60" y="235" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Blue</text>
+  <text x="60" y="250" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Green</text>
+
+  <text x="110" y="175" fill="#888" font-size="9">GND</text>
+  <text x="110" y="190" fill="#888" font-size="9">VIN 3.3V</text>
+  <text x="110" y="205" fill="#555" font-size="9">NC</text>
+  <text x="110" y="220" fill="#aaa" font-size="9">UART TX</text>
+  <text x="110" y="235" fill="#555" font-size="9">NC</text>
+  <text x="110" y="250" fill="#555" font-size="9">NC</text>
+
+  <!-- Right-side pin dots -->
+  <circle cx="270" cy="171" r="4" fill="#aaa"/>
+  <circle cx="270" cy="186" r="4" fill="#ff6b6b"/>
+  <circle cx="270" cy="201" r="4" fill="#555"/>
+  <circle cx="270" cy="216" r="4" fill="#fff"/>
+  <circle cx="270" cy="231" r="4" fill="#555"/>
+  <circle cx="270" cy="246" r="4" fill="#555"/>
+
+  <!-- ==================== TOF250 #2 (Exit) ==================== -->
+  <rect x="40" y="440" width="230" height="170" rx="10" fill="#1a1a2e" stroke="#a8e6cf" stroke-width="2"/>
+  <text x="155" y="468" text-anchor="middle" fill="#a8e6cf" font-size="13" font-weight="bold">TOF250 #2 (Exit)</text>
+  <text x="155" y="484" text-anchor="middle" fill="#a8e6cf" font-size="10">ASCII UART @ 9600 baud</text>
+  <text x="155" y="498" text-anchor="middle" fill="#888" font-size="9">"NNN\r\n" format</text>
+
+  <text x="60" y="525" fill="#aaa" font-size="9" font-family="monospace">Black</text>
+  <text x="60" y="540" fill="#ff6b6b" font-size="9" font-family="monospace">Red</text>
+  <text x="60" y="555" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Yellow</text>
+  <text x="60" y="570" fill="#fff" font-size="9" font-family="monospace" font-weight="bold">White ★</text>
+  <text x="60" y="585" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Blue</text>
+  <text x="60" y="600" fill="#555" font-size="9" font-family="monospace" text-decoration="line-through">Green</text>
+
+  <text x="110" y="525" fill="#888" font-size="9">GND</text>
+  <text x="110" y="540" fill="#888" font-size="9">VIN 3.3V</text>
+  <text x="110" y="555" fill="#555" font-size="9">NC</text>
+  <text x="110" y="570" fill="#aaa" font-size="9">UART TX</text>
+  <text x="110" y="585" fill="#555" font-size="9">NC</text>
+  <text x="110" y="600" fill="#555" font-size="9">NC</text>
+
+  <circle cx="270" cy="521" r="4" fill="#aaa"/>
+  <circle cx="270" cy="536" r="4" fill="#ff6b6b"/>
+  <circle cx="270" cy="551" r="4" fill="#555"/>
+  <circle cx="270" cy="566" r="4" fill="#fff"/>
+  <circle cx="270" cy="581" r="4" fill="#555"/>
+  <circle cx="270" cy="596" r="4" fill="#555"/>
+
+  <!-- ==================== L298N ==================== -->
+  <rect x="670" y="180" width="200" height="240" rx="10" fill="#1a1a2e" stroke="#ff9f43" stroke-width="2"/>
+  <text x="770" y="205" text-anchor="middle" fill="#ff9f43" font-size="14" font-weight="bold">L298N</text>
+  <text x="770" y="220" text-anchor="middle" fill="#ff9f43" font-size="10">Motor Driver</text>
+
+  <text x="685" y="250" fill="#aaa" font-size="10" font-family="monospace">ENA</text>
+  <text x="685" y="270" fill="#aaa" font-size="10" font-family="monospace">IN1</text>
+  <text x="685" y="290" fill="#aaa" font-size="10" font-family="monospace">IN2</text>
+  <text x="685" y="315" fill="#aaa" font-size="10" font-family="monospace">5V</text>
+  <text x="685" y="335" fill="#aaa" font-size="10" font-family="monospace">GND</text>
+  <text x="685" y="375" fill="#aaa" font-size="10" font-family="monospace">+12V</text>
+  <text x="685" y="386" fill="#666" font-size="8">(external)</text>
+
+  <circle cx="670" cy="246" r="4" fill="#ff9f43"/>
+  <circle cx="670" cy="266" r="4" fill="#ff9f43"/>
+  <circle cx="670" cy="286" r="4" fill="#ff9f43"/>
+  <circle cx="670" cy="311" r="4" fill="#ff6b6b"/>
+  <circle cx="670" cy="331" r="4" fill="#aaa"/>
+  <circle cx="670" cy="371" r="4" fill="#ff6b6b"/>
+
+  <text x="820" y="250" fill="#aaa" font-size="10" font-family="monospace">OUT1</text>
+  <text x="820" y="270" fill="#aaa" font-size="10" font-family="monospace">OUT2</text>
+  <circle cx="870" cy="246" r="4" fill="#e74c3c"/>
+  <circle cx="870" cy="266" r="4" fill="#555"/>
+
+  <!-- ==================== Motor ==================== -->
+  <rect x="690" y="480" width="160" height="80" rx="10" fill="#1a1a2e" stroke="#e74c3c" stroke-width="2"/>
+  <text x="770" y="515" text-anchor="middle" fill="#e74c3c" font-size="13" font-weight="bold">JGB37-555</text>
+  <text x="770" y="533" text-anchor="middle" fill="#e74c3c" font-size="10">DC12V 167RPM</text>
+  <rect x="680" y="505" width="20" height="10" rx="3" fill="#666"/>
+
+  <line x1="870" y1="246" x2="895" y2="246" stroke="#e74c3c" stroke-width="2"/>
+  <line x1="895" y1="246" x2="895" y2="490" stroke="#e74c3c" stroke-width="2"/>
+  <line x1="895" y1="490" x2="850" y2="490" stroke="#e74c3c" stroke-width="2"/>
+  <circle cx="850" cy="490" r="3" fill="#e74c3c"/>
+
+  <line x1="870" y1="266" x2="910" y2="266" stroke="#888" stroke-width="2"/>
+  <line x1="910" y1="266" x2="910" y2="550" stroke="#888" stroke-width="2"/>
+  <line x1="910" y1="550" x2="850" y2="550" stroke="#888" stroke-width="2"/>
+  <circle cx="850" cy="550" r="3" fill="#888"/>
+
+  <!-- ==================== Power Supply ==================== -->
+  <rect x="670" y="580" width="160" height="70" rx="10" fill="#1a1a2e" stroke="#ff6b6b" stroke-width="2"/>
+  <text x="750" y="610" text-anchor="middle" fill="#ff6b6b" font-size="13" font-weight="bold">DC 12V</text>
+  <text x="750" y="628" text-anchor="middle" fill="#ff6b6b" font-size="10">Power Supply</text>
+
+  <line x1="710" y1="580" x2="710" y2="420" stroke="#ff6b6b" stroke-width="2.5"/>
+  <line x1="710" y1="420" x2="650" y2="420" stroke="#ff6b6b" stroke-width="2.5"/>
+  <line x1="650" y1="420" x2="650" y2="371" stroke="#ff6b6b" stroke-width="2.5"/>
+  <line x1="650" y1="371" x2="670" y2="371" stroke="#ff6b6b" stroke-width="2.5"/>
+
+  <line x1="770" y1="580" x2="770" y2="440" stroke="#888" stroke-width="2.5"/>
+  <line x1="770" y1="440" x2="630" y2="440" stroke="#888" stroke-width="2.5"/>
+  <line x1="630" y1="440" x2="630" y2="331" stroke="#888" stroke-width="2.5"/>
+  <line x1="630" y1="331" x2="670" y2="331" stroke="#888" stroke-width="2.5"/>
+
+  <!-- ==================== WIRES: TOF1 to ESP32 ==================== -->
+
+  <!-- TOF1 GND (Black) to ESP32 GND -->
+  <line x1="270" y1="171" x2="300" y2="171" stroke="#888" stroke-width="2"/>
+  <line x1="300" y1="171" x2="300" y2="302" stroke="#888" stroke-width="2"/>
+  <line x1="300" y1="302" x2="370" y2="302" stroke="#888" stroke-width="2"/>
+
+  <!-- TOF1 VIN (Red) to ESP32 3V3 -->
+  <line x1="270" y1="186" x2="310" y2="186" stroke="#ff6b6b" stroke-width="2"/>
+  <line x1="310" y1="186" x2="310" y2="282" stroke="#ff6b6b" stroke-width="2"/>
+  <line x1="310" y1="282" x2="370" y2="282" stroke="#ff6b6b" stroke-width="2"/>
+
+  <!-- TOF1 White (TX) to ESP32 GP16 -->
+  <line x1="270" y1="216" x2="340" y2="216" stroke="#fff" stroke-width="3"/>
+  <line x1="340" y1="216" x2="340" y2="336" stroke="#fff" stroke-width="3"/>
+  <line x1="340" y1="336" x2="370" y2="336" stroke="#fff" stroke-width="3"/>
+  <text x="345" y="275" fill="#fff" font-size="9">UART TX→RX</text>
+
+  <!-- ==================== WIRES: TOF2 to ESP32 ==================== -->
+
+  <!-- TOF2 GND -->
+  <line x1="270" y1="521" x2="300" y2="521" stroke="#888" stroke-width="2"/>
+  <line x1="300" y1="521" x2="300" y2="302" stroke="#888" stroke-width="2"/>
+  <circle cx="300" cy="302" r="3" fill="#888"/>
+
+  <!-- TOF2 VIN -->
+  <line x1="270" y1="536" x2="310" y2="536" stroke="#ff6b6b" stroke-width="2"/>
+  <line x1="310" y1="536" x2="310" y2="282" stroke="#ff6b6b" stroke-width="2"/>
+  <circle cx="310" cy="282" r="3" fill="#ff6b6b"/>
+
+  <!-- TOF2 White (TX) to ESP32 GP17 -->
+  <line x1="270" y1="566" x2="350" y2="566" stroke="#fff" stroke-width="3"/>
+  <line x1="350" y1="566" x2="350" y2="384" stroke="#fff" stroke-width="3"/>
+  <line x1="350" y1="384" x2="370" y2="384" stroke="#fff" stroke-width="3"/>
+
+  <!-- ==================== WIRES: ESP32 to L298N ==================== -->
+
+  <!-- GP25 -> ENA -->
+  <line x1="590" y1="336" x2="670" y2="246" stroke="#ff9f43" stroke-width="2.5"/>
+  <!-- GP26 -> IN1 -->
+  <line x1="590" y1="384" x2="670" y2="266" stroke="#ff9f43" stroke-width="2.5"/>
+  <!-- GP27 -> IN2 -->
+  <line x1="590" y1="432" x2="670" y2="286" stroke="#ff9f43" stroke-width="2.5"/>
+
+  <!-- ESP32 GND (right) -> L298N GND -->
+  <line x1="590" y1="302" x2="640" y2="302" stroke="#888" stroke-width="2"/>
+  <line x1="640" y1="302" x2="640" y2="331" stroke="#888" stroke-width="2"/>
+  <circle cx="640" cy="331" r="3" fill="#888"/>
+
+  <!-- Labels on key wires -->
+  <text x="625" y="295" fill="#ff9f43" font-size="8">PWM+DIR</text>
+
+</svg>
+
+<!-- Wire Color Legend -->
+<div class="wire-legend">
+  <div class="wire-item"><div class="wire-color" style="background:#ff6b6b"></div> VIN / +12V</div>
+  <div class="wire-item"><div class="wire-color" style="background:#888"></div> GND (common)</div>
+  <div class="wire-item"><div class="wire-color" style="background:#fff"></div> White — UART TX (★ only active sensor wire)</div>
+  <div class="wire-item"><div class="wire-color" style="background:#ff9f43"></div> Motor PWM/DIR</div>
+  <div class="wire-item"><div class="wire-color" style="background:#f39c12"></div> RC522 SPI (fixed VSPI)</div>
+  <div class="wire-item"><div class="wire-color" style="background:#555"></div> NC (disconnected)</div>
+</div>
+
+<!-- ==================== RFID-RC522 Sub-Diagram (v5.0 addition) ==================== -->
+<svg width="960" height="320" viewBox="0 0 960 320" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="320" rx="12" fill="#0f3460"/>
+
+  <rect x="30" y="18" width="900" height="44" rx="8" fill="#16213e" opacity="0.85"/>
+  <text x="480" y="38" text-anchor="middle" fill="#f39c12" font-size="12" font-weight="bold">
+    RFID-RC522 Extension (2026-04-17 · firmware v5.0 / conveyor_v5_serial 1.3.0)
+  </text>
+  <text x="480" y="54" text-anchor="middle" fill="#2ecc71" font-size="10">
+    VSPI fixed wiring · ss=GP5 · sck=GP18 · mosi=GP23 · miso=GP19 · rst=GP22 · power 3.3 V
+  </text>
+
+  <!-- ESP32 SPI Pin bank (left) -->
+  <rect x="60" y="95" width="290" height="200" rx="10" fill="#1a1a2e" stroke="#4ecdc4" stroke-width="2"/>
+  <text x="205" y="120" text-anchor="middle" fill="#4ecdc4" font-size="13" font-weight="bold">ESP32 DevKitC V4 (VSPI)</text>
+  <text x="205" y="136" text-anchor="middle" fill="#888" font-size="10">Conveyor firmware reuses these pins for RC522 only</text>
+
+  <!-- ESP32 pin labels -->
+  <text x="80" y="170" fill="#ff6b6b" font-size="11" font-family="monospace">3V3</text>
+  <text x="80" y="190" fill="#aaa"    font-size="11" font-family="monospace">GND</text>
+  <text x="80" y="210" fill="#f39c12" font-size="11" font-family="monospace">GP5</text>
+  <text x="80" y="230" fill="#f39c12" font-size="11" font-family="monospace">GP18</text>
+  <text x="80" y="250" fill="#f39c12" font-size="11" font-family="monospace">GP23</text>
+  <text x="80" y="270" fill="#f39c12" font-size="11" font-family="monospace">GP19</text>
+  <text x="80" y="290" fill="#f39c12" font-size="11" font-family="monospace">GP22</text>
+
+  <text x="140" y="170" fill="#888" font-size="10">→ 3.3 V rail</text>
+  <text x="140" y="190" fill="#888" font-size="10">→ common ground</text>
+  <text x="140" y="210" fill="#888" font-size="10">→ SDA / SS (CS)</text>
+  <text x="140" y="230" fill="#888" font-size="10">→ SCK</text>
+  <text x="140" y="250" fill="#888" font-size="10">→ MOSI</text>
+  <text x="140" y="270" fill="#888" font-size="10">→ MISO</text>
+  <text x="140" y="290" fill="#888" font-size="10">→ RST</text>
+
+  <!-- ESP32 pin dots -->
+  <circle cx="350" cy="166" r="4" fill="#ff6b6b"/>
+  <circle cx="350" cy="186" r="4" fill="#aaa"/>
+  <circle cx="350" cy="206" r="4" fill="#f39c12"/>
+  <circle cx="350" cy="226" r="4" fill="#f39c12"/>
+  <circle cx="350" cy="246" r="4" fill="#f39c12"/>
+  <circle cx="350" cy="266" r="4" fill="#f39c12"/>
+  <circle cx="350" cy="286" r="4" fill="#f39c12"/>
+
+  <!-- RC522 module (right) -->
+  <rect x="670" y="95" width="250" height="200" rx="10" fill="#1a1a2e" stroke="#f39c12" stroke-width="2"/>
+  <text x="795" y="120" text-anchor="middle" fill="#f39c12" font-size="13" font-weight="bold">RFID-RC522</text>
+  <text x="795" y="136" text-anchor="middle" fill="#f39c12" font-size="10">MFRC522 · 13.56 MHz · SPI</text>
+
+  <!-- RC522 pin labels -->
+  <text x="690" y="170" fill="#ff6b6b" font-size="11" font-family="monospace">3.3V</text>
+  <text x="690" y="190" fill="#aaa"    font-size="11" font-family="monospace">GND</text>
+  <text x="690" y="210" fill="#f39c12" font-size="11" font-family="monospace">SDA</text>
+  <text x="690" y="230" fill="#f39c12" font-size="11" font-family="monospace">SCK</text>
+  <text x="690" y="250" fill="#f39c12" font-size="11" font-family="monospace">MOSI</text>
+  <text x="690" y="270" fill="#f39c12" font-size="11" font-family="monospace">MISO</text>
+  <text x="690" y="290" fill="#f39c12" font-size="11" font-family="monospace">RST</text>
+
+  <text x="740" y="170" fill="#888" font-size="9">Power</text>
+  <text x="740" y="190" fill="#888" font-size="9">Ground</text>
+  <text x="740" y="210" fill="#888" font-size="9">Slave Select (CS)</text>
+  <text x="740" y="230" fill="#888" font-size="9">SPI clock</text>
+  <text x="740" y="250" fill="#888" font-size="9">Master→Slave data</text>
+  <text x="740" y="270" fill="#888" font-size="9">Slave→Master data</text>
+  <text x="740" y="290" fill="#888" font-size="9">Active-low reset</text>
+
+  <!-- RC522 pin dots (left side of module) -->
+  <circle cx="670" cy="166" r="4" fill="#ff6b6b"/>
+  <circle cx="670" cy="186" r="4" fill="#aaa"/>
+  <circle cx="670" cy="206" r="4" fill="#f39c12"/>
+  <circle cx="670" cy="226" r="4" fill="#f39c12"/>
+  <circle cx="670" cy="246" r="4" fill="#f39c12"/>
+  <circle cx="670" cy="266" r="4" fill="#f39c12"/>
+  <circle cx="670" cy="286" r="4" fill="#f39c12"/>
+
+  <!-- IRQ note (unused) -->
+  <text x="795" y="314" text-anchor="middle" fill="#555" font-size="10" text-decoration="line-through">IRQ (not connected)</text>
+
+  <!-- Wires: ESP32 → RC522 -->
+  <line x1="350" y1="166" x2="670" y2="166" stroke="#ff6b6b" stroke-width="2"/>
+  <line x1="350" y1="186" x2="670" y2="186" stroke="#888"    stroke-width="2"/>
+  <line x1="350" y1="206" x2="670" y2="206" stroke="#f39c12" stroke-width="2.5"/>
+  <line x1="350" y1="226" x2="670" y2="226" stroke="#f39c12" stroke-width="2.5"/>
+  <line x1="350" y1="246" x2="670" y2="246" stroke="#f39c12" stroke-width="2.5"/>
+  <line x1="350" y1="266" x2="670" y2="266" stroke="#f39c12" stroke-width="2.5"/>
+  <line x1="350" y1="286" x2="670" y2="286" stroke="#f39c12" stroke-width="2.5"/>
+
+  <text x="490" y="158" text-anchor="middle" fill="#ff6b6b" font-size="9">3.3 V</text>
+  <text x="490" y="178" text-anchor="middle" fill="#888"    font-size="9">GND</text>
+  <text x="490" y="198" text-anchor="middle" fill="#f39c12" font-size="9">SS</text>
+  <text x="490" y="218" text-anchor="middle" fill="#f39c12" font-size="9">SCK</text>
+  <text x="490" y="238" text-anchor="middle" fill="#f39c12" font-size="9">MOSI</text>
+  <text x="490" y="258" text-anchor="middle" fill="#f39c12" font-size="9">MISO</text>
+  <text x="490" y="278" text-anchor="middle" fill="#f39c12" font-size="9">RST</text>
+</svg>
+
+<!-- ==================== Handoff ACK Button Sub-Diagram (SPEC-AMR-001) ==================== -->
+<svg width="960" height="260" viewBox="0 0 960 260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="260" rx="12" fill="#0f3460"/>
+
+  <rect x="30" y="18" width="900" height="44" rx="8" fill="#16213e" opacity="0.85"/>
+  <text x="480" y="38" text-anchor="middle" fill="#2ecc71" font-size="12" font-weight="bold">
+    후처리존 핸드오프 ACK 버튼 (SPEC-AMR-001, 2026-04-17 · firmware v1.4.0)
+  </text>
+  <text x="480" y="54" text-anchor="middle" fill="#ffd93d" font-size="10">
+    GP33 INPUT_PULLUP · 디바운스 50 ms · 연타 병합 500 ms · rising edge (release) 시 HANDOFF_ACK 토큰 + JSON 발행
+  </text>
+
+  <!-- ESP32 pin bank -->
+  <rect x="60" y="90" width="270" height="140" rx="10" fill="#1a1a2e" stroke="#4ecdc4" stroke-width="2"/>
+  <text x="195" y="115" text-anchor="middle" fill="#4ecdc4" font-size="13" font-weight="bold">ESP32 (GPIO)</text>
+
+  <text x="80" y="150" fill="#2ecc71" font-size="12" font-family="monospace">GP33</text>
+  <text x="80" y="168" fill="#888" font-size="9" font-family="monospace">(INPUT_PULLUP)</text>
+  <text x="80" y="200" fill="#aaa" font-size="12" font-family="monospace">GND</text>
+
+  <text x="170" y="150" fill="#888" font-size="10">→ 버튼 단자 A</text>
+  <text x="170" y="168" fill="#888" font-size="9">평시 HIGH, 눌림 LOW</text>
+  <text x="170" y="200" fill="#888" font-size="10">→ 버튼 단자 B</text>
+
+  <circle cx="330" cy="146" r="4" fill="#2ecc71"/>
+  <circle cx="330" cy="196" r="4" fill="#aaa"/>
+
+  <!-- Push button -->
+  <rect x="670" y="100" width="200" height="120" rx="10" fill="#1a1a2e" stroke="#e94560" stroke-width="2"/>
+  <text x="770" y="126" text-anchor="middle" fill="#e94560" font-size="13" font-weight="bold">A접점 푸시 버튼</text>
+  <text x="770" y="142" text-anchor="middle" fill="#888" font-size="10">Normally Open</text>
+
+  <!-- Button body symbol -->
+  <circle cx="770" cy="175" r="22" fill="none" stroke="#e94560" stroke-width="2"/>
+  <circle cx="770" cy="175" r="14" fill="#e94560" opacity="0.3"/>
+  <text x="770" y="179" text-anchor="middle" fill="#e94560" font-size="16" font-weight="bold">●</text>
+  <line x1="720" y1="175" x2="748" y2="175" stroke="#e94560" stroke-width="2"/>
+  <line x1="792" y1="175" x2="820" y2="175" stroke="#e94560" stroke-width="2"/>
+  <circle cx="720" cy="175" r="4" fill="#e94560"/>
+  <circle cx="820" cy="175" r="4" fill="#e94560"/>
+
+  <text x="702" y="210" text-anchor="middle" fill="#888" font-size="9">단자 A</text>
+  <text x="838" y="210" text-anchor="middle" fill="#888" font-size="9">단자 B</text>
+
+  <!-- Wires -->
+  <line x1="330" y1="146" x2="500" y2="146" stroke="#2ecc71" stroke-width="2.5"/>
+  <line x1="500" y1="146" x2="500" y2="175" stroke="#2ecc71" stroke-width="2.5"/>
+  <line x1="500" y1="175" x2="720" y2="175" stroke="#2ecc71" stroke-width="2.5"/>
+  <text x="500" y="138" text-anchor="middle" fill="#2ecc71" font-size="10">Signal (GP33)</text>
+
+  <line x1="330" y1="196" x2="620" y2="196" stroke="#aaa" stroke-width="2.5"/>
+  <line x1="620" y1="196" x2="620" y2="220" stroke="#aaa" stroke-width="2.5"/>
+  <line x1="620" y1="220" x2="820" y2="220" stroke="#aaa" stroke-width="2.5"/>
+  <line x1="820" y1="220" x2="820" y2="175" stroke="#aaa" stroke-width="2.5"/>
+  <text x="500" y="212" text-anchor="middle" fill="#aaa" font-size="10">Return (GND)</text>
+</svg>
+
+<!-- Wiring Tables -->
+<div class="table-section">
+
+<h3 style="color:#2ecc71; margin-bottom:8px;">★ TOF250 Sensor Wiring (each sensor)</h3>
+<table>
+  <tr><th>Wire Color</th><th>Function</th><th>Connection</th><th>Notes</th></tr>
+  <tr><td class="black">Black (검정)</td><td class="pin">GND</td><td class="pin">ESP32 GND</td><td>Shared between both sensors</td></tr>
+  <tr><td class="red">Red (빨강)</td><td class="pin">VIN</td><td class="pin red">ESP32 3.3V</td><td>Shared between both sensors</td></tr>
+  <tr><td class="yellow">Yellow (노랑)</td><td class="nc">—</td><td class="nc">NOT CONNECTED</td><td>Not used (no signal)</td></tr>
+  <tr><td class="white">White (백색) ★</td><td class="pin">UART TX</td><td class="pin white">TOF1→GPIO 16, TOF2→GPIO 17</td><td>ONLY active data wire</td></tr>
+  <tr><td class="blue">Blue (파랑)</td><td class="nc">—</td><td class="nc">NOT CONNECTED</td><td>Not used (no signal)</td></tr>
+  <tr><td class="green">Green (녹색)</td><td class="nc">—</td><td class="nc">NOT CONNECTED</td><td>Not used (no signal)</td></tr>
+</table>
+
+<br>
+
+<h3 style="color:#ff9f43; margin-bottom:8px;">Motor Control (ESP32 → L298N → DC Motor)</h3>
+<table>
+  <tr><th>ESP32 Pin</th><th>L298N Pin</th><th>Description</th></tr>
+  <tr><td class="pin orange">GPIO 25</td><td class="pin">ENA</td><td>PWM speed control (1kHz, 8-bit, speed=180) — remove ENA jumper cap</td></tr>
+  <tr><td class="pin orange">GPIO 26</td><td class="pin">IN1</td><td>Direction A (HIGH = forward)</td></tr>
+  <tr><td class="pin orange">GPIO 27</td><td class="pin">IN2</td><td>Direction B (HIGH = reverse)</td></tr>
+  <tr><td class="pin">GND</td><td class="pin">GND</td><td>Common ground with ESP32 + 12V supply</td></tr>
+  <tr><td>-</td><td class="pin">OUT1 / OUT2</td><td>→ JGB37-555 motor wires (red/black)</td></tr>
+</table>
+
+<br>
+
+<h3 style="color:#ff6b6b; margin-bottom:8px;">Power Supply</h3>
+<table>
+  <tr><th>From</th><th>To</th><th>Description</th></tr>
+  <tr><td class="pin red">DC 12V (+)</td><td class="pin">L298N +12V</td><td>Motor power supply (external adapter)</td></tr>
+  <tr><td class="pin">DC 12V (-)</td><td class="pin">L298N GND ⟷ ESP32 GND</td><td>Common ground for all devices</td></tr>
+  <tr><td class="pin">USB</td><td>ESP32</td><td>USB from PC/RPi5 powers ESP32 + sensors</td></tr>
+</table>
+
+<br>
+
+<h3 style="color:#2ecc71; margin-bottom:8px;">Handoff ACK Push Button (SPEC-AMR-001 · added 2026-04-17)</h3>
+<table>
+  <tr><th>버튼 단자</th><th>ESP32 핀</th><th>기능</th><th>비고</th></tr>
+  <tr><td class="pin green">A</td><td class="pin green">GP33</td><td>Signal (INPUT_PULLUP)</td><td>RTC GPIO, strapping-safe. 평시 HIGH, 눌림 LOW</td></tr>
+  <tr><td class="pin">B</td><td class="pin">GND</td><td>Return</td><td>컨베이어 ESP32 GND 공통</td></tr>
+</table>
+<div class="note success" style="margin-top:8px;">
+  <strong>★ 동작:</strong> 버튼 press→release 시 rising edge 에서 Serial 토큰 <code>HANDOFF_ACK</code> + JSON 이벤트 <code>{"event":"handoff_ack","zone":"postprocessing",...}</code> 발행. 디바운스 50 ms, 연속 이벤트 최소 간격 500 ms. 컨베이어 TOF/모터 상태 머신과 완전 독립. HW 없이 테스트하려면 Serial Monitor 에서 <code>sim_ack</code> 입력.
+</div>
+
+<br>
+
+<h3 style="color:#f39c12; margin-bottom:8px;">RFID-RC522 Wiring (VSPI fixed · added 2026-04-17)</h3>
+<table>
+  <tr><th>RC522 Pin</th><th>ESP32 Pin</th><th>Function</th><th>Notes</th></tr>
+  <tr><td class="pin red">3.3V</td><td class="pin red">3V3</td><td>Power</td><td>Do <strong>NOT</strong> connect to 5V — RC522 is 3.3 V logic</td></tr>
+  <tr><td class="pin">GND</td><td class="pin">GND</td><td>Ground</td><td>Share common ground with ESP32/L298N</td></tr>
+  <tr><td class="pin yellow">SDA / SS</td><td class="pin yellow">GP5</td><td>SPI Slave Select (CS)</td><td>Driven LOW per transfer by MFRC522 lib</td></tr>
+  <tr><td class="pin yellow">SCK</td><td class="pin yellow">GP18</td><td>SPI Clock</td><td>VSPI default clock</td></tr>
+  <tr><td class="pin yellow">MOSI</td><td class="pin yellow">GP23</td><td>Master Out, Slave In</td><td>VSPI default data out</td></tr>
+  <tr><td class="pin yellow">MISO</td><td class="pin yellow">GP19</td><td>Master In, Slave Out</td><td>VSPI default data in</td></tr>
+  <tr><td class="pin yellow">RST</td><td class="pin yellow">GP22</td><td>Hard reset (active low)</td><td>Toggled by <code>PCD_Init()</code> during boot</td></tr>
+  <tr><td class="nc">IRQ</td><td class="nc">— (NC)</td><td class="nc">Interrupt</td><td>Not wired; firmware uses polling</td></tr>
+</table>
+</div>
+
+<div class="note success">
+  <strong>★ Critical Protocol Discovery (2026-04-06):</strong><br>
+  This TOF250 module (AliExpress "OvercomeZeus" brand, listing 1005010253988126) does <strong>NOT</strong> use I2C or binary UART framing despite what most online docs suggest.<br>
+  <strong>Actual protocol:</strong> ASCII text at <code>9600 baud</code>, format <code>"NNN\r\n"</code> (e.g., "18\r\n" = 18mm).<br>
+  <strong>Only the White wire carries data</strong> — Yellow, Blue, Green are not connected on the PCB (5 pads total).<br>
+  The firmware uses <code>String.toInt()</code> parsing with <code>\r\n</code> line terminators, not binary frame parsing.
+</div>
+
+<div class="note">
+  <strong>Conveyor State Machine (firmware v5.0 · conveyor_v5_serial 1.3.0):</strong><br>
+  <code>IDLE</code> → (TOF1 detects 1-30mm) → <code>RUNNING</code> (motor ON, MIN_RUN 1s) → (TOF2 detects) → <code>STOPPED</code> (motor OFF, <em>wait indefinitely</em> for Jetson <code>RUN</code>/<code>camera_ok</code>/<code>inspect_done</code>) → <code>POST_RUN</code> (motor ON for POST_RUN_MS=4s) → <code>CLEARING</code> (until TOF2 clears, 5s safety timeout) → <code>IDLE</code>
+  <br><br>
+  <strong>Debounce:</strong> 500ms on both TOF sensors · <strong>Detection range:</strong> 1-30mm.<br>
+  <strong>RFID polling:</strong> RC522 healthcheck every 2s, tag hold 700ms, reinit on <code>VersionReg = 0x00 / 0xFF</code>.
+</div>
+
+<div class="note success">
+  <strong>★ RFID-RC522 Integration (v5.0, 2026-04-17):</strong><br>
+  Fixed VSPI wiring (auto-scan removed). Init order: <code>SPI.begin(18,19,23,5)</code> → <code>PCD_Init(5,22)</code> → read <code>VersionReg</code>.<br>
+  Serial tokens unchanged (<code>BOOT</code>/<code>STOPPED</code>/<code>STARTED</code>/<code>DONE</code>). RFID events publish as JSON: <code>{"event":"rfid_tag","uid":"...","type":"..."}</code> and <code>{"event":"rfid_clear","uid":"..."}</code> after <code>RFID_TAG_HOLD_MS</code>.<br>
+  Manual commands (USB Serial): <code>RFID_SCAN</code> — force reader reinit; <code>STATUS</code> — include RFID block (<code>ready</code>, <code>spi</code>, <code>ss</code>, <code>rst</code>, <code>uid</code>, <code>type</code>, <code>version</code>).
+</div>
+
+<div class="note warn">
+  <strong>Two Separate Serial Channels:</strong><br>
+  <br>
+  <strong>① USB Serial (ESP32 ↔ PC): 115200 baud</strong><br>
+  사용자 명령 및 JSON 로그 통신 (Arduino IDE Serial Monitor)<br>
+  Commands: <code>start</code> / <code>stop</code> / <code>reset</code> / <code>sim_entry</code> / <code>sim_exit</code> / <code>status</code><br>
+  <br>
+  <strong>② TOF250 UART (Sensor → ESP32): 9600 baud</strong><br>
+  센서에서 ESP32로 거리값 전송 (ASCII 형식: <code>"NNN\r\n"</code>)<br>
+  TOF1 → GPIO 16, TOF2 → GPIO 17 (White wire only)<br>
+  <br>
+  <strong>③ RC522 SPI (ESP32 ↔ RFID, VSPI bus)</strong><br>
+  SS=GP5, SCK=GP18, MOSI=GP23, MISO=GP19, RST=GP22 · 3.3 V power · IRQ NC.<br>
+  Serial 115200 채널과 충돌하지 않음 (SPI 버스는 별도).
+</div>
+
+<div class="note success">
+  <strong>Verified Working:</strong> 2026-04-06. Real sensor test completed 2 successful cycles with motor rotation confirmed. TOF1 readings: 190mm idle → 5mm with object. TOF2 readings: 208mm idle → 6mm with object. State transitions all correct. Debounce working as expected.
+</div>
+
+</div>
+</body>
+</html>

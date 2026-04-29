@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04. Work Order Scheduler</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Planning Layer</div>
+      <h1>04. Work Order Scheduler<span class="badge planning">Planning</span></h1>
+      <div class="subtitle">
+        approved + released 주문 감시 · 7요소 우선순위 계산 · lane별 active 결정
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">책임 & 경계</a></li>
+        <li><a href="#s3">7요소 우선순위 엔진</a></li>
+        <li><a href="#s4">감시 루프 (Polling/Event)</a></li>
+        <li><a href="#s5">Lane 배정 결정</a></li>
+        <li><a href="#s6">구현 코드 (schedule.py)</a></li>
+        <li><a href="#s7">NFR</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Work Order Scheduler</strong>는 공장 관리자가 release한 주문들을 <strong>"다음에 무엇을 할까"</strong> 순서로 정렬하는 계획 엔진입니다. 실제 실행 결정은 하지 않고, 순위 및 lane 배정만 산출합니다.</p>
+
+      <h3>1.1 코드베이스</h3>
+      <ul>
+        <li><code>backend/app/routes/schedule.py</code> — 15KB, 약 420줄 (SPEC-CTL-001, commit <code>0952f86</code>)</li>
+        <li><code>backend/app/models/models.py</code> — ProductionJob, PriorityChangeLog</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 책임 & 경계</h2>
+      <h3>2.1 책임</h3>
+      <ul>
+        <li><code>work_status = released</code>인 work_order 감시</li>
+        <li>7요소 가중 점수 계산 (100점 만점)</li>
+        <li>수동 순서 변경 반영 + 이력 기록</li>
+        <li>lane 속성 확인 (production/shipment)</li>
+        <li>각 lane의 "다음 active" 선정</li>
+      </ul>
+
+      <h3>2.2 범위 밖</h3>
+      <ul>
+        <li>실제 로봇 할당 — <a href="09_global_task_allocator.html">Global Task Allocator</a></li>
+        <li>Task 분해 — <a href="07_workflow_task_manager.html">Workflow Task Manager</a></li>
+        <li>경로/충돌 — Traffic Manager + Resource Reservation Manager</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2>③ 7요소 우선순위 엔진 (100점 만점)</h2>
+
+      <p>SR-CTL-05 구현. Confluence GUI 페이지와 <code>schedule.py</code>에 명시된 가중치:</p>
+
+      <table>
+        <thead><tr><th>요소</th><th>배점</th><th>산출 방식</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>납기일 긴급도</strong></td>
+            <td>25</td>
+            <td>D-day 기준: 3일 이내=25, 7일=20, 14일=15, 30일=10, 그 외=0</td>
+          </tr>
+          <tr>
+            <td><strong>착수 가능 여부</strong></td>
+            <td>20</td>
+            <td>공정 idle + 용해로/조형기/AMR 가용성 (boolean × 20)</td>
+          </tr>
+          <tr>
+            <td><strong>주문 체류 시간</strong></td>
+            <td>15</td>
+            <td>승인 후 경과일 × 1.5 (최대 15)</td>
+          </tr>
+          <tr>
+            <td><strong>지연 위험도</strong></td>
+            <td>15</td>
+            <td>예상완료일 - 납기일 마진 분석</td>
+          </tr>
+          <tr>
+            <td><strong>고객 중요도</strong></td>
+            <td>10</td>
+            <td>주문 금액 상위 20% = 10, 상위 40% = 6, 그 외 = 0</td>
+          </tr>
+          <tr>
+            <td><strong>수량 효율</strong></td>
+            <td>10</td>
+            <td>수량 적을수록 가점 (빠른 회전)</td>
+          </tr>
+          <tr>
+            <td><strong>세팅 변경 비용</strong></td>
+            <td>5</td>
+            <td>직전 작업 제품과 동일 제품 연속 시 +5 (보너스)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>Tie-break 규칙</strong>: 총점 동점 시 FIFO (<code>released_at</code> 오래된 쪽 우선). 완전 동시인 경우 <code>work_order_id</code> 낮은 쪽. 이는 <a href="../fleet_traffic_management.html">Traffic Manager</a>의 동점 처리와 일관.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2>④ 감시 루프</h2>
+
+      <p>Scheduler는 두 가지 방식으로 동작할 수 있습니다:</p>
+
+      <h3>4.1 Polling (현재 구현)</h3>
+      <pre><span class="comment"># 주기적으로 released 상태 work_order 조회</span>
+<span class="kw">while True</span>:
+    time.sleep(POLL_INTERVAL)  <span class="comment"># 예: 5초</span>
+    released_orders = db.query(WorkOrder).filter_by(
+        work_status=<span class="str">"released"</span>
+    ).all()
+    <span class="kw">if</span> <span class="kw">not</span> released_orders:
+        <span class="kw">continue</span>
+    rankings = calculate_priorities(released_orders)
+    apply_rankings(rankings)
+    promote_to_queue(rankings)</pre>
+
+      <h3>4.2 Event-driven (향후 개선)</h3>
+      <ul>
+        <li>PostgreSQL <code>LISTEN/NOTIFY</code> 또는 Redis pub/sub</li>
+        <li>release 버튼 클릭 시 즉시 이벤트 발행 → Scheduler가 즉시 반응</li>
+        <li>지연 50ms 이하</li>
+      </ul>
+
+      <h3>4.3 Dry-run vs Apply</h3>
+      <table>
+        <thead><tr><th>엔드포인트</th><th>동작</th><th>DB 변경</th></tr></thead>
+        <tbody>
+          <tr><td><code>POST /api/production/schedule/calculate</code></td><td>점수 계산만, 결과 반환</td><td>없음 (미리보기)</td></tr>
+          <tr><td><code>POST /api/production/schedule/start</code></td><td>계산 + lane 큐 삽입</td><td>released → queued</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ Lane 배정 결정</h2>
+
+      <p>Scheduler는 각 work_order가 어느 lane으로 갈지 결정합니다:</p>
+
+      <table>
+        <thead><tr><th>조건</th><th>Lane</th><th>Capacity</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>주조 공정이 필요한 신규 생산</td>
+            <td><code>production</code></td>
+            <td>1 (순차)</td>
+          </tr>
+          <tr>
+            <td>재고에서 바로 출고 (이미 생산된 제품)</td>
+            <td><code>shipment</code></td>
+            <td>N (병렬)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>5.1 Lane 선택 로직</h3>
+      <pre><span class="kw">def</span> decide_lane(work_order) -&gt; str:
+    order = work_order.order_item.customer_order
+
+    <span class="comment"># 출고 전용 (재고 사용)</span>
+    <span class="kw">if</span> order.shipment_from_stock:
+        <span class="kw">return</span> <span class="str">"shipment"</span>
+
+    <span class="comment"># 신규 생산이 필요한 경우</span>
+    <span class="kw">return</span> <span class="str">"production"</span></pre>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ 구현 코드 (schedule.py 발췌)</h2>
+
+      <pre><span class="comment"># backend/app/routes/schedule.py (핵심 로직 요약)</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> Session
+
+router = APIRouter(prefix=<span class="str">"/api/production/schedule"</span>)
+
+WEIGHT = {
+    <span class="str">"due_urgency"</span>: <span class="num">25</span>,
+    <span class="str">"start_ready"</span>: <span class="num">20</span>,
+    <span class="str">"dwell_time"</span>: <span class="num">15</span>,
+    <span class="str">"delay_risk"</span>: <span class="num">15</span>,
+    <span class="str">"customer_importance"</span>: <span class="num">10</span>,
+    <span class="str">"quantity_efficiency"</span>: <span class="num">10</span>,
+    <span class="str">"setup_change"</span>: <span class="num">5</span>,
+}
+
+<span class="kw">def</span> calculate_priority(order, context) -&gt; dict:
+    scores = {}
+
+    <span class="comment"># 1) 납기일 긴급도</span>
+    days_left = (order.confirmed_due_date - datetime.now().date()).days
+    <span class="kw">if</span> days_left &lt;= <span class="num">3</span>: scores[<span class="str">"due_urgency"</span>] = <span class="num">25</span>
+    <span class="kw">elif</span> days_left &lt;= <span class="num">7</span>: scores[<span class="str">"due_urgency"</span>] = <span class="num">20</span>
+    <span class="kw">elif</span> days_left &lt;= <span class="num">14</span>: scores[<span class="str">"due_urgency"</span>] = <span class="num">15</span>
+    <span class="kw">elif</span> days_left &lt;= <span class="num">30</span>: scores[<span class="str">"due_urgency"</span>] = <span class="num">10</span>
+    <span class="kw">else</span>: scores[<span class="str">"due_urgency"</span>] = <span class="num">0</span>
+
+    <span class="comment"># 2) 착수 가능 여부</span>
+    scores[<span class="str">"start_ready"</span>] = <span class="num">20</span> <span class="kw">if</span> check_equipment_ready(context) <span class="kw">else</span> <span class="num">0</span>
+
+    <span class="comment"># 3) 체류 시간</span>
+    dwell_days = (datetime.now() - order.created_at).days
+    scores[<span class="str">"dwell_time"</span>] = min(dwell_days * <span class="num">1.5</span>, <span class="num">15</span>)
+
+    <span class="comment"># 4~7) 기타 요소 ...</span>
+
+    total = sum(scores.values())
+    <span class="kw">return</span> {
+        <span class="str">"order_id"</span>: order.order_id,
+        <span class="str">"total_score"</span>: total,
+        <span class="str">"breakdown"</span>: scores,
+        <span class="str">"recommendation_reason"</span>: build_reason(scores, order),
+    }
+
+@router.post(<span class="str">"/calculate"</span>)
+<span class="kw">def</span> calculate_endpoint(req: CalculateRequest, db: Session = Depends(get_db)):
+    orders = db.query(CustomerOrder).filter(
+        CustomerOrder.order_id.in_(req.order_ids),
+        CustomerOrder.order_status == <span class="str">"approved"</span>
+    ).all()
+
+    context = build_context(db)  <span class="comment"># 설비 상태 등</span>
+    rankings = [calculate_priority(o, context) <span class="kw">for</span> o <span class="kw">in</span> orders]
+    rankings.sort(key=<span class="kw">lambda</span> r: (-r[<span class="str">"total_score"</span>], r[<span class="str">"order_id"</span>]))
+    <span class="kw">return</span> {<span class="str">"ranked"</span>: rankings}</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ NFR</h2>
+      <table>
+        <thead><tr><th>항목</th><th>기준</th></tr></thead>
+        <tbody>
+          <tr><td>100건 계산 시간</td><td>≤ 500ms</td></tr>
+          <tr><td>Polling 주기</td><td>5초 기본, 1~10초 조정 가능</td></tr>
+          <tr><td>수동 변경 이력 보존</td><td>100% (priority_change_logs)</td></tr>
+          <tr><td>동시 release 처리</td><td>DB 트랜잭션으로 직렬화</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="02_order_api_db.html"><strong>02 Order API / DB</strong></a>: released 레코드 조회</li>
+        <li><a href="03_factory_manager_ui.html"><strong>03 Factory Manager UI</strong></a>: calculate 요청 수신</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="05_production_lane_queue.html"><strong>05 Production Lane Queue</strong></a>: 생산 작업 큐 삽입</li>
+        <li><a href="06_shipment_lane_queue.html"><strong>06 Shipment Lane Queue</strong></a>: 출고 작업 큐 삽입</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="03_factory_manager_ui.html">
+          <div class="label">← 이전</div>
+          <div class="name">03. Factory Manager UI</div>
+        </a>
+        <a href="05_production_lane_queue.html">
+          <div class="label">다음 →</div>
+          <div class="name">05. Production Lane Queue</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 04. Work Order Scheduler · 2026-04-08</footer>
+  </div>
+</body>
+</html>

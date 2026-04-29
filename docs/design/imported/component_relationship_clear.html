@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>컴포넌트 관계도 — 시작과 끝이 명확한 단방향 흐름</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2229;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent-2: #f0883e;
+    --ok: #56d364;
+    --ok-dim: #1f4d2b;
+    --warn: #d29922;
+    --ng: #f85149;
+    --ng-dim: #5e2020;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.6;
+    padding: 2rem 1rem 4rem;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+  h1 { color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: .5rem; }
+  h2 { color: var(--accent-2); margin-top: 2.5rem; border-left: 4px solid var(--accent-2); padding-left: .75rem; }
+  code { background: var(--panel); padding: 0.1em 0.35em; border-radius: 4px; color: var(--accent); font-size: 0.9em; font-family: "SF Mono", Menlo, monospace; }
+  .meta {
+    color: var(--text-dim);
+    font-size: 0.9em;
+    background: var(--panel);
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    margin: 1rem 0 2rem;
+  }
+  p { margin: .5rem 0; }
+
+  /* ==========  Legend ========== */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    background: var(--panel-2);
+    padding: 0.85rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .swatch { display: inline-block; width: 22px; height: 4px; border-radius: 2px; }
+  .swatch.dashed { border-top: 3px dashed; height: 0; border-radius: 0; }
+
+  /* ==========  Diagram Container ========== */
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .diagram svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ==========  Principle Box ========== */
+  .principle {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .principle h4 { margin: 0 0 .4rem; color: var(--accent); }
+  .principle ul { margin: .3rem 0; padding-left: 1.2rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: var(--panel-2);
+    font-size: 0.93em;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.8rem;
+    text-align: left;
+  }
+  th { background: var(--panel); color: var(--accent-2); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>컴포넌트 관계도 — 시작과 끝이 명확한 단방향 흐름</h1>
+
+<div class="meta">
+  작성: 2026-04-22 · 기준 코드: <code>backend/management/services/event_bridge.py</code><br>
+  목적: 기존 <code>event_bridge_design.html</code> §3 의 다방향 화살표가 시작·끝을 흐리게 했던 문제 개선.
+  <strong>위(시작) → 아래(끝) 단방향 레이어</strong>로 재구성 — 화살표 교차 없음.
+</div>
+
+<!-- ==================== Legend ==================== -->
+<div class="legend">
+  <div class="legend-item"><span class="swatch" style="background:#56d364"></span>이벤트 발행 (publish)</div>
+  <div class="legend-item"><span class="swatch" style="background:#f0883e"></span>이벤트 라우팅 (on_event → 호출)</div>
+  <div class="legend-item"><span class="swatch" style="background:#f85149"></span>DB write (State Manager 독점)</div>
+  <div class="legend-item"><span class="swatch dashed" style="border-color:#58a6ff"></span>읽기 전용 호출</div>
+  <div class="legend-item"><span class="swatch" style="background:#bc8cff"></span>장비 명령</div>
+</div>
+
+<!-- ==================== MAIN DIAGRAM ==================== -->
+<div class="diagram">
+<svg viewBox="0 0 1000 1400" xmlns="http://www.w3.org/2000/svg" aria-label="컴포넌트 관계도 — 단방향 흐름">
+  <defs>
+    <marker id="a-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#56d364"/>
+    </marker>
+    <marker id="a-orange" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0883e"/>
+    </marker>
+    <marker id="a-red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149"/>
+    </marker>
+    <marker id="a-blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="a-gray" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e"/>
+    </marker>
+  </defs>
+
+  <!-- ============ LAYER 0: 시작 (외부 트리거) ============ -->
+  <g>
+    <rect x="20" y="20" width="960" height="90" rx="10"
+          fill="#1f4d2b" stroke="#56d364" stroke-width="3"/>
+    <text x="500" y="55" text-anchor="middle" fill="#56d364" font-size="20" font-weight="bold">
+      🟢 시작 — 외부 트리거 · 사용자 액션
+    </text>
+    <text x="500" y="85" text-anchor="middle" fill="#c9d1d9" font-size="13">
+      시스템 바깥에서 들어오는 신호. 여기서부터 한 방향으로 흐름이 시작된다.
+    </text>
+  </g>
+
+  <!-- ============ LAYER 1: 입력 채널 ============ -->
+  <g transform="translate(0,140)">
+    <g transform="translate(80,0)">
+      <rect width="240" height="80" rx="8" fill="#0d1117" stroke="#56d364" stroke-width="2" stroke-dasharray="5,3"/>
+      <text x="120" y="32" text-anchor="middle" fill="#56d364" font-weight="bold" font-size="14">관리자 PyQt 버튼</text>
+      <text x="120" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">생산 시작 / 주문 승인</text>
+      <text x="120" y="69" text-anchor="middle" fill="#8b949e" font-size="10">공장 운영자 PC</text>
+    </g>
+    <g transform="translate(380,0)">
+      <rect width="240" height="80" rx="8" fill="#0d1117" stroke="#56d364" stroke-width="2" stroke-dasharray="5,3"/>
+      <text x="120" y="32" text-anchor="middle" fill="#56d364" font-weight="bold" font-size="14">ESP32 GPIO 33</text>
+      <text x="120" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">후처리 하차 완료 버튼</text>
+      <text x="120" y="69" text-anchor="middle" fill="#8b949e" font-size="10">firmware v1.5.1</text>
+    </g>
+    <g transform="translate(680,0)">
+      <rect width="240" height="80" rx="8" fill="#0d1117" stroke="#56d364" stroke-width="2" stroke-dasharray="5,3"/>
+      <text x="120" y="32" text-anchor="middle" fill="#56d364" font-weight="bold" font-size="14">장비 완료 신호</text>
+      <text x="120" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">로봇팔 / AMR / 컨베이어</text>
+      <text x="120" y="69" text-anchor="middle" fill="#8b949e" font-size="10">ROS2 · Serial</text>
+    </g>
+  </g>
+
+  <!-- down arrows 1→2 -->
+  <g stroke="#8b949e" stroke-width="1.5" fill="none" marker-end="url(#a-gray)">
+    <line x1="200" y1="220" x2="200" y2="270"/>
+    <line x1="500" y1="220" x2="500" y2="270"/>
+    <line x1="800" y1="220" x2="800" y2="270"/>
+  </g>
+  <text x="220" y="255" fill="#8b949e" font-size="10">gRPC</text>
+  <text x="520" y="255" fill="#8b949e" font-size="10">Serial → gRPC</text>
+  <text x="820" y="255" fill="#8b949e" font-size="10">ROS2 / gRPC</text>
+
+  <!-- ============ LAYER 2: 서버 진입점 (Publisher) ============ -->
+  <g transform="translate(0,280)">
+    <rect x="20" y="0" width="960" height="130" rx="10"
+          fill="#1f2b3e" stroke="#58a6ff" stroke-width="2" stroke-dasharray="3,3"/>
+    <text x="500" y="22" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="bold">
+      이벤트 발행 주체 (Publisher) — 액션을 실제로 수행한 코드만 발행
+    </text>
+
+    <g transform="translate(80,40)">
+      <rect width="260" height="80" rx="8" fill="#1f2b3e" stroke="#58a6ff" stroke-width="2"/>
+      <text x="130" y="32" text-anchor="middle" fill="#58a6ff" font-weight="bold" font-size="14">API Handler</text>
+      <text x="130" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">gRPC RPC · HTTP endpoint</text>
+      <text x="130" y="69" text-anchor="middle" fill="#8b949e" font-size="10">server.py · routes/</text>
+    </g>
+
+    <g transform="translate(370,40)">
+      <rect width="260" height="80" rx="8" fill="#2d1f3e" stroke="#bc8cff" stroke-width="2"/>
+      <text x="130" y="32" text-anchor="middle" fill="#bc8cff" font-weight="bold" font-size="14">Robot Executor</text>
+      <text x="130" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">장비 제어 + 공정 완료 관측</text>
+      <text x="130" y="69" text-anchor="middle" fill="#f0883e" font-size="10" font-weight="bold">★ 이벤트 발행 주체</text>
+    </g>
+
+    <g transform="translate(660,40)">
+      <rect width="260" height="80" rx="8" fill="#1f2b3e" stroke="#58a6ff" stroke-width="2"/>
+      <text x="130" y="32" text-anchor="middle" fill="#58a6ff" font-weight="bold" font-size="14">Task Manager</text>
+      <text x="130" y="52" text-anchor="middle" fill="#c9d1d9" font-size="11">create_task 완료 후 발행</text>
+      <text x="130" y="69" text-anchor="middle" fill="#8b949e" font-size="10">task_manager.py</text>
+    </g>
+  </g>
+
+  <!-- down arrows 2→3 (publish - green) -->
+  <g stroke="#56d364" stroke-width="2.5" fill="none" marker-end="url(#a-green)">
+    <line x1="210" y1="410" x2="210" y2="480"/>
+    <line x1="500" y1="410" x2="500" y2="480"/>
+    <line x1="790" y1="410" x2="790" y2="480"/>
+  </g>
+  <text x="225" y="450" fill="#56d364" font-size="11" font-weight="bold">publish</text>
+  <text x="515" y="450" fill="#56d364" font-size="11" font-weight="bold">publish</text>
+  <text x="805" y="450" fill="#56d364" font-size="11" font-weight="bold">publish</text>
+
+  <!-- ============ LAYER 3: Event Bridge (중앙 허브) ============ -->
+  <g transform="translate(0,490)">
+    <rect x="250" y="0" width="500" height="110" rx="12"
+          fill="#3b2616" stroke="#f0883e" stroke-width="3"/>
+    <text x="500" y="32" text-anchor="middle" fill="#f0883e" font-weight="bold" font-size="18">
+      🟠 Event Bridge (중앙 허브)
+    </text>
+    <text x="500" y="55" text-anchor="middle" fill="#c9d1d9" font-size="12">
+      on_event() · 구독 테이블 매칭 · 핸들러 호출
+    </text>
+    <text x="500" y="74" text-anchor="middle" fill="#c9d1d9" font-size="11">
+      TaskEventType → 등록된 구독자 리스트 (in-process dispatch)
+    </text>
+    <text x="500" y="93" text-anchor="middle" fill="#8b949e" font-size="10">
+      backend/management/services/event_bridge.py · pure router (DB 접근 0%)
+    </text>
+  </g>
+
+  <!-- down arrows 3→4 (routing - orange) -->
+  <g stroke="#f0883e" stroke-width="2" fill="none" marker-end="url(#a-orange)" stroke-dasharray="6,3">
+    <!-- to TaskManager -->
+    <path d="M 350 600 L 160 680"/>
+    <!-- to TaskAllocator -->
+    <path d="M 450 600 L 400 680"/>
+    <!-- to AMR FSM -->
+    <path d="M 550 600 L 600 680"/>
+    <!-- to WebSocket -->
+    <path d="M 650 600 L 830 680"/>
+  </g>
+  <text x="180" y="648" fill="#f0883e" font-size="11" font-weight="bold">on_task_completed</text>
+  <text x="340" y="648" fill="#f0883e" font-size="11" font-weight="bold">on_task_created</text>
+  <text x="540" y="648" fill="#f0883e" font-size="11" font-weight="bold">on_handoff_ack</text>
+  <text x="770" y="648" fill="#f0883e" font-size="11" font-weight="bold">on_state_changed</text>
+
+  <!-- ============ LAYER 4: 구독자 (Subscribers) ============ -->
+  <g transform="translate(0,690)">
+    <rect x="20" y="0" width="960" height="140" rx="10"
+          fill="#0d1117" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="500" y="22" text-anchor="middle" fill="#8b949e" font-size="12" font-weight="bold">
+      구독자 (Subscriber) — Bridge 가 호출하는 대상
+    </text>
+
+    <g transform="translate(60,40)">
+      <rect width="200" height="80" rx="8" fill="#1f2b3e" stroke="#58a6ff" stroke-width="2"/>
+      <text x="100" y="28" text-anchor="middle" fill="#58a6ff" font-weight="bold" font-size="13">Task Manager</text>
+      <text x="100" y="48" text-anchor="middle" fill="#c9d1d9" font-size="10">다음 공정 create_task</text>
+      <text x="100" y="65" text-anchor="middle" fill="#8b949e" font-size="10">on_task_completed</text>
+    </g>
+
+    <g transform="translate(300,40)">
+      <rect width="200" height="80" rx="8" fill="#1f2b3e" stroke="#58a6ff" stroke-width="2"/>
+      <text x="100" y="28" text-anchor="middle" fill="#58a6ff" font-weight="bold" font-size="13">Task Allocator</text>
+      <text x="100" y="48" text-anchor="middle" fill="#c9d1d9" font-size="10">장비 배정 · assign</text>
+      <text x="100" y="65" text-anchor="middle" fill="#8b949e" font-size="10">on_task_created</text>
+    </g>
+
+    <g transform="translate(540,40)">
+      <rect width="200" height="80" rx="8" fill="#2d1f3e" stroke="#bc8cff" stroke-width="2"/>
+      <text x="100" y="28" text-anchor="middle" fill="#bc8cff" font-weight="bold" font-size="13">AMR FSM</text>
+      <text x="100" y="48" text-anchor="middle" fill="#c9d1d9" font-size="10">confirm_handoff</text>
+      <text x="100" y="65" text-anchor="middle" fill="#8b949e" font-size="10">on_handoff_ack</text>
+    </g>
+
+    <g transform="translate(760,40)">
+      <rect width="200" height="80" rx="8" fill="#1f2b3e" stroke="#79c0ff" stroke-width="2"/>
+      <text x="100" y="28" text-anchor="middle" fill="#79c0ff" font-weight="bold" font-size="13">WebSocket</text>
+      <text x="100" y="48" text-anchor="middle" fill="#c9d1d9" font-size="10">UI 실시간 broadcast</text>
+      <text x="100" y="65" text-anchor="middle" fill="#8b949e" font-size="10">Next.js · PyQt</text>
+    </g>
+  </g>
+
+  <!-- down arrows 4→5 (DB write via State Manager) -->
+  <g stroke="#f85149" stroke-width="2.5" fill="none" marker-end="url(#a-red)">
+    <line x1="160" y1="830" x2="380" y2="920"/>
+    <line x1="400" y1="830" x2="460" y2="920"/>
+    <line x1="640" y1="830" x2="540" y2="920"/>
+    <line x1="860" y1="830" x2="620" y2="920"/>
+  </g>
+  <text x="245" y="880" fill="#f85149" font-size="10" font-weight="bold">create_task</text>
+  <text x="420" y="880" fill="#f85149" font-size="10" font-weight="bold">update_task</text>
+  <text x="530" y="880" fill="#f85149" font-size="10" font-weight="bold">update_amr</text>
+  <text x="705" y="880" fill="#f85149" font-size="10" font-weight="bold">publish WS</text>
+
+  <!-- readonly back from Bridge to StateManager -->
+  <g stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#a-blue)">
+    <path d="M 770 580 Q 870 820 750 910"/>
+  </g>
+  <text x="865" y="700" fill="#58a6ff" font-size="10" transform="rotate(70 865 700)">read-only meta</text>
+
+  <!-- ============ LAYER 5: State Manager ============ -->
+  <g transform="translate(0,930)">
+    <rect x="300" y="0" width="400" height="100" rx="10"
+          fill="#3e1616" stroke="#f85149" stroke-width="3"/>
+    <text x="500" y="32" text-anchor="middle" fill="#f85149" font-weight="bold" font-size="18">
+      🔴 State Manager — SSOT
+    </text>
+    <text x="500" y="55" text-anchor="middle" fill="#c9d1d9" font-size="12">
+      DB CRUD 단독 책임 · get / update / create
+    </text>
+    <text x="500" y="78" text-anchor="middle" fill="#8b949e" font-size="10">
+      state_manager.py · 다른 컴포넌트의 모든 DB 조작이 여기를 경유
+    </text>
+  </g>
+
+  <!-- down arrows 5→6 (SQL write) -->
+  <g stroke="#f85149" stroke-width="2.5" fill="none" marker-end="url(#a-red)">
+    <line x1="500" y1="1030" x2="500" y2="1120"/>
+  </g>
+  <text x="515" y="1080" fill="#f85149" font-size="11" font-weight="bold">SQL INSERT / UPDATE</text>
+
+  <!-- ============ LAYER 6: DB (끝) ============ -->
+  <g transform="translate(0,1130)">
+    <rect x="100" y="0" width="800" height="110" rx="12"
+          fill="#5e2020" stroke="#f85149" stroke-width="3"/>
+    <text x="500" y="32" text-anchor="middle" fill="#f85149" font-weight="bold" font-size="20">
+      🔴 끝 — PostgreSQL 영구 저장
+    </text>
+    <text x="500" y="58" text-anchor="middle" fill="#c9d1d9" font-size="13">
+      smartcast_robotics · 100.107.120.14:5432 (TimescaleDB 16)
+    </text>
+    <text x="500" y="80" text-anchor="middle" fill="#c9d1d9" font-size="11">
+      equip_task_txn · trans_task_txn · equip_stat · trans_stat · handoff_acks · rfid_scan_log · ...
+    </text>
+    <text x="500" y="100" text-anchor="middle" fill="#8b949e" font-size="10">
+      여기 도달하면 상태가 영구 저장되어 "한 사이클 완료". 다음 트리거는 다시 최상단 🟢 시작부터.
+    </text>
+  </g>
+
+  <!-- 장비 명령 (Executor → Hardware) — side branch -->
+  <g transform="translate(760,330)">
+    <rect width="220" height="60" rx="8" fill="#1f2b3e" stroke="#30363d" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="110" y="25" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="bold">(장비 명령 경로)</text>
+    <text x="110" y="45" text-anchor="middle" fill="#8b949e" font-size="10">Executor → Adapter → HW</text>
+  </g>
+</svg>
+</div>
+
+<!-- ==================== 흐름 설명 ==================== -->
+<h2>읽는 순서 (위 → 아래로 한 방향)</h2>
+
+<ol>
+  <li><strong>🟢 시작 (0)</strong> — 외부 트리거: PyQt 버튼·ESP32 버튼·장비 완료 신호 중 하나가 발생</li>
+  <li><strong>입력 채널 (1)</strong> — gRPC / Serial / ROS2 경유로 서버로 들어옴</li>
+  <li><strong>발행 주체 (2)</strong> — API Handler · Robot Executor · Task Manager 중 하나가 액션을 수행한 후 <code>publish()</code></li>
+  <li><strong>🟠 Event Bridge (3)</strong> — 이벤트 타입 매칭 → 등록된 구독자 리스트 조회 → 호출 준비</li>
+  <li><strong>구독자 (4)</strong> — Task Manager / Task Allocator / AMR FSM / WebSocket 등이 <code>on_event()</code> 호출 받음</li>
+  <li><strong>🔴 State Manager (5)</strong> — 모든 DB 조작이 여기 한 곳으로 수렴 (SSOT)</li>
+  <li><strong>🔴 끝 (6) — PostgreSQL</strong> — 상태 영구 저장. 한 사이클 완료.</li>
+</ol>
+
+<p>화살표는 <strong>전부 위에서 아래로만 흐른다</strong>. 읽기 전용 조회(점선 파랑)만 예외적으로 옆으로 뻗는다.</p>
+
+<!-- ==================== 원칙 ==================== -->
+<h2>4가지 원칙 (다이어그램에서 직접 확인 가능)</h2>
+
+<div class="principle">
+  <h4>원칙 1 — Executor 만 이벤트 발행 (Confluence 41648180 고정 규칙)</h4>
+  <ul>
+    <li>중앙 "Robot Executor" 박스에 <strong>★ 이벤트 발행 주체</strong> 표시</li>
+    <li>API Handler · Task Manager 도 각자 액션 완료 후 발행 가능 (액션 수행자 원칙)</li>
+    <li>Event Bridge 자신은 절대 publish 호출하지 않음 (순수 라우터)</li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 2 — Event Bridge 는 수신·라우팅·호출만. SSOT 는 State Manager 단독</h4>
+  <ul>
+    <li>Bridge 박스에서 DB 로 향하는 화살표 없음 (read-only meta 점선만 State Manager 경유)</li>
+    <li>모든 DB write 화살표는 구독자 → State Manager → PostgreSQL</li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 3 — DB 쓰기는 State Manager 만. Bridge 의 DB 직접 접근은 SSOT 원칙 위반</h4>
+  <ul>
+    <li>빨강 화살표는 모두 State Manager 로 수렴</li>
+    <li>State Manager → PostgreSQL 이 유일한 DB write 경로</li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 4 — Bridge 가 필요한 정보는 이벤트 페이로드 또는 State Manager 읽기 전용 래퍼로</h4>
+  <ul>
+    <li>Bridge → State Manager 로 향하는 점선 파란색 화살표가 유일한 조회 경로</li>
+    <li>이조차 읽기 전용. write 는 불가</li>
+  </ul>
+</div>
+
+<!-- ==================== 요약 ==================== -->
+<h2>이전 vs 지금 (무엇이 달라졌나)</h2>
+
+<table>
+  <thead><tr><th>항목</th><th>이전 (event_bridge_design.html §3)</th><th>지금 (본 문서)</th></tr></thead>
+  <tbody>
+    <tr><td>시작 지점</td><td>불분명 — 3개 그룹 안에 묻힘</td><td><strong>🟢 최상단 초록 레이어 명시</strong></td></tr>
+    <tr><td>끝 지점</td><td>불분명 — PostgreSQL 이 하단 구석에 작게</td><td><strong>🔴 최하단 빨강 레이어 명시 (한 사이클 완료)</strong></td></tr>
+    <tr><td>화살표 방향</td><td>상·하·좌·우 혼재 → 교차 다수</td><td>위 → 아래 단방향 (읽기 점선만 예외)</td></tr>
+    <tr><td>발행자 명시</td><td>박스 안 작은 글씨</td><td>★ 마커로 강조</td></tr>
+    <tr><td>레이어 구분</td><td>3 그룹 (수직)</td><td>7 레이어 (수평) · 각 레이어 역할 명시</td></tr>
+    <tr><td>읽기 순서</td><td>임의 (시작점 없음)</td><td>번호 매겨진 6단계 (0 → 6)</td></tr>
+  </tbody>
+</table>
+
+<hr style="border-color:var(--border); margin-top:3rem">
+<p style="color:var(--text-dim); font-size:0.85em; text-align:center">
+  문서 생성: Claude Code · 2026-04-22<br>
+  관련: <code>docs/event_bridge_design.html</code> (조감도) · <code>docs/event_bridge_flows.html</code> (시나리오별 타임라인)<br>
+  참조 Confluence: <a style="color:var(--cyan)" href="https://dayelee313.atlassian.net/wiki/spaces/addinedute/pages/44794063">Event/Bridge v1 (44794063)</a>
+</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Traffic Management — 쉬운 요약</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-dim: #64748b;
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --good: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 13px; line-height: 1.6;
+    }
+    .page {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 18mm 16mm;
+      background: var(--panel);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    header {
+      border-bottom: 3px solid var(--accent);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    header h1 {
+      font-size: 22px;
+      margin: 0 0 4px;
+      color: var(--accent);
+    }
+    header .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    h2 {
+      font-size: 15px;
+      color: var(--accent);
+      margin: 18px 0 8px;
+      padding-left: 10px;
+      border-left: 4px solid var(--accent);
+    }
+    h3 {
+      font-size: 13px;
+      color: var(--accent-2);
+      margin: 12px 0 6px;
+    }
+    p { margin: 6px 0; }
+
+    .hero {
+      background: linear-gradient(135deg, #dbeafe, #ede9fe);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 10px 0 16px;
+      font-size: 13.5px;
+    }
+    .hero strong { color: var(--accent); }
+
+    .specs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .spec-item {
+      background: var(--code-bg);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+      text-align: center;
+    }
+    .spec-item .label {
+      color: var(--text-dim);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .spec-item .value {
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .concept-card {
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      border-top: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .concept-card:nth-child(2) { border-top-color: var(--accent-2); }
+    .concept-card:nth-child(3) { border-top-color: var(--good); }
+    .concept-card h4 {
+      margin: 0 0 6px;
+      font-size: 12.5px;
+      color: var(--text);
+    }
+    .concept-card .emoji {
+      font-size: 18px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .concept-card p {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .flow {
+      background: var(--code-bg);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 10px 0;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11px;
+      color: var(--text);
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .step-list {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      margin: 8px 0;
+    }
+    .step-list li {
+      counter-increment: step;
+      position: relative;
+      padding: 6px 0 6px 32px;
+      font-size: 12px;
+    }
+    .step-list li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 5px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      text-align: center;
+      line-height: 22px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 11.5px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th {
+      background: var(--code-bg);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .box {
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin: 10px 0;
+      font-size: 12px;
+    }
+    .box.info {
+      background: #dbeafe;
+      border-left: 4px solid var(--accent);
+    }
+    .box.good {
+      background: #d1fae5;
+      border-left: 4px solid var(--good);
+    }
+    .box.warn {
+      background: #fef3c7;
+      border-left: 4px solid var(--warn);
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 11.5px;
+      color: var(--accent-2);
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 10px 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 20px;
+      font-size: 10.5px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    @media print {
+      body { background: white; }
+      .page { box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <header>
+      <h1>Fleet Traffic Management — 한눈에 보는 요약</h1>
+      <div class="subtitle">
+        우리 공장 AMR 3대가 서로 부딪히지 않고 움직이는 방법 · 2026-04-08
+      </div>
+    </header>
+
+    <!-- ================ HERO ================ -->
+    <div class="hero">
+      <strong>한 문장 요약</strong>: 공장 맵을 <strong>점(waypoint)과 선(edge)</strong>의 지도로 만들고,
+      로봇은 이동할 선을 <strong>미리 예약</strong>해서 움직이며, 두 로봇이 서로 막히면
+      <strong>우선순위가 낮은 로봇이 뒤로 한 칸 비켜주는</strong> 방식으로 충돌과 교착을 방지합니다.
+    </div>
+
+    <!-- ================ SPECS ================ -->
+    <div class="specs">
+      <div class="spec-item">
+        <div class="label">맵 크기</div>
+        <div class="value">1m × 2m</div>
+      </div>
+      <div class="spec-item">
+        <div class="label">로봇 크기</div>
+        <div class="value">0.12 × 0.12m</div>
+      </div>
+      <div class="spec-item">
+        <div class="label">로봇 대수</div>
+        <div class="value">AMR 3대</div>
+      </div>
+      <div class="spec-item">
+        <div class="label">구동 방식</div>
+        <div class="value">차동 구동</div>
+      </div>
+    </div>
+
+    <!-- ================ 문제 ================ -->
+    <h2>① 해결하려는 문제</h2>
+    <p>공장에 로봇이 여러 대 있으면 자연스럽게 이런 상황이 생깁니다:</p>
+    <ul>
+      <li><strong>경로 충돌</strong> — 두 로봇이 같은 복도를 쓰려고 함</li>
+      <li><strong>교착(Deadlock)</strong> — 두 로봇이 좁은 복도에서 정면으로 마주쳐 둘 다 멈춤</li>
+      <li><strong>비효율</strong> — 한 로봇이 작업 중인데 다른 로봇이 끝없이 기다림</li>
+    </ul>
+    <p>Nav2(로봇 내비게이션 라이브러리)만으로는 로봇 <em>한 대의 이동</em>은 잘 하지만, <strong>여러 로봇이 서로를 알고 조율하는 일</strong>은 못 합니다. 그걸 우리가 추가로 만들어야 합니다.</p>
+
+    <!-- ================ 핵심 3가지 개념 ================ -->
+    <h2>② 핵심 개념 3가지</h2>
+    <div class="concept-grid">
+      <div class="concept-card">
+        <span class="emoji">🗺️</span>
+        <h4>1. Waypoint + Edge 지도</h4>
+        <p>공장을 "주요 지점(waypoint)"과 "그 사이를 잇는 길(edge)"로 간단한 그래프로 표현합니다.
+        예: 용해로 — 교차점 — 검사대</p>
+      </div>
+      <div class="concept-card">
+        <span class="emoji">🔒</span>
+        <h4>2. Edge 예약</h4>
+        <p>로봇이 길을 지나가려면 그 edge를 먼저 "내 것"이라고 예약합니다.
+        다른 로봇이 이미 예약했으면 <strong>다른 길로 돌아갑니다</strong>.</p>
+      </div>
+      <div class="concept-card">
+        <span class="emoji">🤝</span>
+        <h4>3. 우선순위 양보</h4>
+        <p>정말 다른 길이 없어서 두 로봇이 막혔을 때, <strong>우선순위가 낮은 로봇이 뒤로 한 칸 비켜줍니다</strong>.
+        점수가 같으면 나중에 온 쪽이 양보합니다.</p>
+      </div>
+    </div>
+
+    <!-- ================ 지도 예시 ================ -->
+    <h2>③ 우리 공장 지도 예시</h2>
+    <div class="flow">   WP_MELT ─── WP_INT_L ═════════ WP_INT_R ─── WP_INSP
+   (용해로)       (좌측 교차점)  │   │   (우측 교차점)   (검사대)
+                                 │   │
+                                 └───┴── WP_CHARGE (충전소)
+
+   ● 점(waypoint): 로봇이 멈추거나 작업하는 지점
+   ─ 선(edge):     로봇이 이동하는 길. 한 번에 1대만 통과</div>
+
+    <div class="box info">
+      <strong>초보자 팁</strong>:
+      복잡한 수학이나 공간 분할이 필요 없습니다. 그냥 <strong>"중요한 위치 5~10개를 찍고 선으로 연결한 지도"</strong>입니다.
+      지하철 노선도와 똑같은 구조예요.
+    </div>
+
+    <!-- ================ 동작 시나리오 ================ -->
+    <h2>④ 실제 동작 시나리오 — AMR-A와 AMR-B</h2>
+    <p><strong>상황</strong>: AMR-A가 용해로 → 검사대로 이동 중. 반대편에서 AMR-B도 검사대 → 용해로로 이동해야 함.</p>
+
+    <ol class="step-list">
+      <li><strong>AMR-A 출발</strong>: 용해로 → 좌측교차점 → 긴 복도 → 우측교차점 → 검사대. 지나갈 edge들을 하나씩 예약하며 진행.</li>
+      <li><strong>AMR-B가 출발하려 함</strong>: 최단 경로는 AMR-A와 정반대 방향. 긴 복도에서 마주칠 예정.</li>
+      <li><strong>자동 우회</strong>: 시스템이 AMR-A의 예약을 보고, AMR-B에게는 <strong>충전소를 거쳐 가는 우회 경로</strong>를 자동으로 배정. 마주칠 일이 없음.</li>
+      <li><strong>만약 우회로도 없다면</strong>: 둘이 복도에서 만나고 3초 기다려도 못 지나가면 교착으로 판정.</li>
+      <li><strong>우선순위 비교</strong>: AMR-A가 긴급 작업이라 점수가 높음 → AMR-A가 winner, AMR-B가 loser.</li>
+      <li><strong>AMR-B 양보</strong>: 지나온 마지막 waypoint(한 칸 뒤)로 후진하여 비켜줌.</li>
+      <li><strong>AMR-A 통과 후</strong>: AMR-B가 다시 원래 목적지로 출발.</li>
+    </ol>
+
+    <!-- ================ 누가 뭐를 하나 ================ -->
+    <h2>⑤ 누가 무엇을 담당하나</h2>
+    <div class="two-col">
+      <div>
+        <h3>우리가 직접 만드는 것</h3>
+        <table>
+          <tbody>
+            <tr><td><strong>지도 파일</strong></td><td>공장의 waypoint·edge를 GeoJSON으로 작성</td></tr>
+            <tr><td><strong>TrafficManager</strong></td><td>어느 edge를 어느 로봇이 쓰고 있는지 기록</td></tr>
+            <tr><td><strong>교착 감지기</strong></td><td>두 로봇이 서로 막혔는지 확인</td></tr>
+            <tr><td><strong>양보 결정</strong></td><td>누가 물러날지 우선순위로 판정</td></tr>
+            <tr><td><strong>우선순위 점수</strong></td><td>납기·긴급도 등 7요소 가중 계산 (기존 <code>schedule.py</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Nav2가 자동으로 해주는 것</h3>
+        <table>
+          <tbody>
+            <tr><td><strong>경로 탐색</strong></td><td>우리 그래프에서 최단 경로 계산 (<code>nav2_route</code>)</td></tr>
+            <tr><td><strong>예약 반영</strong></td><td>차단된 edge를 피해 자동 재계산</td></tr>
+            <tr><td><strong>실제 주행</strong></td><td>제자리 회전 + 전진으로 waypoint까지 이동</td></tr>
+            <tr><td><strong>장애물 회피</strong></td><td>LiDAR로 예상치 못한 물체 감지 및 정지</td></tr>
+            <tr><td><strong>속도 제한</strong></td><td>edge별 최대 속도 적용</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="box good">
+      <strong>좋은 소식</strong>: Nav2 공식 <code>nav2_route</code> 패키지(Jazzy+)가 그래프 기반 경로 탐색을 네이티브로 지원합니다.
+      우리가 직접 Dijkstra나 재계획 로직을 짤 필요 없이 <strong>"지도 파일"과 "예약 상태만 전달"</strong>하면 됩니다.
+      덕분에 우리 코드는 약 <strong>400줄 정도로 끝</strong>납니다.
+    </div>
+
+    <!-- ================ 핵심 파라미터 ================ -->
+    <h2>⑥ 우리 맵에 맞춘 주요 설정값</h2>
+    <table>
+      <thead>
+        <tr><th>파라미터</th><th>값</th><th>의미</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>교착 감지 대기 시간</td><td>3초</td><td>이 시간 이상 못 움직이면 deadlock으로 판정</td></tr>
+        <tr><td>최대 후진 waypoint 수</td><td>3개</td><td>양보 시 최대 3칸까지만 되돌아감</td></tr>
+        <tr><td>이동 속도</td><td>0.1~0.15 m/s</td><td>작은 로봇의 안전 속도</td></tr>
+        <tr><td>도착 반경</td><td>5cm</td><td>waypoint에 이만큼 가까우면 "도착"으로 판정</td></tr>
+        <tr><td>Tick 주파수</td><td>20 Hz</td><td>상태 갱신 빈도 (초당 20회)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================ 로드맵 ================ -->
+    <h2>⑦ 앞으로의 진행 순서</h2>
+    <ol class="step-list">
+      <li><strong>설치 확인</strong>: ROS 2 Jazzy에 <code>nav2_route</code> 패키지가 설치 가능한지 확인</li>
+      <li><strong>지도 작성</strong>: <code>factory_graph.geojson</code> 파일에 우리 공장 waypoint와 edge 정의</li>
+      <li><strong>TrafficManager 구현</strong>: edge 예약·해제 로직 (약 150줄)</li>
+      <li><strong>Bridge 노드</strong>: 예약 상태를 Nav2에 전달하는 ROS2 노드 (약 50줄)</li>
+      <li><strong>Priority Yield 구현</strong>: 교착 감지와 양보 로직 (약 200줄)</li>
+      <li><strong>통합 테스트</strong>: Gazebo 시뮬레이션 → 실제 AMR 3대 테스트</li>
+    </ol>
+
+    <div class="box warn">
+      <strong>주의 사항</strong>:
+      <ul style="margin:4px 0 0 18px; padding:0;">
+        <li><code>nav2_route</code>는 Jazzy 이후에만 있음 — 이전 버전에서는 source build 필요</li>
+        <li>설치 불가 시 대안: Dijkstra를 직접 구현 (약 80줄 추가)</li>
+        <li>우리 문제 규모(3대 AMR, 1m×2m)라서 복잡한 fleet management(RMF 등)는 <strong>불필요</strong></li>
+      </ul>
+    </div>
+
+    <!-- ================ 용어 ================ -->
+    <h2>⑧ 쉬운 용어 사전</h2>
+    <table>
+      <tbody>
+        <tr><td><strong>AMR</strong></td><td>Autonomous Mobile Robot — 자율주행 이동 로봇 (Pinkypro 같은)</td></tr>
+        <tr><td><strong>Nav2</strong></td><td>ROS 2의 로봇 내비게이션 라이브러리. 한 대 이동을 담당</td></tr>
+        <tr><td><strong>Waypoint</strong></td><td>공장에서 의미 있는 위치 (용해로, 검사대, 충전소 등)</td></tr>
+        <tr><td><strong>Edge</strong></td><td>두 waypoint 사이를 잇는 길 = 로봇의 이동 구간</td></tr>
+        <tr><td><strong>예약(Reservation)</strong></td><td>"이 edge는 지금 내가 쓸 거야" 라고 기록하는 것</td></tr>
+        <tr><td><strong>Deadlock</strong></td><td>두 로봇이 서로의 길을 막아서 둘 다 못 움직이는 상황</td></tr>
+        <tr><td><strong>Yield(양보)</strong></td><td>우선순위 낮은 로봇이 뒤로 물러나 길을 비켜주는 행동</td></tr>
+        <tr><td><strong>FIFO</strong></td><td>First In First Out — 먼저 온 사람이 먼저 처리되는 공정한 규칙</td></tr>
+        <tr><td><strong>GeoJSON</strong></td><td>지도 데이터를 저장하는 표준 텍스트 포맷 (JSON 기반)</td></tr>
+        <tr><td><strong>Dijkstra</strong></td><td>최단 경로를 찾는 유명한 알고리즘. 지하철 앱이 쓰는 것과 같은 원리</td></tr>
+      </tbody>
+    </table>
+
+    <footer>
+      Casting Factory Fleet Traffic — Quickstart Summary · 2026-04-08 ·
+      상세 설계는 <code>fleet_traffic_management.html</code> 참조
+    </footer>
+
+  </div>
+</body>
+</html>

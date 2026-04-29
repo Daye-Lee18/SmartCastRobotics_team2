@@ -1,0 +1,18 @@
+[Unit]
+Description=Casting Factory - Jetson Image Publisher (V6 Image Publishing Service)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jetson
+WorkingDirectory=/home/jetson/casting-image-publisher
+EnvironmentFile=-/home/jetson/casting-image-publisher/env
+ExecStart=/usr/bin/python3 publisher.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

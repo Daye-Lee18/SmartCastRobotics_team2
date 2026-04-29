@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FastDDS peer config for Tailscale network.
+  Multicast 불가 환경에서 DDS peer 직접 연결 (unicast).
+
+  사용법 (양쪽 머신):
+    export FASTRTPS_DEFAULT_PROFILES_FILE=/path/to/fastdds_tailscale.xml
+    ros2 run ...
+
+  Tailscale IP:
+    개발 PC:     100.111.120.54  (addinedu-katana-17)
+    AMR-1:       100.115.21.107  (pinky_0522)
+    AMR-2:       100.100.103.96  (pinky_2ab2)
+    AMR-3:       100.87.221.81   (pinky_1c47)
+    JETCOBOT-1:  100.94.152.67
+    JETCOBOT-2:  100.104.254.55
+-->
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <profiles>
+    <participant profile_name="tailscale_participant" is_default_profile="true">
+      <rtps>
+        <builtin>
+          <metatrafficUnicastLocatorList>
+            <locator>
+              <udpv4>
+                <port>7412</port>
+              </udpv4>
+            </locator>
+          </metatrafficUnicastLocatorList>
+          <initialPeersList>
+            <!-- 개발 PC -->
+            <locator><udpv4><address>100.111.120.54</address><port>7412</port></udpv4></locator>
+            <!-- AMR-1 -->
+            <locator><udpv4><address>100.115.21.107</address><port>7412</port></udpv4></locator>
+            <!-- AMR-2 -->
+            <locator><udpv4><address>100.100.103.96</address><port>7412</port></udpv4></locator>
+            <!-- AMR-3 -->
+            <locator><udpv4><address>100.87.221.81</address><port>7412</port></udpv4></locator>
+            <!-- JETCOBOT-1 -->
+            <locator><udpv4><address>100.94.152.67</address><port>7412</port></udpv4></locator>
+            <!-- JETCOBOT-2 -->
+            <locator><udpv4><address>100.104.254.55</address><port>7412</port></udpv4></locator>
+          </initialPeersList>
+        </builtin>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>

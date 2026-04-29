@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>2026-04-15 · Jetson → Management → AI Server Image Pipeline</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg:#0e1116; --panel:#161b22; --line:#30363d; --ink:#e6edf3; --mute:#8b949e;
+    --accent:#58a6ff; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+    --code:#0d1117; --chip:#1f6feb33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.6 -apple-system,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+  header .crumb{color:var(--mute);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  h1{font:700 26px/1.3 -apple-system,"SF Pro Display","Segoe UI",Inter;margin:4px 0 8px}
+  h2{font:600 18px/1.4 inherit;margin:32px 0 10px;padding-top:12px;border-top:1px dashed var(--line);color:#c9d1d9}
+  h3{font:600 15px/1.4 inherit;margin:18px 0 6px;color:#c9d1d9}
+  p{margin:8px 0}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  code{background:#1f252e;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px}
+  .muted{color:var(--mute)}
+  .chip{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--chip);color:#79c0ff;font-size:11.5px;margin-right:4px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#171d25;font-weight:600}
+  tr:nth-child(even) td{background:#12161d}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:12px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .card h4{margin:0 0 6px;font-size:13.5px;color:#c9d1d9}
+  .kvs{list-style:none;padding:0;margin:0;font-size:13px}
+  .kvs li{padding:3px 0;border-bottom:1px dotted var(--line)}
+  .kvs li:last-child{border:none}
+  .kvs b{color:#c9d1d9;margin-right:6px;font-weight:600}
+  .pill{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--mute);margin-right:4px}
+  .ascii{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;white-space:pre;overflow-x:auto;color:#c9d1d9}
+  .note{background:#112538;border-left:3px solid var(--accent);padding:10px 14px;border-radius:4px;margin:10px 0}
+  .warn-box{background:#2a2010;border-left:3px solid var(--warn);padding:10px 14px;border-radius:4px;margin:10px 0}
+  footer{margin-top:48px;padding-top:12px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="crumb">Casting Factory · Worklog</div>
+  <h1>2026-04-15 · Jetson → Management → AI Server 이미지 파이프라인 <span class="chip">E2E PASS</span></h1>
+  <p class="muted">검사 카메라 이미지를 AI 학습 데이터셋으로 자동 축적하는 실시간 파이프라인을 구축·검증했다. Logitech C920 실카메라 + Tailscale 3-host 구성에서 End-to-End 동작을 확인했다.</p>
+  <p><span class="pill">7 commits</span><span class="pill">14 신규 파일</span><span class="pill">Jetson 실배포</span><span class="pill">AI SSH 업로드</span></p>
+</header>
+
+<h2>1. 목표</h2>
+<p>V6 아키텍처의 <b>AI Server</b> 와 <b>Image Publishing Service</b> 를 실가동 수준으로 연결한다. 공정의 <b>IP(검사) 단계 진입</b> 이벤트를 트리거로 Jetson 최신 프레임을 원격 AI Server 에 자동 수집한다.</p>
+
+<h2>2. 최종 플로우</h2>
+<div class="ascii">
+[ Jetson Orin NX 100.77.62.67 ]                [ Mgmt Server 100.77.239.25 ]                [ AI Server 100.66.177.119 ]
+ Logitech C920 /dev/video0                        gRPC :50051                                    team2@
+ 1280x720 JPEG @ 2Hz                                  │                                            │
+       │                                              │                                            │
+       ▼                                              ▼                                            ▼
+ gRPC client streaming ──▶ image_sink (latest) ──▶ execution_monitor (IP 전이 감지)                │
+                                                       │                                            │
+                                                       ▼                                            │
+                                              image_forwarder.snapshot()                            │
+                                              /tmp/casting-image-spool/*.jpg                        │
+                                                       │                                            │
+                                                       ▼  batch flush 10s                           │
+                                              AIUploader.upload_image() ──── SSH/SCP ──────────────▶ /home/team2/datasets/
+                                                                                                     inspection/CAM-INSP-01/
+                                                                                                     2026-04-15/*.jpg
+</div>
+
+<h2>3. 오늘의 설계 결정</h2>
+<table>
+  <thead><tr><th>#</th><th>쟁점</th><th>선택</th><th>근거</th></tr></thead>
+  <tbody>
+    <tr><td>Q1</td><td>캡처 트리거</td><td>이벤트 기반 — IP 전이 시</td><td>학습 라벨링 정확도, 불필요 업로드 제거</td></tr>
+    <tr><td>Q2</td><td>업로드 선별</td><td>전량 전송</td><td>초기 데이터셋 구축 단계</td></tr>
+    <tr><td>Q3</td><td>전송 타이밍</td><td>배치 (10~30s)</td><td>네트워크 효율 + 장애 복원 (스풀 보존)</td></tr>
+    <tr><td>보안</td><td>비밀번호 관리</td><td>.env.local 평문 (개발)</td><td>프로덕션 배포 직전에만 SSH 키/Vault 전환</td></tr>
+  </tbody>
+</table>
+
+<h2>4. 커밋 타임라인</h2>
+<table>
+  <thead><tr><th>시각</th><th>Commit</th><th>제목</th></tr></thead>
+  <tbody>
+    <tr><td>오전</td><td><code>9629612</code></td><td>Confluence 팩트 자동 동기화</td></tr>
+    <tr><td>오전</td><td><code>39cfb80</code></td><td>실제 주물공장 시나리오 mock 데이터 확장 (UI 9종 기준)</td></tr>
+    <tr><td>오전</td><td><code>5732579</code></td><td>items.mfg_at 을 현재 시각 근처로 — SLA 폭주 사고 정정</td></tr>
+    <tr><td>오전</td><td><code>c72af97</code></td><td>AI Server SSH 업로드 클라이언트 (Phase 1)</td></tr>
+    <tr><td>오후</td><td><code>8b03177</code></td><td>Jetson Orin NX SSH env 슬롯 추가</td></tr>
+    <tr><td>오후</td><td><code>fd40071</code></td><td>Jetson → Server → AI Server 학습 데이터 플로우</td></tr>
+    <tr><td>오후</td><td><code>b30a517</code></td><td>Jetson 실배포 완료 + snapshot dedup + proto 호환</td></tr>
+  </tbody>
+</table>
+
+<h2>5. 신규·수정 파일</h2>
+<div class="grid">
+  <div class="card">
+    <h4>Jetson 측 (신규)</h4>
+    <ul class="kvs">
+      <li><b>publisher.py:</b> OpenCV 캡처 + JPEG + gRPC stream</li>
+      <li><b>deploy.py:</b> paramiko 기반 SFTP 배포 (sshpass 불필요)</li>
+      <li><b>systemd unit:</b> casting-image-publisher.service</li>
+      <li><b>env.example:</b> GRPC 호스트/카메라 설정 템플릿</li>
+      <li><b>generated/:</b> grpcio-tools 1.59.3 산출물</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Server 측 (신규)</h4>
+    <ul class="kvs">
+      <li><b>services/ai_client.py:</b> AIUploader (paramiko lazy)</li>
+      <li><b>services/image_forwarder.py:</b> 스풀 + 배치 업로더</li>
+      <li><b>tests/test_ai_client.py:</b> 6 tests</li>
+      <li><b>tests/test_image_forwarder.py:</b> 8 tests</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Server 측 (수정)</h4>
+    <ul class="kvs">
+      <li><b>server.py:</b> <code>_build_image_forwarder()</code> wiring</li>
+      <li><b>execution_monitor.py:</b> IP 진입 훅 + (item,stage) dedup (TTL 60s)</li>
+      <li><b>README:</b> AI / Jetson env 변수 표</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>문서</h4>
+    <ul class="kvs">
+      <li><b>docs/e2e_jetson_image_flow.md:</b> 검증 절차</li>
+      <li><b>scripts/seed_realistic.sql:</b> mfg_at 안전 범위(±30s) 강제</li>
+    </ul>
+  </div>
+</div>
+
+<h2>6. 실배포 & E2E 검증</h2>
+<h3>환경</h3>
+<table>
+  <thead><tr><th>호스트</th><th>역할</th><th>스펙</th></tr></thead>
+  <tbody>
+    <tr><td>100.77.62.67 (jetson)</td><td>Image Publisher</td><td>Jetson Orin NX 16GB · JetPack R35.5 · Python 3.8 · Logitech C920</td></tr>
+    <tr><td>100.77.239.25 (Mac)</td><td>Management Server</td><td>macOS Apple Silicon · Python 3.12 · gRPC :50051</td></tr>
+    <tr><td>100.66.177.119 (team2)</td><td>AI Server</td><td>Tailscale · team2 계정 · /home/team2/datasets/inspection/</td></tr>
+  </tbody>
+</table>
+
+<h3>E2E 타임라인</h3>
+<pre>13:24:52.232  snapshot ok  item156 IP seq103 (84,454 B)
+13:24:56.564  AI upload ok → CAM-INSP-01/2026-04-15/...seq103.jpg
+13:24:56.906  flush ok: 2 uploaded, spool 비움</pre>
+
+<div class="note">
+<b>결과:</b> 로컬 Mac 서버 기동 → Jetson systemd 서비스 시작 → DB items PP→IP 전이 1회 → 22초 내 AI Server 디스크에 JPEG 도착 확인.
+</div>
+
+<h2>7. 해결한 이슈</h2>
+<table>
+  <thead><tr><th>증상</th><th>원인</th><th>조치</th></tr></thead>
+  <tbody>
+    <tr><td>PyQt CPU 98% 스피너</td><td>seed mfg_at 48h 과거 → SLA 전량 초과 → alerts 660건 폭주</td><td>mfg_at 현재 시각 ±30s 로 수정, feedback_seed_mfg_at.md 기록</td></tr>
+    <tr><td>Jetson systemd 기동 실패 (ImportError)</td><td>pb2 gencode 6.31 / runtime 4.25 불일치</td><td>protobuf 5.29 업그레이드 + grpcio-tools 1.59.3 으로 재생성</td></tr>
+    <tr><td>grpcio&gt;=1.69 요구 에러</td><td>최신 grpcio-tools 산출물이 런타임 버전 검사</td><td>grpcio-tools <code>1.59.3</code> 고정 재생성으로 해결</td></tr>
+    <tr><td>snapshot 중복 2건</td><td>bg_loop + stream() 두 경로 동시 감지</td><td>(item_id,stage) lock+TTL 60s dedup 도입</td></tr>
+    <tr><td>sshpass 미설치</td><td>homebrew tap 제거됨</td><td>paramiko 기반 Python <code>deploy.py</code> 로 대체</td></tr>
+  </tbody>
+</table>
+
+<h2>8. 운영 환경변수 요약</h2>
+<pre># AI Server (SSH 업로드)
+MGMT_AI_HOST=100.66.177.119
+MGMT_AI_USER=team2
+MGMT_AI_PASS=*****          # .env.local, .gitignore 보호
+MGMT_AI_REMOTE_DIR=/home/team2/datasets/inspection
+
+# Jetson (배포/진단 용)
+MGMT_JETSON_HOST=100.77.62.67
+MGMT_JETSON_USER=jetson
+MGMT_JETSON_PASS=*****
+
+# 이미지 스풀 / 포워더
+MGMT_IMAGE_SPOOL_DIR=/tmp/casting-image-spool
+MGMT_IMAGE_BATCH_SEC=30
+MGMT_IMAGE_BATCH_MAX=50
+MGMT_IMAGE_SPOOL_MAX_FILES=5000
+MGMT_IP_CAMERA_ID=CAM-INSP-01</pre>
+
+<h2>9. 향후 계획</h2>
+<div class="warn-box">
+<b>HW MQTT 체인 (대기 상태)</b><br>
+Management Service → HW Control Service(Conveyor ESP32) → Image Publishing Service(Jetson) 를 MQTT 로 엮는 안은 <b>아직 확정되지 않아 보류</b>. 현재 Jetson 은 gRPC client streaming 으로만 연결되어 있으며, 사용자가 명시적으로 확정하기 전까지 설계·코드 변경을 진행하지 않는다.
+</div>
+
+<h3>다음 작업 후보</h3>
+<ul>
+  <li><b>Phase 2 AI 추론 gRPC</b>: AI Server 쪽 엔드포인트 확정 후 별도 클라이언트 추가</li>
+  <li><b>AI Server 학습 파이프라인</b>: 수집된 JPEG 데이터셋 기반 초기 모델 학습</li>
+  <li><b>mTLS 전역 활성</b>: Jetson/PyQt/AI 전 구간 CA 배포</li>
+  <li><b>SSH 키 일괄 전환</b>: 프로덕션 배포 직전 모든 서버 접속</li>
+</ul>
+
+<h2>10. 메모리 갱신</h2>
+<ul>
+  <li><code>project_ai_server.md</code> — Phase 1 완료, Phase 2 대기</li>
+  <li><code>project_jetson_pipeline.md</code> — E2E 검증 완료, grpcio-tools 1.59 고정</li>
+  <li><code>feedback_seed_mfg_at.md</code> — SLA 폭주 사고 기록 + 예방 규칙</li>
+  <li><code>feedback_dev_plaintext_creds.md</code> — 개발 평문 비밀번호 정책</li>
+  <li><code>project_mqtt_hw_chain.md</code> — HW MQTT 체인 보류 상태 기록</li>
+</ul>
+
+<footer>
+생성: 2026-04-15 · 범위 commits 9629612 → b30a517 · 작업자: ibkim · Claude Code 지원
+</footer>
+</div>
+</body>
+</html>

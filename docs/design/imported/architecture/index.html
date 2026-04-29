@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casting Factory Architecture — 전체 컴포넌트 인덱스</title>
+  <style>
+    :root {
+      --bg:#0b1020; --panel:#121933; --panel-lt:#1a2344; --border:#2a365c;
+      --text:#e6ecff; --text-dim:#9aa6c7;
+      --accent:#60a5fa; --accent-2:#a855f7;
+      --good:#34d399; --warn:#fbbf24; --danger:#f87171;
+      --code-bg:#0d1429;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+      font-size:14px;line-height:1.65}
+    .wrap{max-width:1200px;margin:0 auto;padding:40px 28px 80px}
+    header{border-bottom:2px solid var(--border);padding-bottom:22px;margin-bottom:30px}
+    header h1{font-size:28px;margin:0 0 6px;
+      background:linear-gradient(135deg,#60a5fa,#a855f7);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    header .subtitle{font-size:13px;color:var(--text-dim)}
+    section{background:var(--panel);border:1px solid var(--border);
+      border-radius:12px;padding:26px 28px;margin-bottom:24px}
+    section h2{font-size:19px;margin:0 0 14px;padding-bottom:10px;
+      border-bottom:1px solid var(--border);color:var(--accent)}
+    section h3{font-size:15px;margin:18px 0 8px;color:var(--accent-2)}
+    .ascii{background:var(--code-bg);border:1px solid var(--border);
+      border-radius:8px;padding:18px;font-family:"SF Mono",Menlo,monospace;
+      font-size:12px;color:var(--text-dim);white-space:pre;
+      overflow-x:auto;line-height:1.5}
+    .component-grid{display:grid;grid-template-columns:repeat(3,1fr);
+      gap:14px;margin:14px 0}
+    .component-card{background:var(--panel-lt);border:1.5px solid var(--border);
+      border-radius:10px;padding:16px 18px;text-decoration:none;
+      color:var(--text);transition:all 0.2s;display:block}
+    .component-card:hover{border-color:var(--accent);
+      transform:translateY(-2px);
+      box-shadow:0 4px 16px rgba(96,165,250,0.15)}
+    .component-card .num{font-size:11px;color:var(--accent);
+      font-weight:700;letter-spacing:0.05em}
+    .component-card .title{font-size:14px;font-weight:600;margin:4px 0 6px}
+    .component-card .desc{font-size:11.5px;color:var(--text-dim);line-height:1.5}
+    .component-card .layer{display:inline-block;padding:2px 8px;
+      border-radius:10px;font-size:10px;margin-top:8px;font-weight:600}
+    .layer.ui{background:#1e3a8a;color:#bfdbfe}
+    .layer.api{background:#831843;color:#fbcfe8}
+    .layer.planning{background:#78350f;color:#fde68a}
+    .layer.queue{background:#134e4a;color:#99f6e4}
+    .layer.workflow{background:#581c87;color:#e9d5ff}
+    .layer.allocation{background:#14532d;color:#bbf7d0}
+    .layer.resource{background:#7c2d12;color:#fed7aa}
+    .layer.exec{background:#1e40af;color:#dbeafe}
+    .layer.monitor{background:#9d174d;color:#fce7f3}
+    table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px}
+    th,td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+    th{background:var(--panel-lt);color:var(--accent);font-weight:600}
+    code{font-family:"SF Mono",Menlo,monospace;background:var(--code-bg);
+      color:#a3e4ff;padding:1.5px 6px;border-radius:4px;font-size:12.5px}
+    .note{padding:12px 16px;border-radius:6px;margin:14px 0;font-size:12.5px}
+    .note.info{background:rgba(96,165,250,0.08);border-left:3px solid var(--accent)}
+    .note.good{background:rgba(52,211,153,0.08);border-left:3px solid var(--good)}
+    footer{text-align:center;color:var(--text-dim);font-size:11.5px;
+      margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}
+    ul{padding-left:22px}
+    li{margin:4px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>Casting Factory Architecture — 전체 컴포넌트 인덱스</h1>
+      <div class="subtitle">
+        주문 접수부터 로봇 실행까지 전 계층 컴포넌트 · 13개 문서 집합 · 2026-04-08
+      </div>
+    </header>
+
+    <section>
+      <h2>① 전체 데이터 플로우</h2>
+      <p>고객 주문이 들어와 로봇이 실제로 작업을 수행하기까지의 전 계층 데이터 흐름:</p>
+
+      <div class="ascii">[사무실 UI]                                        [공장 관리자 UI]
+ ① 고객 주문 접수                                     ③ 승인된 work_order 조회
+ ② 검토/승인                                           생산 시작 버튼
+      │                                                      │
+      ▼                                                      │
+┌─────────────────────────────────────────────┐              │
+│  [Order API / DB] ② work_order 상태 관리    │◄─── release ─┘
+│  approved / released / queued / running      │
+└─────────────────┬───────────────────────────┘
+                  │
+                  ▼
+         [Work Order Scheduler] ④
+         - approved + released 감시
+         - 우선순위 계산 (7요소 100점)
+         - lane별 active 결정
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+  [생산 Lane Queue]    [출고 Lane Queue]
+  ⑤ capacity=1         ⑥ capacity=N (병렬)
+        │                   │
+        └───── active ──────┘
+                  │
+                  ▼
+         [Workflow / Task Manager] ⑦
+         work_order → task 분해 (순차/병렬/선행조건)
+                  │
+                  ▼
+            [Ready Task Pool] ⑧
+                  │
+                  ▼
+         [Global Task Allocator] ⑨
+         로봇/설비 배정 (거리·우선순위·배터리·capability)
+                  │
+        ┌─────────┴─────────┐
+        ▼                   ▼
+[Resource Reservation    [Traffic Manager]
+ Manager] ⑩               (별도 문서, 완료)
+ station/buffer/dock     AMR 경로 충돌 방지
+        └─────────┬─────────┘
+                  ▼
+         [Robot / Cell Executors] ⑪
+         AMR · Manipulator · Station PLC
+                  │
+                  ▼
+         [Execution Monitor /
+          Exception Handler] ⑫
+         완료/실패/재시도/재할당
+         → 상태 DB 반영 → UI 갱신</div>
+    </section>
+
+    <section>
+      <h2>② 컴포넌트 카드 (13개)</h2>
+      <p>각 카드를 클릭하면 해당 컴포넌트의 상세 설계 문서로 이동합니다.</p>
+
+      <h3>Presentation Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="01_office_ui.html">
+          <div class="num">01</div>
+          <div class="title">Office UI</div>
+          <div class="desc">고객 주문 접수 · 검토 · 승인. Next.js + React 기반 5단계 발주 폼</div>
+          <div class="layer ui">UI</div>
+        </a>
+        <a class="component-card" href="03_factory_manager_ui.html">
+          <div class="num">03</div>
+          <div class="title">Factory Manager UI</div>
+          <div class="desc">공장 현장 관리자 대시보드. 승인된 work_order 조회, 생산 개시</div>
+          <div class="layer ui">UI</div>
+        </a>
+      </div>
+
+      <h3>API / Persistence Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="02_order_api_db.html">
+          <div class="num">02</div>
+          <div class="title">Order API / DB</div>
+          <div class="desc">FastAPI + PostgreSQL 16. work_order 상태 머신, 17개 테이블</div>
+          <div class="layer api">API</div>
+        </a>
+      </div>
+
+      <h3>Planning Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="04_work_order_scheduler.html">
+          <div class="num">04</div>
+          <div class="title">Work Order Scheduler</div>
+          <div class="desc">approved+released 감시, 7요소 100점 우선순위, lane별 active 결정</div>
+          <div class="layer planning">Planning</div>
+        </a>
+      </div>
+
+      <h3>Queue Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="05_production_lane_queue.html">
+          <div class="num">05</div>
+          <div class="title">Production Lane Queue</div>
+          <div class="desc">capacity=1 순차 처리. 우선순위 동일 시 FIFO</div>
+          <div class="layer queue">Queue</div>
+        </a>
+        <a class="component-card" href="06_shipment_lane_queue.html">
+          <div class="num">06</div>
+          <div class="title">Shipment Lane Queue</div>
+          <div class="desc">capacity=N 병렬 처리. AMR 동시 출고 가능</div>
+          <div class="layer queue">Queue</div>
+        </a>
+      </div>
+
+      <h3>Workflow Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="07_workflow_task_manager.html">
+          <div class="num">07</div>
+          <div class="title">Workflow / Task Manager</div>
+          <div class="desc">work_order를 task DAG로 분해, 순차/병렬/선행조건 관리</div>
+          <div class="layer workflow">Workflow</div>
+        </a>
+        <a class="component-card" href="08_ready_task_pool.html">
+          <div class="num">08</div>
+          <div class="title">Ready Task Pool</div>
+          <div class="desc">실행 가능(dependency 해결) task 집합. Allocator 소비 대상</div>
+          <div class="layer workflow">Workflow</div>
+        </a>
+      </div>
+
+      <h3>Allocation / Resource Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="09_global_task_allocator.html">
+          <div class="num">09</div>
+          <div class="title">Global Task Allocator</div>
+          <div class="desc">로봇/설비 배정 엔진. 거리·우선순위·배터리·capability 고려</div>
+          <div class="layer allocation">Alloc</div>
+        </a>
+        <a class="component-card" href="10_resource_reservation_manager.html">
+          <div class="num">10</div>
+          <div class="title">Resource Reservation Manager</div>
+          <div class="desc">station/buffer/dock 점유 관리. 공유 자원 충돌 방지</div>
+          <div class="layer resource">Resource</div>
+        </a>
+        <a class="component-card" href="../fleet_traffic_management.html">
+          <div class="num">—</div>
+          <div class="title">Traffic Manager</div>
+          <div class="desc">AMR 경로 충돌 방지. Zone Reservation + Yield (완료 문서)</div>
+          <div class="layer resource">Resource</div>
+        </a>
+      </div>
+
+      <h3>Execution / Monitoring Layer</h3>
+      <div class="component-grid">
+        <a class="component-card" href="11_robot_cell_executors.html">
+          <div class="num">11</div>
+          <div class="title">Robot / Cell Executors</div>
+          <div class="desc">AMR, Manipulator, Station PLC/설비 실행 레이어</div>
+          <div class="layer exec">Exec</div>
+        </a>
+        <a class="component-card" href="12_execution_monitor.html">
+          <div class="num">12</div>
+          <div class="title">Execution Monitor / Exception Handler</div>
+          <div class="desc">완료/실패/재시도/재할당, 상태 DB 반영, UI 갱신</div>
+          <div class="layer monitor">Monitor</div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <h2>③ 계층별 책임 요약</h2>
+      <table>
+        <thead>
+          <tr><th>계층</th><th>컴포넌트</th><th>핵심 책임</th><th>주요 출력</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowspan="2"><strong>Presentation</strong></td>
+            <td>Office UI</td>
+            <td>고객 주문 접수, 사무실 승인 워크플로우</td>
+            <td>POST /api/orders</td>
+          </tr>
+          <tr>
+            <td>Factory Manager UI</td>
+            <td>현장 관리자 대시보드, 생산 개시 트리거</td>
+            <td>PATCH release</td>
+          </tr>
+          <tr>
+            <td><strong>API/DB</strong></td>
+            <td>Order API / DB</td>
+            <td>상태 머신 영속화, REST API</td>
+            <td>work_order CRUD</td>
+          </tr>
+          <tr>
+            <td><strong>Planning</strong></td>
+            <td>Work Order Scheduler</td>
+            <td>우선순위 계산, lane 배정 결정</td>
+            <td>lane별 active order</td>
+          </tr>
+          <tr>
+            <td rowspan="2"><strong>Queue</strong></td>
+            <td>Production Lane Queue</td>
+            <td>생산 1개씩 순차 진행</td>
+            <td>next production order</td>
+          </tr>
+          <tr>
+            <td>Shipment Lane Queue</td>
+            <td>출고 N개 병렬 진행</td>
+            <td>active shipments</td>
+          </tr>
+          <tr>
+            <td rowspan="2"><strong>Workflow</strong></td>
+            <td>Workflow / Task Manager</td>
+            <td>order → task DAG, 선행조건 해결</td>
+            <td>task 생성/상태전이</td>
+          </tr>
+          <tr>
+            <td>Ready Task Pool</td>
+            <td>실행 가능 task 집합 관리</td>
+            <td>pickable tasks</td>
+          </tr>
+          <tr>
+            <td><strong>Allocation</strong></td>
+            <td>Global Task Allocator</td>
+            <td>task ↔ 로봇/설비 매칭</td>
+            <td>task assignment</td>
+          </tr>
+          <tr>
+            <td rowspan="2"><strong>Resource</strong></td>
+            <td>Resource Reservation Manager</td>
+            <td>station/buffer/dock 점유</td>
+            <td>reservation grant/deny</td>
+          </tr>
+          <tr>
+            <td>Traffic Manager</td>
+            <td>AMR 경로 충돌 방지</td>
+            <td>zone reservation</td>
+          </tr>
+          <tr>
+            <td><strong>Execution</strong></td>
+            <td>Robot / Cell Executors</td>
+            <td>실제 명령 송출 (ROS2 action, MQTT)</td>
+            <td>execution result</td>
+          </tr>
+          <tr>
+            <td><strong>Monitoring</strong></td>
+            <td>Execution Monitor</td>
+            <td>결과 수집, 예외 처리, 재시도</td>
+            <td>DB 갱신, UI 알림</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>④ 읽는 순서 권장</h2>
+      <p>처음 이 아키텍처를 학습하는 경우:</p>
+      <ol>
+        <li><strong>02 Order API / DB</strong> — 전체 상태 모델 이해의 출발점</li>
+        <li><strong>01 Office UI</strong> + <strong>03 Factory Manager UI</strong> — 사람이 보는 면</li>
+        <li><strong>04 Work Order Scheduler</strong> — 어떤 order가 언제 실행되는지 결정</li>
+        <li><strong>05, 06 Lane Queues</strong> — 왜 lane이 나뉘는지 이해</li>
+        <li><strong>07 Workflow / Task Manager</strong> — 고수준 order가 어떻게 세부 task로 쪼개지는지</li>
+        <li><strong>08 Ready Task Pool</strong> — dependency 해결과 실행 대기열</li>
+        <li><strong>09 Global Task Allocator</strong> — task ↔ 로봇 매칭 의사결정</li>
+        <li><strong>10 Resource Reservation</strong> + <strong>Traffic Manager</strong> — 물리적 충돌 방지</li>
+        <li><strong>11 Robot / Cell Executors</strong> — 실제 장비 제어</li>
+        <li><strong>12 Execution Monitor</strong> — 결과 루프 닫기</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>⑤ 문서 작성 원칙</h2>
+      <ul>
+        <li><strong>일관된 다크 테마</strong>: 모든 문서가 동일 CSS 팔레트 사용</li>
+        <li><strong>계층 배지</strong>: 각 컴포넌트의 계층을 색상으로 구분</li>
+        <li><strong>상호 링크</strong>: 각 문서 끝에 상하류 컴포넌트로의 "다음 문서" 링크</li>
+        <li><strong>코드 스케치 포함</strong>: Python/TypeScript 실행 가능 형태의 예시</li>
+        <li><strong>NFR 수치 명시</strong>: 응답 시간, 처리량 등 정량 기준</li>
+        <li><strong>기존 코드베이스 참조</strong>: <code>backend/app/routes/schedule.py</code> 등 실제 파일과 연결</li>
+      </ul>
+
+      <div class="note good">
+        <strong>이미 완료된 문서</strong>: <a href="../fleet_traffic_management.html" style="color:var(--good);">fleet_traffic_management.html</a> (Traffic Manager, v1.1)와
+        <a href="../fleet_traffic_summary.html" style="color:var(--good);">fleet_traffic_summary.html</a> (초보자 요약본)은 별도로 이미 작성됨.
+      </div>
+    </section>
+
+    <footer>
+      Casting Factory Architecture Index · 2026-04-08 ·
+      <code>docs/architecture/index.html</code>
+    </footer>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>2026-04-15 · Stage B · 카메라 Server Streaming</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--line:#30363d;--ink:#e6edf3;--mute:#8b949e;
+        --accent:#58a6ff;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--purple:#d2a8ff;--code:#0d1117;--chip:#1f6feb33}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.65 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 24px 96px}
+  header{border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
+  .crumb{color:var(--mute);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  h1{font:700 26px/1.3 inherit;margin:6px 0 8px}
+  h2{font:600 18px/1.4 inherit;margin:32px 0 10px;padding-top:12px;border-top:1px dashed var(--line);color:#c9d1d9}
+  h3{font:600 15px/1.4 inherit;margin:18px 0 6px;color:#c9d1d9}
+  code,pre{font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace}
+  code{background:#1f252e;padding:1px 6px;border-radius:4px;font-size:12.5px}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:12.5px}
+  .muted{color:var(--mute)}
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;background:var(--chip);color:#79c0ff;font-size:11.5px;margin-right:4px}
+  .chip.ok{background:#1f6b2d33;color:#7ee787}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .accent{color:var(--accent)}
+  table{border-collapse:collapse;margin:10px 0;width:100%;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#171d25;font-weight:600}
+  tr:nth-child(even) td{background:#12161d}
+  .ascii{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:12px;font-size:12px;white-space:pre;overflow-x:auto;color:#c9d1d9}
+  .note{background:#112538;border-left:3px solid var(--accent);padding:10px 14px;border-radius:4px;margin:10px 0}
+  footer{margin-top:48px;padding-top:12px;border-top:1px solid var(--line);color:var(--mute);font-size:12px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="crumb">Casting Factory · Worklog</div>
+  <h1>2026-04-15 · Stage B · 카메라 Server Streaming <span class="chip ok">측정 PASS</span></h1>
+  <p class="muted">Stage A 의 1Hz 폴링을 gRPC server streaming 으로 대체. image_sink 에 <code>threading.Condition</code> 기반 pub/sub 을 도입해 Jetson 이 프레임을 push 하는 즉시 PyQt 에 전달한다. 첫 프레임 지연이 폴링 최대 1000 ms 에서 <b>2 ms</b> 로 감소했다.</p>
+  <p><span class="chip">gRPC server-streaming RPC</span><span class="chip">condvar pub/sub</span><span class="chip">QThread worker</span><span class="chip">자동 재연결</span></p>
+</header>
+
+<h2>1. 변경 요약</h2>
+<table>
+  <thead><tr><th>계층</th><th>핵심 변경</th></tr></thead>
+  <tbody>
+    <tr><td>proto</td><td><code>WatchCameraFrames(WatchFramesRequest)</code> → <code>stream LatestFrameResponse</code> 추가</td></tr>
+    <tr><td>image_sink</td><td><code>threading.Condition</code> 으로 전환. <code>push()</code> 내 <code>notify_all()</code>, 신규 <code>wait_new(cam, after_seq, timeout)</code></td></tr>
+    <tr><td>server.py</td><td><code>WatchCameraFrames</code> servicer — 루프에서 <code>wait_new</code> → yield. ThreadPool 워커 10 → 32</td></tr>
+    <tr><td>PyQt</td><td>신규 <code>workers/camera_frame_worker.py</code> (QThread). <code>quality.py</code> QTimer 제거 후 signal 기반 전환. 자동 재연결 3s backoff</td></tr>
+  </tbody>
+</table>
+
+<h2>2. 데이터 플로우</h2>
+<div class="ascii">
+[Jetson C920]
+ → gRPC PublishFrames (client streaming)
+        ▼
+[ image_sink.push() ] ──► with self._cond: latest[cam]=frame; self._cond.notify_all()
+        │                                       │
+        │                                       ▼
+        │                           PyQt 쪽 WatchCameraFrames subscriber
+        │                                       ▲
+        │                                       │ (condvar wake up)
+        │                                       │
+[ server.py WatchCameraFrames(request, ctx) ]
+   while ctx.is_active():
+       f = image_sink.wait_new(cam, last_seq, timeout=10s)
+       if f: last_seq = f.sequence;  yield _frame_to_response(cam, f)
+                                         │
+                                         ▼  (gRPC HTTP/2 stream push)
+[ CameraFrameWorker (QThread) ]
+  for resp in stub.WatchCameraFrames(req):
+      frame_received.emit(bytes, enc, seq, received_at)
+                                         │
+                                         ▼ (Qt signal → main thread)
+[ QualityPage._on_frame → CameraLiveView.set_frame_bytes ]
+  QImage.fromData → QPixmap.fromImage → paintEvent
+</div>
+
+<h2>3. 성능 비교</h2>
+<table>
+  <thead><tr><th>지표</th><th>Stage A (1Hz 폴링)</th><th>Stage B (streaming)</th></tr></thead>
+  <tbody>
+    <tr><td>첫 프레임 지연</td><td>0~1000 ms + RTT</td><td><b>~2 ms</b> (RTT 한 번)</td></tr>
+    <tr><td>수신 FPS 상한</td><td>1 fps (프레임 놓침)</td><td>Jetson push 속도 그대로 (2 fps)</td></tr>
+    <tr><td>동일 seq 중복 수신</td><td>발생 — 클라이언트 dedup 필요</td><td>없음 (서버가 seq 추적)</td></tr>
+    <tr><td>서버 CPU</td><td>unary 핸들러 1회/1s</td><td>구독당 스레드 1개 + condvar wait</td></tr>
+    <tr><td>재연결</td><td>다음 폴링에서 자동</td><td>worker 3s backoff → <code>after_sequence</code> 로 이어받음</td></tr>
+  </tbody>
+</table>
+
+<p class="muted">smoke test (서버측 python + stub.WatchCameraFrames, 5 프레임):</p>
+<pre>  frame 1 at 0.002s  seq=47  bytes=107362
+  frame 2 at 0.066s  seq=48  bytes=107130
+  frame 3 at 0.555s  seq=49  bytes=107449
+  frame 4 at 1.063s  seq=50  bytes=107564
+  frame 5 at 1.558s  seq=51  bytes=107505</pre>
+
+<h2>4. 핵심 코드</h2>
+
+<h3>4.1 image_sink · condvar pub/sub</h3>
+<pre>class ImageSink:
+    def __init__(self):
+        self._cond = threading.Condition()
+        self._latest: dict[str, dict] = {}
+
+    def push(self, camera_id, encoding, w, h, data, sequence, captured_at_iso):
+        with self._cond:
+            self._latest[camera_id] = {...}
+            self._cond.notify_all()            # 구독자 전원 깨우기
+
+    def wait_new(self, camera_id, after_sequence, timeout=10.0):
+        with self._cond:
+            cur = self._latest.get(camera_id)
+            if cur and int(cur["sequence"]) &gt; after_sequence:
+                return cur
+            self._cond.wait(timeout=timeout)
+            cur = self._latest.get(camera_id)
+            if cur and int(cur["sequence"]) &gt; after_sequence:
+                return cur
+            return None</pre>
+
+<h3>4.2 서버 WatchCameraFrames</h3>
+<pre>def WatchCameraFrames(self, request, context):
+    cam = request.camera_id or ""
+    if not cam:
+        context.set_code(grpc.StatusCode.INVALID_ARGUMENT); return
+    last_seq = int(request.after_sequence)
+    while context.is_active():
+        frame = image_sink.wait_new(cam, last_seq, timeout=10.0)
+        if frame is None:
+            continue    # keepalive timeout — 클라이언트 여전히 살아있으면 계속
+        last_seq = int(frame.get("sequence", 0))
+        yield self._frame_to_response(cam, frame)</pre>
+
+<h3>4.3 PyQt CameraFrameWorker</h3>
+<pre>class CameraFrameWorker(QObject):
+    frame_received = pyqtSignal(bytes, str, int, str)
+
+    def run(self):
+        while not self._stop:
+            try:
+                client = ManagementClient()
+                stream = client._stub.WatchCameraFrames(
+                    management_pb2.WatchFramesRequest(
+                        camera_id=self._camera_id,
+                        after_sequence=self._last_sequence,
+                    ))
+                for resp in stream:
+                    if self._stop: break
+                    if not resp.available: continue
+                    self._last_sequence = int(resp.sequence)
+                    self.frame_received.emit(
+                        bytes(resp.data), resp.encoding or "jpeg",
+                        self._last_sequence,
+                        resp.received_at.iso8601,
+                    )
+            except Exception as exc:
+                if self._stop: break
+                time.sleep(self._reconnect)   # 3s backoff</pre>
+
+<h2>5. 검증</h2>
+<ul>
+  <li>서버 로그: <code>WatchCameraFrames subscriber camera=CAM-INSP-01 after_seq=0</code></li>
+  <li>PyQt 로그: <code>CameraFrameWorker subscribed camera=CAM-INSP-01 after_seq=0</code></li>
+  <li>이미지 수신 smoke test (위 표): 첫 프레임 2ms, 이후 Jetson push 간격 그대로</li>
+  <li>ThreadPool <code>max_workers=32</code> 로 확장 — stream RPC(WatchItems/WatchAlerts/WatchCameraFrames) 동시 점유 대비</li>
+</ul>
+
+<h2>6. 알려진 한계 · 향후</h2>
+<div class="note">
+<b>알려진 한계:</b>
+<ul>
+  <li>PyQt 앱 종료 시 worker 가 조용히 쌓일 수 있음 → <code>QualityPage.shutdown()</code> 추가해뒀지만 main_window 가 호출 안 함 (daemon thread 라 프로세스 종료 시 정리됨)</li>
+  <li>카메라 ID 는 현재 하드코딩(환경변수) 1개 — 다중 카메라는 worker 풀 필요</li>
+  <li>HTTP/2 흐름 제어로 클라이언트가 느리면 서버 <code>yield</code> 가 blocking. 현재 2fps 85KB 기준 문제 없음</li>
+  <li>mTLS 활성 시 관리 서버 재기동 필요 (동일한 서버 재기동 절차)</li>
+</ul>
+</div>
+
+<h3>Stage C 후보 (추론 연결 시 같이)</h3>
+<ul>
+  <li>추론 결과 <code>VerdictEvent</code> 도 같은 server streaming 패턴으로 묶어 하나의 Worker 에서 frame + verdict 동시 수신</li>
+  <li>다중 카메라 셀렉터 UI</li>
+  <li>카메라 끊김/지연 알람 (N초간 프레임 없음)</li>
+</ul>
+
+<footer>
+생성: 2026-04-15 · 범위: Stage B · 작업자: ibkim · Claude Code 지원<br>
+경로: <code>docs/worklog/2026-04-15_stageB_stream.html</code> · <a href="./index.html">인덱스</a> · <a href="./2026-04-15_stageA_live_camera.html">Stage A</a>
+</footer>
+
+</div>
+</body>
+</html>

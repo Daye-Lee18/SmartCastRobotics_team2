@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Event Bridge 흐름 명세 — 시작과 끝</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2229;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent-2: #f0883e;
+    --ok: #56d364;
+    --ok-dim: #3a8a42;
+    --warn: #d29922;
+    --ng: #f85149;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --start-bg: #1f4d2b;
+    --end-bg: #5e3820;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.6;
+    padding: 2rem 1rem 5rem;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: .5rem; font-size: 1.6rem; }
+  h2 { color: var(--accent-2); margin-top: 3.5rem; border-left: 5px solid var(--accent-2); padding-left: .85rem; font-size: 1.3rem; }
+  h3 { color: var(--cyan); margin-top: 1.75rem; font-size: 1.05rem; }
+  code { background: var(--panel); padding: 0.1em 0.4em; border-radius: 4px; color: var(--accent); font-size: 0.88em; font-family: "SF Mono", Menlo, Consolas, monospace; }
+  p { margin: .5rem 0; }
+  .meta {
+    color: var(--text-dim);
+    font-size: 0.9em;
+    background: var(--panel);
+    padding: 0.85rem 1rem;
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    margin: 1rem 0 2rem;
+  }
+
+  nav.toc {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  nav.toc h3 { margin: 0 0 .5rem; color: var(--accent); }
+  nav.toc ol { margin: 0; padding-left: 1.4rem; }
+  nav.toc a { color: var(--cyan); text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  /* ========= Flow Container ========= */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem 1.75rem 2rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .flow-title {
+    font-size: 1.15rem;
+    color: var(--accent-2);
+    font-weight: bold;
+    margin: 0 0 1rem;
+  }
+  .flow-summary {
+    color: var(--text-dim);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+  }
+
+  /* ========= Start/End markers ========= */
+  .marker {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .marker.start {
+    background: linear-gradient(90deg, var(--start-bg), transparent 60%);
+    border-left: 6px solid var(--ok);
+  }
+  .marker.end {
+    background: linear-gradient(90deg, var(--end-bg), transparent 60%);
+    border-left: 6px solid var(--accent-2);
+  }
+  .marker .tag {
+    font-size: 1.3rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 6px;
+    color: #fff;
+  }
+  .marker.start .tag { background: var(--ok); }
+  .marker.end .tag { background: var(--accent-2); }
+  .marker-body { flex: 1; }
+  .marker-title {
+    font-size: 1.05rem;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+  }
+  .marker-sub {
+    font-weight: normal;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+  }
+
+  /* ========= Vertical Timeline (steps) ========= */
+  .timeline {
+    position: relative;
+    padding-left: 2.5rem;
+    margin: 1.5rem 0;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 1rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 3px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+  .step {
+    position: relative;
+    margin-bottom: 1.25rem;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+  }
+  .step::before {
+    content: attr(data-step);
+    position: absolute;
+    left: -2.5rem;
+    top: 0.75rem;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent);
+    color: #0d1117;
+    font-weight: bold;
+    font-size: 0.9rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .step.external::before { background: var(--ok); }
+  .step.bridge::before { background: var(--accent-2); }
+  .step.db::before { background: var(--ng); color: #fff; }
+  .step.finish::before { background: var(--accent-2); color: #fff; }
+
+  .step-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    align-items: center;
+    font-size: 0.98rem;
+  }
+  .actor {
+    background: var(--panel);
+    padding: 0.18rem 0.55rem;
+    border-radius: 4px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 0.9rem;
+  }
+  .actor.task-mgr { color: var(--cyan); }
+  .actor.allocator { color: var(--cyan); }
+  .actor.executor { color: var(--purple); }
+  .actor.adapter { color: var(--purple); }
+  .actor.bridge { color: var(--accent-2); font-weight: bold; }
+  .actor.state { color: var(--ng); }
+  .actor.db { color: var(--ng); }
+  .actor.esp32 { color: var(--ok); }
+  .actor.jetson { color: var(--ok); }
+  .actor.pyqt { color: var(--ok); }
+  .actor.amr-fsm { color: var(--purple); }
+  .actor.admin { color: var(--ok); }
+  .actor.websocket { color: var(--cyan); }
+
+  .arrow { color: var(--text-dim); font-family: "SF Mono", monospace; font-size: 0.95rem; }
+  .action {
+    color: var(--text);
+    font-family: "SF Mono", monospace;
+    font-size: 0.92rem;
+  }
+  .tag-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: bold;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+  .tag-badge.publish { background: var(--ok-dim); color: #fff; }
+  .tag-badge.direct { background: #2b4a78; color: #fff; }
+  .tag-badge.db-write { background: #8b3030; color: #fff; }
+  .tag-badge.db-read { background: #2c4b60; color: #fff; }
+  .tag-badge.external { background: #5a4a1e; color: #fff; }
+
+  .step-note {
+    color: var(--text-dim);
+    font-size: 0.82rem;
+    margin-top: 0.35rem;
+    padding-left: 0.25rem;
+  }
+  .step-note code { font-size: 0.8rem; }
+
+  /* ========= Legend ========= */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: var(--panel-2);
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+    margin: 1.25rem 0;
+  }
+  .legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+  .legend-swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 3px;
+  }
+
+  /* ========= Principle box ========= */
+  .principle {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+  }
+  .principle h4 { margin: 0 0 .5rem; color: var(--accent); font-size: 1rem; }
+  .principle ul { margin: .3rem 0 0; padding-left: 1.2rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    background: var(--panel-2);
+    font-size: 0.93em;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.8rem;
+    text-align: left;
+  }
+  th { background: var(--panel); color: var(--accent-2); }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3rem 0 1rem;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Event Bridge 흐름 명세 — 시작과 끝이 명확한 시나리오</h1>
+<div class="meta">
+  작성: 2026-04-22 · 기준 코드: <code>backend/management/services/event_bridge.py</code>,
+  <code>backend/management/server.py:240 ReportHandoffAck</code>,
+  <code>backend/management/services/amr_state_machine.py:146 confirm_handoff</code><br>
+  목적: 기존 <code>event_bridge_design.html</code> 의 혼합 관계도가 화살표 교차로 시작과 끝이
+  불분명했던 문제를 해결. 각 시나리오를 독립된 세로 타임라인으로 분리.
+</div>
+
+<nav class="toc">
+  <h3>목차 — 3가지 실제 시나리오</h3>
+  <ol>
+    <li><a href="#flow1">시나리오 1 — 관리자 승인 → 주조 task 자동 생성 → 장비 배정</a>
+      <span style="color:var(--text-dim)">(설계 · Phase 2 이벤트 기반)</span></li>
+    <li><a href="#flow2">시나리오 2 — 공정 완료 → 다음 공정 자동 전이</a>
+      <span style="color:var(--text-dim)">(설계 · Phase 2 이벤트 기반)</span></li>
+    <li><a href="#flow3">시나리오 3 — 후처리 버튼 → handoff 완료</a>
+      <span style="color:var(--text-dim)">(<strong>현재 실제 구현·검증 완료</strong>)</span></li>
+    <li><a href="#principles">공통 원칙 4가지</a></li>
+    <li><a href="#legend">읽는 법 (범례)</a></li>
+  </ol>
+</nav>
+
+<!-- ==================== 범례 ==================== -->
+<h2 id="legend">읽는 법 (범례)</h2>
+
+<p>각 시나리오는 <strong>세로 타임라인</strong>으로 그려집니다. 위에서 아래로 순서대로 일어나는 일을 읽으면 됩니다.</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--ok)"></span>초록 원: 시작 단계 (외부 입력)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>파랑 원: 일반 단계 (서버 내부)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--accent-2)"></span>주황 원: Event Bridge 개입 단계</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:var(--ng)"></span>빨강 원: DB 변경 단계</div>
+</div>
+
+<table>
+  <thead><tr><th>뱃지</th><th>의미</th></tr></thead>
+  <tbody>
+    <tr><td><span class="tag-badge publish">publish</span></td>
+        <td>Event Bridge 에 이벤트 발행 (1→N 브로드캐스트)</td></tr>
+    <tr><td><span class="tag-badge direct">direct call</span></td>
+        <td>함수 직접 호출 (1:1, 응답 있음)</td></tr>
+    <tr><td><span class="tag-badge db-write">DB write</span></td>
+        <td>State Manager 가 DB 에 INSERT / UPDATE</td></tr>
+    <tr><td><span class="tag-badge db-read">DB read</span></td>
+        <td>State Manager 가 DB 에서 SELECT</td></tr>
+    <tr><td><span class="tag-badge external">외부</span></td>
+        <td>서버 외부에서 들어오는 이벤트 (UI / 장비 / 버튼)</td></tr>
+  </tbody>
+</table>
+
+<!-- ========================================================== -->
+<!-- 시나리오 1 — 관리자 승인 → 주조 task → 장비 배정               -->
+<!-- ========================================================== -->
+<h2 id="flow1">시나리오 1 — 관리자 승인 → 주조 task 자동 생성 → 장비 배정</h2>
+
+<div class="flow">
+  <div class="flow-title">① PyQt 승인 버튼 → 로봇팔 주조 시작까지</div>
+  <div class="flow-summary">
+    관리자가 승인 버튼을 누른 후, 서버가 자동으로 task 를 만들고 장비에 배정하는 전체 흐름.
+    Event Bridge 가 두 번 개입한다 (ORDER_APPROVED → TASK_CREATED 각 1회).
+    <em>설계 단계 — Phase 2 이벤트 기반 도입 시 활성화 예정.</em>
+  </div>
+
+  <!-- ━━━ 시작 ━━━ -->
+  <div class="marker start">
+    <span class="tag">시작</span>
+    <div class="marker-body">
+      <div class="marker-title">관리자가 PyQt "생산 시작" 버튼을 누름</div>
+      <div class="marker-sub">공장 운영자 PC · 발주 ID 42번 · 발주 상태는 RCVD</div>
+    </div>
+  </div>
+
+  <!-- ━━━ 단계들 ━━━ -->
+  <div class="timeline">
+
+    <div class="step external" data-step="1">
+      <div class="step-line">
+        <span class="actor pyqt">PyQt</span>
+        <span class="arrow">──</span>
+        <span class="action">gRPC StartProduction(ord_id=42)</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Management API Handler</span>
+        <span class="tag-badge external">외부</span>
+      </div>
+      <div class="step-note">Tailscale 네트워크를 거쳐 <code>:50051</code> 에 도달. 이 경로는 웹(HTTP) 이 아닌 gRPC.</div>
+    </div>
+
+    <div class="step db" data-step="2">
+      <div class="step-line">
+        <span class="actor bridge">API Handler</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.update_order_stat(42, APPR)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">ord.ord_stat: RCVD → APPR. 트랜잭션 원자성 필요하므로 이벤트 아닌 직접 호출.</div>
+    </div>
+
+    <div class="step bridge" data-step="3">
+      <div class="step-line">
+        <span class="actor bridge">API Handler</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">.publish(Event(ORDER_APPROVED, ord_id=42))</span>
+        <span class="tag-badge publish">publish</span>
+      </div>
+      <div class="step-note">발행 주체 = 액션 수행자(API Handler). Event Bridge 는 절대 자기가 발행하지 않음.</div>
+    </div>
+
+    <div class="step bridge" data-step="4">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">구독 테이블 조회</span>
+        <span class="arrow">→</span>
+        <span class="action">ORDER_APPROVED 구독자: [TaskManager]</span>
+      </div>
+      <div class="step-note">Bridge 내부 <code>_handlers[ORDER_APPROVED]</code> dict 조회. 등록된 순서대로 호출 준비.</div>
+    </div>
+
+    <div class="step" data-step="5">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="arrow">──▶</span>
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="action">.on_order_approved(event)</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+      <div class="step-note">Bridge 가 등록된 핸들러를 동기 호출. TaskManager 는 이 이벤트의 의미(=CAST task 만들 시점)를 판단.</div>
+    </div>
+
+    <div class="step db" data-step="6">
+      <div class="step-line">
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.create_task(CAST_MM, QUE, ord_id=42)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">equip_task_txn 에 QUE 상태로 INSERT. 반환값: <code>TaskRecord(txn_id=100, ...)</code>.</div>
+    </div>
+
+    <div class="step bridge" data-step="7">
+      <div class="step-line">
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">.publish(Event(TASK_CREATED, txn_id=100))</span>
+        <span class="tag-badge publish">publish</span>
+      </div>
+      <div class="step-note">TaskManager 가 자기 액션(create_task) 완료 직후 발행. 다음 단계를 Bridge 가 연결.</div>
+    </div>
+
+    <div class="step bridge" data-step="8">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">구독 테이블 조회</span>
+        <span class="arrow">→</span>
+        <span class="action">TASK_CREATED 구독자: [TaskAllocator]</span>
+      </div>
+    </div>
+
+    <div class="step" data-step="9">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="arrow">──▶</span>
+        <span class="actor allocator">TaskAllocator</span>
+        <span class="action">.assign_task(100)</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+    </div>
+
+    <div class="step db" data-step="10">
+      <div class="step-line">
+        <span class="actor allocator">TaskAllocator</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.update_task(100, equip_id="RA1", PROC)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">equip_task_txn.txn_stat: QUE → PROC, equip_id 지정. 로봇팔 RA1 가 일을 시작할 조건 갖춤.</div>
+    </div>
+
+  </div>
+
+  <!-- ━━━ 끝 ━━━ -->
+  <div class="marker end">
+    <span class="tag">끝</span>
+    <div class="marker-body">
+      <div class="marker-title">task 가 PROC 상태로 DB 저장, 로봇팔 RA1 에 배정됨</div>
+      <div class="marker-sub">
+        DB 상태: <code>ord.ord_stat = APPR</code> · <code>equip_task_txn(txn_id=100).txn_stat = PROC</code> · <code>equip_stat(RA1) = BUSY</code><br>
+        다음: RobotExecutor 가 실제 장비 명령 전송 (시나리오 2 로 연결)
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="principle">
+  <h4>이 시나리오에서 Event Bridge 가 한 일 / 안 한 일</h4>
+  <ul>
+    <li>✅ 이벤트 2회 라우팅 (ORDER_APPROVED, TASK_CREATED)</li>
+    <li>✅ 구독자 매칭 → 핸들러 동기 호출</li>
+    <li>❌ DB 접근 0회 — 모든 DB write 는 State Manager 가 담당</li>
+    <li>❌ 비즈니스 로직 판단 0회 — "승인되면 CAST 를 만들어야 한다" 는 TaskManager 가 결정</li>
+  </ul>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- 시나리오 2 — 공정 완료 → 다음 공정 자동 전이                   -->
+<!-- ========================================================== -->
+<h2 id="flow2">시나리오 2 — 공정 완료 → 다음 공정 자동 전이</h2>
+
+<div class="flow">
+  <div class="flow-title">② 로봇팔 CAST 완료 → AMR 이송 task 자동 생성</div>
+  <div class="flow-summary">
+    "Executor 만이 이벤트를 발행한다" 는 고정 규칙이 가장 잘 드러나는 흐름.
+    공정 완료 신호가 다음 공정 연쇄 실행의 출발점이다.
+    <em>설계 단계 — Phase 2 이벤트 기반 도입 시 활성화 예정.</em>
+  </div>
+
+  <!-- ━━━ 시작 ━━━ -->
+  <div class="marker start">
+    <span class="tag">시작</span>
+    <div class="marker-body">
+      <div class="marker-title">RobotExecutor 가 CAST 공정 완료를 감지</div>
+      <div class="marker-sub">로봇팔 RA1 이 grasp → place → release 완료 후 Executor 에게 success signal 전달</div>
+    </div>
+  </div>
+
+  <!-- ━━━ 단계들 ━━━ -->
+  <div class="timeline">
+
+    <div class="step db" data-step="1">
+      <div class="step-line">
+        <span class="actor executor">RobotExecutor</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.update_task(100, PROC→SUCC)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">equip_task_txn(100).txn_stat: PROC → SUCC, end_at 기록.</div>
+    </div>
+
+    <div class="step bridge" data-step="2">
+      <div class="step-line">
+        <span class="actor executor">RobotExecutor</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">.publish(Event(TASK_COMPLETED, txn_id=100))</span>
+        <span class="tag-badge publish">publish</span>
+      </div>
+      <div class="step-note">Executor 가 실제 장비 성공을 관측한 주체이므로 발행.</div>
+    </div>
+
+    <div class="step bridge" data-step="3">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">구독 테이블 조회</span>
+        <span class="arrow">→</span>
+        <span class="action">TASK_COMPLETED 구독자: [TaskManager, WebSocketBroadcaster]</span>
+      </div>
+      <div class="step-note">구독자 2명. Bridge 는 등록 순서대로 둘 다 호출 (4번 → 10번 동시가 아닌 순차).</div>
+    </div>
+
+    <div class="step" data-step="4">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="arrow">──▶</span>
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="action">.on_task_completed(event)</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+    </div>
+
+    <div class="step" data-step="5">
+      <div class="step-line">
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.get_task(100) · .get_next_task_type(task)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-read">DB read</span>
+      </div>
+      <div class="step-note">다음 공정 타입이 무엇인지 조회. Bridge 대신 State Manager 에게 읽기 질의 (응답 필요하므로).</div>
+    </div>
+
+    <div class="step db" data-step="6">
+      <div class="step-line">
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.create_task(TO_PP, QUE, item_id=7)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">trans_task_txn 에 QUE 상태로 INSERT. 반환: TaskRecord(txn_id=101).</div>
+    </div>
+
+    <div class="step bridge" data-step="7">
+      <div class="step-line">
+        <span class="actor task-mgr">TaskManager</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Event Bridge</span>
+        <span class="action">.publish(Event(TASK_CREATED, txn_id=101))</span>
+        <span class="tag-badge publish">publish</span>
+      </div>
+    </div>
+
+    <div class="step" data-step="8">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="arrow">──▶</span>
+        <span class="actor allocator">TaskAllocator</span>
+        <span class="action">.assign_task(101)</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+    </div>
+
+    <div class="step db" data-step="9">
+      <div class="step-line">
+        <span class="actor allocator">TaskAllocator</span>
+        <span class="arrow">──▶</span>
+        <span class="actor state">State Manager</span>
+        <span class="action">.update_task(101, trans_id="AMR1", PROC)</span>
+        <span class="tag-badge direct">direct call</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">AMR1 에게 이송 task 배정. trans_stat.cur_stat = MV_SRC.</div>
+    </div>
+
+    <div class="step" data-step="10">
+      <div class="step-line">
+        <span class="actor bridge">Event Bridge</span>
+        <span class="arrow">──▶</span>
+        <span class="actor websocket">WebSocketBroadcaster</span>
+        <span class="action">.on_task_completed(event)</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+      <div class="step-note">3번 구독자 중 두 번째. Next.js / PyQt UI 에 실시간 상태 전파.</div>
+    </div>
+
+  </div>
+
+  <!-- ━━━ 끝 ━━━ -->
+  <div class="marker end">
+    <span class="tag">끝</span>
+    <div class="marker-body">
+      <div class="marker-title">다음 공정 task 가 AMR1 에 배정, UI 에 실시간 전파됨</div>
+      <div class="marker-sub">
+        DB 상태: <code>equip_task_txn(100).txn_stat = SUCC</code> · <code>trans_task_txn(101).txn_stat = PROC</code> · <code>trans_stat(AMR1).cur_stat = MV_SRC</code><br>
+        다음: AMR1 이 실제 이송 시작 → 시나리오 3 의 후처리 도착 지점으로 이어짐
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="principle">
+  <h4>이 시나리오의 핵심</h4>
+  <ul>
+    <li>Event Bridge 가 <strong>두 번</strong> 개입 (TASK_COMPLETED → TASK_CREATED)</li>
+    <li>TaskManager 가 "다음 공정 판단" 의 주인 — Bridge 는 판단 안 함, 그저 라우팅</li>
+    <li>WebSocket 도 같은 이벤트(TASK_COMPLETED) 를 받음 — 1:N 브로드캐스트의 진가</li>
+  </ul>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- 시나리오 3 — 후처리 버튼 → handoff 완료 (실제 구현·검증 완료)     -->
+<!-- ========================================================== -->
+<h2 id="flow3">시나리오 3 — 후처리 버튼 → handoff 완료 (실제 구현·검증 완료)</h2>
+
+<div class="flow">
+  <div class="flow-title">③ ESP32 GPIO 33 버튼 → AMR FSM UNLOAD_COMPLETED</div>
+  <div class="flow-summary">
+    <strong>2026-04-22 DB 검증 완료</strong> (handoff_acks row 13, transport_tasks.status = handoff_complete).
+    이 시나리오는 현재 Event Bridge 를 경유하지 <strong>않고</strong> server.py 가 직접 모든 것을 처리하고 있다.
+    향후 리팩토링 시 <code>HANDOFF_ACK</code> 이벤트를 Bridge publish 로 분리할 예정.
+  </div>
+
+  <!-- ━━━ 시작 ━━━ -->
+  <div class="marker start">
+    <span class="tag">시작</span>
+    <div class="marker-body">
+      <div class="marker-title">작업자가 후처리 구역 푸시 버튼을 누르고 뗌</div>
+      <div class="marker-sub">ESP32 GPIO 33 · A접점 · INPUT_PULLUP · rising edge (LOW→HIGH)</div>
+    </div>
+  </div>
+
+  <!-- ━━━ 단계들 ━━━ -->
+  <div class="timeline">
+
+    <div class="step external" data-step="1">
+      <div class="step-line">
+        <span class="actor esp32">ESP32 (firmware v1.5.1)</span>
+        <span class="action">pollHandoffButton() · 디바운스 50ms · 연타 병합 500ms</span>
+        <span class="tag-badge external">외부</span>
+      </div>
+      <div class="step-note"><code>firmware/conveyor_v5_serial/conveyor_v5_serial.ino:388</code>. rising edge 감지 후 1회만 발행.</div>
+    </div>
+
+    <div class="step external" data-step="2">
+      <div class="step-line">
+        <span class="actor esp32">ESP32</span>
+        <span class="arrow">──</span>
+        <span class="action">Serial 115200 · "HANDOFF_ACK" 토큰 + JSON</span>
+        <span class="arrow">──▶</span>
+        <span class="actor jetson">Jetson /dev/ttyUSB0</span>
+        <span class="tag-badge external">외부</span>
+      </div>
+    </div>
+
+    <div class="step external" data-step="3">
+      <div class="step-line">
+        <span class="actor jetson">Jetson esp_bridge.py</span>
+        <span class="action">_handle_line("HANDOFF_ACK") · 큐 enqueue</span>
+        <span class="tag-badge external">외부</span>
+      </div>
+      <div class="step-note"><code>jetson_publisher/esp_bridge.py:221</code>. 버퍼 32개 + 지수 백오프 1~60s.</div>
+    </div>
+
+    <div class="step external" data-step="4">
+      <div class="step-line">
+        <span class="actor jetson">Jetson esp_bridge</span>
+        <span class="arrow">──</span>
+        <span class="action">gRPC ReportHandoffAck(source_device="ESP-CONVEYOR-01")</span>
+        <span class="arrow">──▶</span>
+        <span class="actor bridge">Management :50051</span>
+        <span class="tag-badge external">외부</span>
+      </div>
+    </div>
+
+    <div class="step" data-step="5">
+      <div class="step-line">
+        <span class="actor bridge">Management Server</span>
+        <span class="action">.ReportHandoffAck(request, context)</span>
+      </div>
+      <div class="step-note"><code>backend/management/server.py:240</code>. 현재는 이 handler 내부에서 5단계 모두 직접 처리.</div>
+    </div>
+
+    <div class="step" data-step="6">
+      <div class="step-line">
+        <span class="actor bridge">ReportHandoffAck</span>
+        <span class="arrow">──▶</span>
+        <span class="actor amr-fsm">AmrStateMachine</span>
+        <span class="action">.find_waiting_amr_at_zone("postprocessing")</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+      <div class="step-note">FIFO 로 AT_DESTINATION 상태 AMR 조회. 없으면 orphan 처리 (DB 는 저장).</div>
+    </div>
+
+    <div class="step db" data-step="7">
+      <div class="step-line">
+        <span class="actor bridge">ReportHandoffAck</span>
+        <span class="arrow">──▶</span>
+        <span class="actor db">public.handoff_acks</span>
+        <span class="action">INSERT</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">append-only. idempotency_key 중복 시 duplicate 반환. 2026-04-22 실측 row 13 확인.</div>
+    </div>
+
+    <div class="step db" data-step="8">
+      <div class="step-line">
+        <span class="actor bridge">ReportHandoffAck</span>
+        <span class="arrow">──▶</span>
+        <span class="actor db">public.transport_tasks</span>
+        <span class="action">UPDATE status = 'handoff_complete'</span>
+        <span class="tag-badge db-write">DB write</span>
+      </div>
+      <div class="step-note">대기 중이던 AMR 의 in-flight task 해제.</div>
+    </div>
+
+    <div class="step" data-step="9">
+      <div class="step-line">
+        <span class="actor bridge">ReportHandoffAck</span>
+        <span class="arrow">──▶</span>
+        <span class="actor amr-fsm">AmrStateMachine</span>
+        <span class="action">.confirm_handoff(amr_id) · AT_DESTINATION → UNLOAD_COMPLETED</span>
+        <span class="tag-badge direct">direct call</span>
+      </div>
+      <div class="step-note"><code>amr_state_machine.py:146</code>. in-memory FSM 전이. 서버 재시작 시 IDLE 로 리셋됨.</div>
+    </div>
+
+    <div class="step" data-step="10">
+      <div class="step-line">
+        <span class="actor bridge">ReportHandoffAck</span>
+        <span class="arrow">──</span>
+        <span class="action">HTTP POST /api/debug/_notify/handoff-ack</span>
+        <span class="arrow">──▶</span>
+        <span class="actor websocket">Interface Service :8000</span>
+      </div>
+      <div class="step-note">Management → FastAPI 내부 HTTP. FastAPI 는 WebSocket 으로 Next.js 에 브로드캐스트.</div>
+    </div>
+
+  </div>
+
+  <!-- ━━━ 끝 ━━━ -->
+  <div class="marker end">
+    <span class="tag">끝</span>
+    <div class="marker-body">
+      <div class="marker-title">AMR 상태 UNLOAD_COMPLETED, transport_tasks 완료, UI 실시간 반영</div>
+      <div class="marker-sub">
+        DB 상태: <code>handoff_acks</code> row 1건 추가 (orphan 또는 amr_id 매칭) · <code>transport_tasks.status = handoff_complete</code><br>
+        in-memory FSM: <code>AmrContext(AMR1).state = UNLOAD_COMPLETED</code><br>
+        2026-04-22 실측: 가상 버튼 full 시나리오 row 13 모든 필드 채워짐 (amr_id=AMR-SIM-FULL-001, task_id=TEST-TASK-1776833734)
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="principle">
+  <h4>현재 vs 향후 (Event Bridge 도입 시)</h4>
+  <table style="margin:.5rem 0">
+    <thead><tr><th>단계</th><th>현재 (직접 처리)</th><th>Event Bridge 리팩토링 후</th></tr></thead>
+    <tbody>
+      <tr><td>7~8: DB write</td><td>ReportHandoffAck 가 직접</td><td>그대로 (State Manager 경유)</td></tr>
+      <tr><td>9: FSM 전이</td><td>ReportHandoffAck 가 직접 호출</td><td><code>HANDOFF_ACK</code> 이벤트 구독자로 분리</td></tr>
+      <tr><td>10: WebSocket</td><td>HTTP 직접 호출</td><td><code>HANDOFF_ACK</code> 구독자로 분리</td></tr>
+    </tbody>
+  </table>
+  <p style="margin:.5rem 0 0">리팩토링 이점: 새 구독자 (예: AuditLogger, AlertService) 를 ReportHandoffAck 수정 없이 추가 가능.</p>
+</div>
+
+
+<!-- ========================================================== -->
+<!-- 공통 원칙 4가지                                              -->
+<!-- ========================================================== -->
+<h2 id="principles">공통 원칙 4가지</h2>
+
+<div class="principle">
+  <h4>원칙 1 — 발행 주체는 "액션 수행자"</h4>
+  <ul>
+    <li>이벤트는 <strong>상태를 실제로 바꾼 컴포넌트</strong> 가 발행한다</li>
+    <li>API Handler · TaskManager · RobotExecutor · 외부 장비(ESP32) 가 발행 주체</li>
+    <li>Event Bridge 자신은 절대 publish 호출하지 않는다 (순수 라우터)</li>
+    <li>State Manager 도 기본적으로 발행하지 않음. 단 <code>STATE_CHANGED</code> 이벤트만 예외적으로 허용 가능</li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 2 — SSOT 는 State Manager 단독</h4>
+  <ul>
+    <li>DB CRUD 는 오직 State Manager 가 수행</li>
+    <li>Event Bridge 는 DB 에 접근하지 않음 (read/write 둘 다)</li>
+    <li>다른 컴포넌트가 DB 조작이 필요하면 <strong>반드시 State Manager 경유</strong></li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 3 — 이벤트 vs 직접 호출 판단 기준</h4>
+  <ul>
+    <li>응답이 필요하면 → 직접 호출 (Bridge 는 fire-and-forget)</li>
+    <li>수신자가 1명 + 응답 필요 → 직접 호출</li>
+    <li>트랜잭션 원자성 필요 → 직접 호출</li>
+    <li>N명에게 상태 변화 전파 → Bridge publish</li>
+    <li>공정 체인 자동 연결 → Bridge publish</li>
+  </ul>
+</div>
+
+<div class="principle">
+  <h4>원칙 4 — 한 함수 안에 direct call + publish 공존 정상</h4>
+  <p>한 API Handler 안에서 (a) DB write 는 State Manager 직접 호출, (b) 상태 변화 알림은 Bridge publish 로 나눠서 하는 게 정상 패턴.
+  "모든 것을 Bridge 로" 는 안티패턴.</p>
+</div>
+
+
+<hr>
+<p style="color:var(--text-dim); font-size:0.85em; text-align:center; margin-top:2rem">
+  문서 생성: Claude Code · 2026-04-22<br>
+  참조 코드: <code>backend/management/services/event_bridge.py</code> · <code>backend/management/server.py</code> · <code>backend/management/services/amr_state_machine.py</code><br>
+  관련 HTML: <code>docs/event_bridge_design.html</code> (컴포넌트 관계도) · <code>docs/barcode_jetson_ready.md</code> (바코드 핸드오프)<br>
+  관련 Confluence: <a style="color:var(--cyan)" href="https://dayelee313.atlassian.net/wiki/spaces/addinedute/pages/44794063">Event/Bridge v1 (44794063)</a> · <a style="color:var(--cyan)" href="https://dayelee313.atlassian.net/wiki/spaces/addinedute/pages/40042733">후처리 스위치 연동 (40042733)</a>
+</p>
+
+</div>
+</body>
+</html>

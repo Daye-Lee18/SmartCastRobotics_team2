@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>03. PROCESS — SmartCast Robotics 프로젝트 문서</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #1c2229;
+  --border: #30363d;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --accent-2: #f0883e;
+  --ok: #56d364;
+  --warn: #d29922;
+  --ng: #f85149;
+  --purple: #bc8cff;
+  --cyan: #79c0ff;
+  --code-bg: #0d1117;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Pro Display", "Apple SD Gothic Neo",
+               "Noto Sans KR", "Segoe UI", sans-serif;
+  line-height: 1.7;
+  padding: 2rem 1rem 6rem;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2.5rem 3rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+}
+
+.nav {
+  max-width: 1080px;
+  margin: 0 auto 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.nav a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.nav a:hover { background: #24292f; }
+.nav a.current {
+  background: #1f6feb;
+  color: #fff;
+}
+
+h1, h2, h3, h4, h5 {
+  color: #f0f6fc;
+  margin-top: 2em;
+  margin-bottom: 0.6em;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.3em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2rem; margin-top: 0; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; border-bottom: none; }
+h4 { font-size: 1.05rem; border-bottom: none; color: var(--cyan); }
+h5 { font-size: 0.98rem; border-bottom: none; color: var(--purple); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p { margin: 0.8em 0; }
+
+blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1.2em;
+  border-left: 4px solid var(--accent-2);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p { margin: 0.3em 0; }
+
+ul, ol {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+li { margin: 0.3em 0; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2em 0;
+}
+
+code {
+  background: #24292f;
+  color: var(--cyan);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.88em;
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  margin: 1em 0;
+  font-size: 0.9em;
+  line-height: 1.55;
+}
+
+pre code {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+.codehilite {
+  background: var(--code-bg) !important;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.1em 0;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+.codehilite pre {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0.9em 1.2em;
+}
+
+/* pygments inline tokens (monokai-ish) */
+.codehilite .k, .codehilite .kd, .codehilite .kr { color: #ff7b72; }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sb,
+.codehilite .sc, .codehilite .se, .codehilite .si, .codehilite .sx { color: #a5d6ff; }
+.codehilite .c, .codehilite .c1, .codehilite .cm, .codehilite .cs { color: #8b949e; font-style: italic; }
+.codehilite .nf, .codehilite .nc, .codehilite .nt { color: #d2a8ff; }
+.codehilite .nb, .codehilite .bp { color: #79c0ff; }
+.codehilite .m, .codehilite .mi, .codehilite .mf { color: #f0883e; }
+.codehilite .o, .codehilite .ow { color: #ff7b72; }
+
+table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  font-size: 0.92em;
+  overflow-x: auto;
+  display: block;
+}
+
+table thead { background: var(--panel-2); }
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.55em 0.85em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #f0f6fc;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td { background: rgba(177, 186, 196, 0.04); }
+
+img { max-width: 100%; height: auto; border-radius: 6px; }
+
+strong { color: #f0f6fc; }
+
+.footer {
+  max-width: 1080px;
+  margin: 2rem auto 0;
+  padding: 1rem;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .container { padding: 1.5rem 1.2rem; }
+  h1 { font-size: 1.6rem; }
+  table { font-size: 0.85em; }
+}
+</style>
+</head>
+<body>
+<div class="nav">
+<a class="" href="README.html">00. 문서 인덱스</a>
+<a class="" href="01_PRD.html">01. PRD</a>
+<a class="" href="02_DESIGN.html">02. DESIGN</a>
+<a class="current" href="03_PROCESS.html">03. PROCESS</a>
+<a class="" href="04_DEVELOPMENT.html">04. DEVELOPMENT</a>
+<a class="" href="05_TRAINING.html">05. TRAINING</a>
+<a class="" href="06_MANUAL.html">06. MANUAL</a>
+</div>
+<main class="container">
+<h1 id="03">03. 공정 프로세스 문서</h1>
+<blockquote>
+<p><strong>버전</strong>: V6 (2026-04-24)<br>
+<strong>대상 독자</strong>: 공정 기획·설계자, 공장 운영자, 개발자<br>
+<strong>원천</strong>: Confluence <code>User_Requirements</code> (3375120), <code>Casting</code> (3375162), <code>Terminology</code> (3407906), <code>detailed_design</code> (6651919), <code>.moai/specs/SPEC-CASTING-001.md</code></p>
+</blockquote>
+<hr>
+<h2 id="1">1. 공정 개요</h2>
+<p>SmartCast Robotics의 공정은 <strong>주문 접수 → 생산 → 출고</strong>의 end-to-end 파이프라인으로, 맨홀 뚜껑(20~80kg) 기준 <strong>다품종 소량 생산</strong> 방식이다.</p>
+<h3 id="11">1.1 공정 전체 흐름 (상위 레벨)</h3>
+<div class="codehilite"><pre><span></span><code>[고객 주문]        [관리자 승인]        [생산 시작]
+     ↓                  ↓                  ↓
+[원자재/용광로] → [주형 생성] → [용탕 주입] → [냉각] → [탈형]
+                                                           ↓
+     ↑                                                   [이송]
+     ↑                                                     ↓
+[출고]  ← [양품 적재] ← [분류] ← [검사] ← [후처리] ← [이송]
+                                                           ↓
+                                       [불량품 폐기 이송]
+</code></pre></div>
+
+<h3 id="12">1.2 자동화 레벨</h3>
+<ul>
+<li><strong>목표</strong>: Level 4 (조건부 자율 + 예외 시 작업자 개입)</li>
+<li><strong>Required(R) 공정</strong>: 무인 자동화 필수</li>
+<li><strong>Optional(O) 공정</strong>: MVP 이후 또는 수동 병행</li>
+</ul>
+<hr>
+<h2 id="2-8">2. 8단계 공정 상세</h2>
+<h3 id="21-1-ur_01">2.1 [단계 1] 주문 접수 · 생산 계획 (UR_01)</h3>
+<ul>
+<li><strong>입력</strong>: 고객 주문 (제품, 수량, 규격, 납기, 후처리 옵션)</li>
+<li><strong>출력</strong>: Order ID, BOM, 생산 스케줄</li>
+<li><strong>주체</strong>: 고객(Next.js) → 관리자(Next.js admin)</li>
+<li><strong>상태 전이</strong>: <code>RCVD</code> → <code>APPR</code> (관리자 승인) → <code>MFG</code> (생산 시작)</li>
+<li><strong>추적 엔티티</strong>: Order ID, Quantity, Product/Customer Info</li>
+<li><strong>등급</strong>: R (Required)</li>
+</ul>
+<h3 id="22-2">2.2 [단계 2] 원자재 투입 · 도가니 용광로</h3>
+<ul>
+<li><strong>입력</strong>: 원자재 (고체/액체), 목표 온도</li>
+<li><strong>출력</strong>: 용탕 (Molten metal), 용광로 상태</li>
+<li><strong>주체</strong>: 작업자 수동 (MVP), 자동 투입은 Optional</li>
+<li><strong>추적</strong>: Material ID, Weight/Temperature, Furnace (Idle/Heating/Ready)</li>
+<li><strong>등급</strong>: O (MVP에서 수동)</li>
+</ul>
+<h3 id="23-3-mold-making">2.3 [단계 3] 주형 생성 (Mold Making)</h3>
+<ul>
+<li><strong>입력</strong>: 패턴(ptn) + 주조 사양</li>
+<li><strong>출력</strong>: Mold (주형)</li>
+<li><strong>주체</strong>: 주형 제작 장비 + 작업자</li>
+<li><strong>추적</strong>: Mold ID, Ready/In-progress/Completed, Image</li>
+<li><strong>등급</strong>: R</li>
+<li><strong>DB</strong>: <code>pattern</code> 테이블 (ptn_id FK → ord_id, 주문별 전용 패턴 관리)</li>
+</ul>
+<h3 id="24-4-pouring">2.4 [단계 4] 용탕 주입 (Pouring)</h3>
+<ul>
+<li><strong>입력</strong>: 용탕 + 주형</li>
+<li><strong>출력</strong>: 주물 (Casting)</li>
+<li><strong>주체</strong>: 자동 주탕 장비 (Ladle) + Job ID 추적</li>
+<li><strong>추적</strong>: Ladle, Mold, Pouring, Temperature, Flow Rate, Job ID</li>
+<li><strong>등급</strong>: R</li>
+</ul>
+<h3 id="25-5-cooling">2.5 [단계 5] 냉각 (Cooling)</h3>
+<ul>
+<li><strong>입력</strong>: 고온 주물</li>
+<li><strong>출력</strong>: 상온 주물 (탈형 가능)</li>
+<li><strong>주체</strong>: 냉각장 + 온도 모니터링</li>
+<li><strong>추적</strong>: Casting, Cooling/Completed, Temperature, Time</li>
+<li><strong>등급</strong>: R</li>
+<li><strong>의사결정</strong>: 규칙 A (대기시간 T_max 초과 시 이송 트리거)</li>
+</ul>
+<h3 id="26-6-demolding-dm">2.6 [단계 6] 탈형 (Demolding · DM)</h3>
+<ul>
+<li><strong>입력</strong>: 냉각된 주물 + 주형</li>
+<li><strong>출력</strong>: 주물 단독</li>
+<li><strong>주체</strong>: 로봇팔 (JetCobot 280)</li>
+<li><strong>추적</strong>: Robot Arm, Task ID</li>
+<li><strong>등급</strong>: R</li>
+</ul>
+<h3 id="27-7-a-transport">2.7 [단계 7-A] 이송 (Transport)</h3>
+<ul>
+<li><strong>입력</strong>: 탈형된 주물</li>
+<li><strong>출력</strong>: 후처리 구역 대기열</li>
+<li><strong>주체</strong>: AMR (3대, 직경 ~0.12m)</li>
+<li><strong>추적</strong>: AMR, Pallet ID, Task ID</li>
+<li><strong>등급</strong>: R</li>
+<li><strong>의사결정 규칙</strong>:</li>
+<li>규칙 A — 대기시간 제한: <code>if waiting_time &gt;= T_max then move</code></li>
+<li>규칙 B — 병목 제한: <code>if waiting_cnt &gt;= Q_max then stop_transferring</code></li>
+<li>규칙 C — 배치 크기: 대기 수량이 일정 이상이면 묶어서 전송</li>
+</ul>
+<h3 id="28-7-b-post-processing-pp">2.8 [단계 7-B] 후처리 (Post-Processing · PP)</h3>
+<ul>
+<li><strong>입력</strong>: 주물</li>
+<li><strong>출력</strong>: 버 제거 · 그라인딩 완료 주물</li>
+<li><strong>주체</strong>: 후처리 구역 (MVP 기준 작업자 수동, 후처리 스위치 시나리오)</li>
+<li><strong>추적</strong>: AMR, Active/Inactive (청소), Robot Arm · Task ID (후처리 → 검사 이송)</li>
+<li><strong>등급</strong>: R (이송 부분), O (자체 자동화 MVP 이후)</li>
+<li><strong>참고</strong>: Confluence <code>[시나리오]후처리 작업구역 스위치 도입 시나리오</code> (37160520)</li>
+</ul>
+<h3 id="29-8-a-inspection-insp">2.9 [단계 8-A] 검사 (Inspection · INSP)</h3>
+<ul>
+<li><strong>입력</strong>: 후처리된 주물</li>
+<li><strong>출력</strong>: 양품 / 불량품 판정</li>
+<li><strong>주체</strong>: 컨베이어 + Jetson 비전 + AI 추론</li>
+<li><strong>추적</strong>: Camera, Image, Image ID, <code>insp_task_txn</code> (txn_stat: QUE/PROC/SUCC/FAIL)</li>
+<li><strong>등급</strong>: R</li>
+</ul>
+<h3 id="210-8-b">2.10 [단계 8-B] 분류 · 출하</h3>
+<ul>
+<li><strong>양품</strong>:</li>
+<li>로봇팔이 팔레트에 적재 → AMR이 출고 구역으로 이송</li>
+<li>추적: Robot Arm, Order Info, Pallet ID, AMR, Task ID</li>
+<li><strong>불량품</strong>:</li>
+<li>AMR이 폐기 구역으로 이송 (Optional: 불량품 적재)</li>
+<li>추적: AMR, Task ID</li>
+<li><strong>재활용 금지</strong> (산업 관례)</li>
+</ul>
+<hr>
+<h2 id="3-erp">3. 주문 상태 전이 (ERP 스키마 기준)</h2>
+<h3 id="31">3.1 상태 코드</h3>
+<p>Confluence 22806540 Interface Specification + DB check constraint 기준.</p>
+<table>
+<thead>
+<tr>
+<th>상태</th>
+<th>코드</th>
+<th>의미</th>
+<th>전이 가능</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>접수</td>
+<td><code>RCVD</code></td>
+<td>고객이 제출, 관리자 검토 대기</td>
+<td>→ APPR / REJT / CNCL</td>
+</tr>
+<tr>
+<td>승인</td>
+<td><code>APPR</code></td>
+<td>관리자 승인, 생산 시작 대기</td>
+<td>→ MFG / CNCL</td>
+</tr>
+<tr>
+<td>생산 중</td>
+<td><code>MFG</code></td>
+<td>공정 진행 중</td>
+<td>→ DONE / FAIL (예외)</td>
+</tr>
+<tr>
+<td>생산 완료</td>
+<td><code>DONE</code></td>
+<td>제품 생산 완료, 출고 준비</td>
+<td>→ SHIP</td>
+</tr>
+<tr>
+<td>출고 중</td>
+<td><code>SHIP</code></td>
+<td>출고 진행</td>
+<td>→ COMP</td>
+</tr>
+<tr>
+<td>완료</td>
+<td><code>COMP</code></td>
+<td>고객 인수 완료</td>
+<td>(종착)</td>
+</tr>
+<tr>
+<td>반려</td>
+<td><code>REJT</code></td>
+<td>승인 거절</td>
+<td>(종착)</td>
+</tr>
+<tr>
+<td>취소</td>
+<td><code>CNCL</code></td>
+<td>주문 취소</td>
+<td>(종착)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>⚠ 주의</strong>: <code>ord_log.new_stat</code> 에서는 취소를 <code>CANCELED</code> 로 표기 (CHECK 제약 불일치). <code>ord_stat.ord_stat</code> 은 <code>CNCL</code>. 쿼리 시 변환 필요.</p>
+<h3 id="32">3.2 상태 전이 다이어그램</h3>
+<div class="codehilite"><pre><span></span><code>  (신규)
+    │ 고객 주문 제출
+    ▼
+  RCVD ────(관리자 반려)────▶ REJT
+    │  ────(고객 취소)────▶ CNCL
+    │ 관리자 승인
+    ▼
+  APPR ────(취소)────▶ CNCL
+    │ 생산 시작 버튼
+    ▼
+  MFG ─────(예외/실패)────▶ [수동 개입]
+    │ 검사 통과
+    ▼
+  DONE
+    │ 출고 지시
+    ▼
+  SHIP
+    │ 고객 인수
+    ▼
+  COMP
+</code></pre></div>
+
+<h3 id="33">3.3 기록 추적</h3>
+<ul>
+<li><code>ord_stat</code>: 현재 상태 단일 행 유지 (stat_id + ord_id + user_id + ord_stat + updated_at)</li>
+<li><code>ord_log</code>: 상태 전이 이력 (prev_stat, new_stat, changed_by, logged_at)</li>
+<li><code>ord_txn</code>: 트랜잭션 이벤트 (txn_type: RCVD/APPR/CNCL/REJT, txn_at)</li>
+</ul>
+<hr>
+<h2 id="4-amr">4. AMR 운반 플로우</h2>
+<h3 id="41-amr-task-txn">4.1 AMR Task Txn 생명주기</h3>
+<p><code>trans_task_txn.txn_stat</code> 전이:</p>
+<div class="codehilite"><pre><span></span><code>QUE (대기)
+  ↓ 태스크 할당
+PROC (이동 중)
+  ↓ 목적지 도착 + Handoff 완료
+SUCC (성공)
+또는 ↓
+FAIL (실패, trans_err_log 기록)
+</code></pre></div>
+
+<h3 id="42-amr-fsm-spec-amr-001">4.2 AMR FSM (SPEC-AMR-001 기준)</h3>
+<p>Wave 3 기준 핵심 상태:<br>
+- <code>IDLE</code> → <code>MOVING</code> → <code>AT_DESTINATION</code> → <code>UNLOADING</code> → <code>UNLOAD_COMPLETED</code> → <code>IDLE</code><br>
+- 예외: <code>FAILED</code> → (수리 완료 버튼) → <code>IDLE</code></p>
+<h3 id="43-handoff-button-spec-amr-001-wave-3-2026-04-22">4.3 Handoff Button 흐름 (SPEC-AMR-001 Wave 3, 2026-04-22 배포)</h3>
+<p>실물 경로:</p>
+<div class="codehilite"><pre><span></span><code>ESP32 GPIO 33 (A접점 INPUT_PULLUP)
+  ↓ 버튼 rising edge
+firmware pollHandoffButton()
+  ↓ Serial &quot;HANDOFF_ACK&quot; 토큰 + JSON 페이로드
+Jetson jetson_publisher/esp_bridge.py (지수 백오프 1~60s, 32 이벤트 버퍼)
+  ↓ gRPC unary ReportHandoffAck
+Management Service 핸들러
+  ↓ INSERT public.handoff_acks
+  ↓ UPDATE public.transport_tasks.status=&#39;handoff_complete&#39;
+  ↓ AMR FSM: AT_DESTINATION/UNLOADING → UNLOAD_COMPLETED
+</code></pre></div>
+
+<h3 id="44-amr">4.4 AMR 경로 관리</h3>
+<ul>
+<li>Fleet 설계: <code>docs/fleet_traffic_management.html</code></li>
+<li>맵 크기: 1m × 2m</li>
+<li>AMR 3대, 직경 ~0.12m</li>
+<li>제어: Waypoint / Edge 그래프 + nav2_route + Backtrack Yield</li>
+</ul>
+<h3 id="45-amr-repair">4.5 AMR Repair (복구) 플로우</h3>
+<p>2026-04-22 이전 기능:<br>
+- PyQt 에서 AMR 카드에 <strong>수리 완료</strong> 버튼 제공<br>
+- FSM: <code>FAILED</code> → <code>IDLE</code> 전이<br>
+- DB: <code>trans_stat.cur_stat</code> = 'IDLE', <code>trans_err_log</code> 마지막 행에 resolved_at 추가</p>
+<hr>
+<h2 id="5-hw">5. HW 이벤트 흐름</h2>
+<h3 id="51-rfid-spec-rfid-001-wave-2">5.1 RFID (SPEC-RFID-001 Wave 2)</h3>
+<div class="codehilite"><pre><span></span><code>RC522 (SPI)
+  ↓
+Jetson Serial
+  ↓
+Management gRPC unary ReportRfidScan
+  ↓
+INSERT public.rfid_scan_log (append-only)
+  + 선택적 item lookup (Wave 2 제외)
+</code></pre></div>
+
+<h3 id="52-barcode-code128-hid-2026-04-22">5.2 Barcode (Code128 HID, 2026-04-22 실측 완료)</h3>
+<div class="codehilite"><pre><span></span><code>저가 1D 레이저 리더 (0483:0011)
+  ↓ HID Keyboard Boot
+Jetson /dev/input/event5
+  ↓ python-evdev (tools/barcode_live_ingest.py)
+Management gRPC unary ReportRfidScan (reader_id=&quot;BARCODE-JETSON-01&quot;)
+  ↓
+INSERT public.rfid_scan_log (공용)
+</code></pre></div>
+
+<p>특징:<br>
+- RfidService 무수정 재사용 (reader_id 로 구분)<br>
+- 50회 벤치마크 100% / 45ms<br>
+- <code>module_width=0.4mm</code> + quiet_zone 10mm (0.2mm는 디코딩 실패)</p>
+<h3 id="53-jetson-image-publisher">5.3 이미지 프레임 (Jetson Image Publisher)</h3>
+<div class="codehilite"><pre><span></span><code>C920 카메라
+  ↓ 프레임 캡처
+Jetson Image Publisher
+  ↓ gRPC client streaming PublishFrames
+Management ImagePublisherService
+  ↓ JPEG 버퍼 + 메타 (frame_id, timestamp)
+  ↓ AI 추론 요청 (Jetson 또는 AI Server Phase 2)
+  ↓ insp_task_txn 결과 기록
+</code></pre></div>
+
+<h3 id="54-conveyor-mgmt-grpc-jetson-serial-esp32">5.4 Conveyor 명령 (Mgmt gRPC → Jetson Serial → ESP32)</h3>
+<p>2026-04-20 Phase D-1/D-2 이후 MQTT 완전 제거:</p>
+<div class="codehilite"><pre><span></span><code>Management WatchConveyorCommands (server stream)
+  ↓
+Jetson Serial (115200 baud)
+  ↓
+ESP32 펌웨어 (v5.0, WiFi/MQTT 제거)
+  ↓
+L298N 드라이버 + JGB37-555 모터
+</code></pre></div>
+
+<hr>
+<h2 id="6">6. 검사 프로세스</h2>
+<h3 id="61">6.1 검사 파이프라인</h3>
+<ol>
+<li>제품이 컨베이어에 올라옴</li>
+<li>TOF250 센서가 제품 감지 (9600 ASCII UART)</li>
+<li>ESP32가 Serial로 Jetson에 트리거 신호</li>
+<li>Jetson이 C920으로 프레임 캡처</li>
+<li>Management로 이미지 스트림</li>
+<li>AI 추론 (불량 검출)</li>
+<li><code>insp_task_txn</code> 에 결과 저장 (txn_stat: SUCC/FAIL, result: boolean)</li>
+</ol>
+<h3 id="62">6.2 판정 결과</h3>
+<ul>
+<li><strong>양품</strong> (SUCC, result=true): 로봇팔 → 팔레트 적재 → AMR 출고 이송</li>
+<li><strong>불량품</strong> (SUCC, result=false): AMR → 폐기 구역 (재활용 금지)</li>
+<li><strong>검사 실패</strong> (FAIL): 재시도 또는 운영자 개입</li>
+</ul>
+<h3 id="63">6.3 검사 표준</h3>
+<ul>
+<li><code>public.inspection_standards</code> (v2 스키마): 제품별 허용 공차 정의</li>
+<li>Confluence <code>Scenarios</code> / <code>Casting</code> (3375162): 제품 특성 기반 표면 검사 기준</li>
+</ul>
+<hr>
+<h2 id="7">7. 에러 복구 프로세스</h2>
+<h3 id="71-amr-trans_err_log">7.1 AMR 장애 (trans_err_log 기록)</h3>
+<div class="codehilite"><pre><span></span><code>AMR 태스크 실행 중 실패 감지
+  ↓
+UPDATE trans_stat.cur_stat=&#39;FAILED&#39;
+  ↓
+INSERT trans_err_log (err_msg, battery_pct, occured_at)
+  ↓
+PyQt 알람 표시
+  ↓
+(운영자) 물리적 복구 후 PyQt &quot;수리 완료&quot; 버튼
+  ↓
+UPDATE trans_stat.cur_stat=&#39;IDLE&#39;
+  ↓
+FSM: FAILED → IDLE
+</code></pre></div>
+
+<h3 id="72-equip_err_log">7.2 장비 장애 (equip_err_log)</h3>
+<p>동일 패턴으로 <code>equip_err_log</code> + <code>equip_stat.cur_stat</code> 처리.</p>
+<h3 id="73">7.3 재시도 정책</h3>
+<ul>
+<li>Jetson ESP bridge: 지수 백오프 1~60s, 32 이벤트 버퍼</li>
+<li>gRPC: 기본 retry (grpcio 설정)</li>
+<li>DB: 트랜잭션 롤백 후 운영자 알림</li>
+</ul>
+<h3 id="74-spof">7.4 SPOF 대응</h3>
+<ul>
+<li>Interface Service 장애: Management 직접 접속 가능 (PyQt)</li>
+<li>AWS RDS 장애: 로컬 PG (100.107.120.14) 로 폴백 (수동 설정)</li>
+<li>Jetson 장애: ESP32 펌웨어가 STOPPED 상태 유지, 수동 복구 대기</li>
+</ul>
+<hr>
+<h2 id="8">8. 생산 계획 및 스케줄링</h2>
+<h3 id="81-7">8.1 7요소 우선순위 엔진</h3>
+<p>Confluence 통합 팩트 시트 기준. 주문을 생산 순서로 정렬할 때:<br>
+1. <strong>납기</strong> (due_date) — 가까운 것 우선<br>
+2. <strong>수량</strong> (qty) — 큰 것 vs 작은 것<br>
+3. <strong>하중 등급</strong> (load class) — 복잡도<br>
+4. <strong>재질</strong> (material) — 전환 비용<br>
+5. <strong>직경</strong> (diameter) — 주형 세팅<br>
+6. <strong>후처리 옵션</strong> (pp_options)<br>
+7. <strong>고객 우선순위</strong> (customer tier)</p>
+<p>구현 위치: Management OrderingService / TaskManager (추가 개발 여지).</p>
+<h3 id="82-mvp">8.2 MVP 스케줄링</h3>
+<p>현재는 <strong>FIFO (APPR 순서대로 MFG 전이)</strong> 기준. 고도화는 후속 SPEC.</p>
+<h3 id="83">8.3 주문 ↔ 생산 계획 매핑</h3>
+<ul>
+<li><code>ord_pp_map</code>: 주문과 생산 계획(후처리 옵션)을 연결</li>
+<li><code>pp_options</code>: 후처리 옵션 카탈로그 (pp_nm, extra_cost)</li>
+</ul>
+<hr>
+<h2 id="9-job-id-item-id">9. 데이터 추적 (Job ID · Item ID)</h2>
+<h3 id="91-id">9.1 ID 체계</h3>
+<ul>
+<li><strong>Order ID</strong>: 고객 주문 단위</li>
+<li><strong>Job ID</strong>: 용탕 주입 단위 (주형 1회)</li>
+<li><strong>Item ID</strong>: 개별 주물 단위</li>
+<li><strong>RFID UID</strong>: 제품 물리 식별자 (또는 Barcode UID)</li>
+</ul>
+<h3 id="92">9.2 연결 관계</h3>
+<div class="codehilite"><pre><span></span><code>orders / ord (1)
+  └─ order_details / ord_detail (N)
+       └─ items / item (N, qty만큼)
+            ├─ rfid_scan_log (아이템 식별 이벤트)
+            ├─ insp_task_txn (검사)
+            ├─ strg_location_stat (보관)
+            └─ ship_location_stat (출고)
+</code></pre></div>
+
+<h3 id="93-end-to-end-tracking-v2">9.3 end-to-end tracking 쿼리 (v2 스키마 예)</h3>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">o</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">order_id</span><span class="p">,</span><span class="w"> </span><span class="n">o</span><span class="p">.</span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">item_id</span><span class="p">,</span>
+<span class="w">       </span><span class="n">i</span><span class="p">.</span><span class="n">current_stage</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">rfid_uid</span><span class="p">,</span><span class="w"> </span><span class="n">sl</span><span class="p">.</span><span class="n">status</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">storage_status</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">orders</span><span class="w"> </span><span class="n">o</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">items</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">order_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">o</span><span class="p">.</span><span class="n">id</span>
+<span class="k">LEFT</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">warehouse_racks</span><span class="w"> </span><span class="n">wr</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">rack_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wr</span><span class="p">.</span><span class="n">id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">o</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">$</span><span class="mi">1</span><span class="p">;</span>
+</code></pre></div>
+
+<hr>
+<h2 id="10">10. 예외 및 에지 케이스</h2>
+<h3 id="101-orphan-handoff">10.1 Orphan Handoff</h3>
+<ul>
+<li>ESP32 버튼이 눌렸지만 활성 AMR task가 없음</li>
+<li><code>handoff_acks.orphan=true</code>, <code>amr_id=null</code>, <code>task_id=null</code></li>
+<li>로그 기록만 하고 FSM 전이 없음</li>
+</ul>
+<h3 id="102-rfid">10.2 중복 RFID 스캔</h3>
+<ul>
+<li>짧은 시간 내 동일 UID 재스캔</li>
+<li><code>rfid_scan_log</code> 는 append-only 이므로 모두 기록</li>
+<li>애플리케이션에서 debounce 로직 (Wave 2 범위)</li>
+</ul>
+<h3 id="103-amr">10.3 AMR 배터리 부족</h3>
+<ul>
+<li><code>trans_stat.battery_pct</code> &lt; 20% 감지</li>
+<li>진행 중 task 종료 후 <code>chg_location_stat</code> 이동 태스크 자동 생성</li>
+<li><code>trans_task_txn.task_type='CHARGE'</code> 로 구분</li>
+</ul>
+<h3 id="104">10.4 후처리 병목</h3>
+<ul>
+<li>의사결정 규칙 B (<code>waiting_cnt &gt;= Q_max</code>) 발동</li>
+<li>이송 일시 중단 + 운영자 알람</li>
+<li>후처리 완료 후 자동 재개</li>
+</ul>
+<hr>
+<h2 id="11-confluence">11. Confluence 팩트 참조</h2>
+<p>주요 공정 관련 Confluence 페이지:<br>
+- <code>Casting</code> (3375162): 제품 특성, 최적화 목표, 의사결정 규칙<br>
+- <code>Logistics</code> (3637320): VDA 5050 (미채택, 자체 통신)<br>
+- <code>Terminology</code> (3407906): 용어 사전 (주조/이송/검사/후처리 등)<br>
+- <code>User_Requirements</code> (3375120): UR 테이블 15개 R/O 등급<br>
+- <code>System_Requirements_v3</code> (6258774): SR-ORD-01 ~ SR-INSP-* 등<br>
+- <code>Scenarios</code> (15729093): 빈 페이지 (도메인은 Casting 페이지 참조)<br>
+- <code>[시나리오]후처리 작업구역 스위치 도입</code> (37160520): 후처리 수동 병행 시나리오<br>
+- <code>AMR</code> (7438566), <code>Robot_Arm</code> (7438542), <code>Conveyor</code> (7700525): HW 상세</p>
+<hr>
+<h2 id="_1">변경 이력</h2>
+<table>
+<thead>
+<tr>
+<th>일자</th>
+<th>버전</th>
+<th>변경 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-04-24</td>
+<td>V6</td>
+<td>초기 작성. 8 단계 공정 + 주문 상태 FSM + AMR FSM + HW 이벤트 + 검사 + 에러 복구</td>
+</tr>
+</tbody>
+</table>
+</main>
+<div class="footer">
+  SmartCast Robotics 프로젝트 문서 · V6 (2026-04-24) ·
+  <a href="README.html">문서 인덱스</a>
+</div>
+</body>
+</html>

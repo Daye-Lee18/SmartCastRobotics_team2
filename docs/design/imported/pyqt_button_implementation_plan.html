@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PyQt 버튼 기능 구현 계획서 + 테스트 체크리스트 — casting-factory monitoring (2026-04-21)</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel2: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --warn: #fbbf24;
+    --fail: #ef4444;
+    --info: #818cf8;
+    --border: #475569;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 2px solid var(--accent);
+  }
+  header h1 { margin: 0; font-size: 1.7rem; color: var(--accent); }
+  header p { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.92rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+  .badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--panel2);
+    color: var(--text);
+  }
+  .badge.ok { background: var(--ok); color: #052e16; }
+  .badge.warn { background: var(--warn); color: #422006; }
+  .badge.fail { background: var(--fail); color: #450a0a; }
+  .badge.info { background: var(--info); color: #1e1b4b; }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    background: rgba(15,23,42,0.95);
+    backdrop-filter: blur(6px);
+    padding: 0.7rem 2rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    z-index: 10;
+  }
+  nav.toc a { color: var(--accent); margin-right: 1.1rem; text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+  main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  section {
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+  }
+  section h2 {
+    margin-top: 0;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    font-size: 1.2rem;
+  }
+  section h3 { color: var(--text); font-size: 1.02rem; margin-top: 1.3rem; }
+  section h4 { color: var(--muted); font-size: 0.95rem; margin-top: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th {
+    background: var(--panel2);
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+  }
+  tr:hover { background: rgba(56,189,248,0.05); }
+  code {
+    background: var(--panel2);
+    padding: 0.08rem 0.35rem;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    color: #fde68a;
+  }
+  pre {
+    background: #020617;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem;
+    overflow-x: auto;
+    font-size: 0.78rem;
+  }
+  pre code { background: transparent; color: var(--text); padding: 0; }
+  .status-ok::before { content: "✅ "; }
+  .status-warn::before { content: "⚠️ "; }
+  .status-fail::before { content: "❌ "; }
+  .status-info::before { content: "ℹ️ "; }
+  .status-todo::before { content: "🟡 "; }
+  .mermaid-wrap {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+  }
+  .mermaid { text-align: center; }
+  .checklist li {
+    list-style: none;
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist input[type="checkbox"] {
+    margin-right: 0.5rem;
+    transform: scale(1.15);
+    accent-color: var(--accent);
+  }
+  .evidence { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 0.15rem; }
+  .step {
+    background: var(--panel2);
+    border-left: 3px solid var(--accent);
+    padding: 0.6rem 0.9rem;
+    margin: 0.5rem 0;
+    border-radius: 0 4px 4px 0;
+  }
+  .step-title { font-weight: 600; color: var(--accent); }
+  footer { text-align: center; color: var(--muted); padding: 2rem 1rem 3rem; font-size: 0.82rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PyQt 버튼 기능 구현 계획서 + 테스트 체크리스트</h1>
+  <p>Target: <code>monitoring/</code> PyQt5 관제 앱 · Branch <code>feat/v6-phase-c2-proxy</code> · 감사 일자 2026-04-21</p>
+  <div class="badges">
+    <span class="badge info">전체 버튼 15개</span>
+    <span class="badge ok">구현 13</span>
+    <span class="badge warn">개선 필요 3</span>
+    <span class="badge fail">미구현 TODO 2</span>
+    <span class="badge info">V6 canonical · gRPC 직결</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#overview">① 버튼 인벤토리</a>
+  <a href="#architecture">② 명령 흐름</a>
+  <a href="#plan">③ 구현 계획 (TODO 2건)</a>
+  <a href="#improve">④ 개선 항목 3건</a>
+  <a href="#proto">⑤ proto · 백엔드 변경</a>
+  <a href="#rollout">⑥ 릴리즈 순서</a>
+  <a href="#test">⑦ 테스트 체크리스트</a>
+</nav>
+
+<main>
+
+<!-- ============ 1. 현황 ============ -->
+<section id="overview">
+  <h2>① 버튼 인벤토리 (전체 15개)</h2>
+
+  <h3>1.1 main_window.py — 공통 셸</h3>
+  <table>
+    <thead><tr><th>#</th><th>버튼</th><th>위치</th><th>핸들러</th><th>경로</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>B1</td><td>사이드바 토글 <code>◀/▶</code></td><td>main_window.py:105</td><td><code>_toggle_sidebar</code>:212</td><td>UI-only (로컬 상태)</td><td class="status-ok">구현</td></tr>
+      <tr><td>B2</td><td>Ctrl+B 단축키</td><td>main_window (QShortcut)</td><td><code>_toggle_sidebar</code></td><td>동일</td><td class="status-ok">구현</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.2 pages/operations.py — 주문/생산 운영</h3>
+  <table>
+    <thead><tr><th>#</th><th>버튼</th><th>위치</th><th>핸들러</th><th>경로</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>B3</td><td>패턴 등록</td><td>operations.py:81</td><td><code>_on_register_pattern</code>:316</td><td>FastAPI <code>POST /api/production/patterns</code></td><td class="status-ok">구현</td></tr>
+      <tr><td>B4</td><td>생산 시작</td><td>operations.py:85</td><td><code>_on_start_production</code>:331</td><td>Mgmt gRPC <code>StartProduction</code> (proxy 또는 직접)</td><td class="status-ok">구현</td></tr>
+      <tr><td>B5</td><td>🔔 후처리 ACK 발행</td><td>operations.py:152</td><td><code>_on_handoff_ack</code>:345</td><td>Mgmt gRPC <code>ReportHandoffAck</code> (SPEC-AMR-001)</td><td class="status-ok">구현</td></tr>
+      <tr><td>B6</td><td>새로고침</td><td>operations.py:167</td><td><code>refresh</code></td><td>FastAPI read 조회 일괄</td><td class="status-ok">구현</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.3 pages/schedule.py — 생산 스케줄링</h3>
+  <table>
+    <thead><tr><th>#</th><th>버튼</th><th>위치</th><th>핸들러</th><th>경로</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>B7</td><td>↻ 새로고침</td><td>schedule.py:169</td><td><code>refresh</code></td><td>FastAPI <code>/api/production/schedule/jobs</code> 등</td><td class="status-ok">구현</td></tr>
+      <tr><td>B8</td><td>⚙ 우선순위 계산</td><td>schedule.py:243</td><td><code>_on_calculate</code>:434</td><td>FastAPI <code>POST /api/production/schedule/calculate</code></td><td class="status-ok">구현</td></tr>
+      <tr><td>B9</td><td>선택 해제</td><td>schedule.py:256</td><td><code>_on_clear_selection</code>:573</td><td>UI-only</td><td class="status-ok">구현</td></tr>
+      <tr><td>B10</td><td>▶ 선택 주문 생산 시작 ▶</td><td>schedule.py:336</td><td><code>_on_start_selected</code>:596</td><td>Mgmt gRPC <code>StartProduction</code> (배치)</td><td class="status-ok">구현</td></tr>
+      <tr><td>B11</td><td>행별 ▶ 생산 시작 (동적)</td><td>schedule.py:518</td><td><code>_on_start_single</code>:580</td><td>동일 (단건)</td><td class="status-ok">구현</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.4 pages/production.py + widgets/gauges.py — 생산 모니터링 / ControlPanel</h3>
+  <table>
+    <thead><tr><th>#</th><th>버튼</th><th>위치</th><th>핸들러</th><th>경로</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>B12</td><td><strong>비상 정지 (E-Stop)</strong></td><td>gauges.py:318 <code>EStopButton.pressed_stop</code> → production.py:185</td><td><code>_on_emergency_stop</code>:424</td><td><strong>TODO</strong>: <code>POST /api/production/emergency_stop</code></td><td class="status-fail">미구현 — QMessageBox 만</td></tr>
+      <tr><td>B13</td><td><strong>AUTO/MANUAL 토글</strong></td><td>gauges.py:242 <code>toggled_changed</code> → production.py:186</td><td><code>_on_mode_changed</code>:435</td><td><strong>TODO</strong>: <code>POST /api/production/mode</code></td><td class="status-fail">미구현 — 로그만</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.5 widgets/amr_card.py — AMR 상태 전이</h3>
+  <table>
+    <thead><tr><th>#</th><th>버튼</th><th>위치</th><th>핸들러</th><th>경로</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>B14</td><td>다음 상태 (출발/상차/도착/하차/완료)</td><td>amr_card.py:160</td><td><code>_on_next_clicked</code>:192</td><td>Mgmt gRPC <code>TransitionAmrState</code></td><td class="status-ok">구현</td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.6 widgets/alert_widgets.py</h3>
+  <p style="color: var(--muted);">알림 위젯은 현재 <strong>토스트/리스트 표시 전용</strong>이며 개별 알림에 대한 "확인 (acknowledge) / 해결 (resolve)" 버튼이 없다. 필요 시 §4 <em>개선 항목</em> 또는 별도 SPEC 로 확장 권장.</p>
+
+</section>
+
+<!-- ============ 2. 흐름 다이어그램 ============ -->
+<section id="architecture">
+  <h2>② 명령 흐름 다이어그램 (구현 완료 후 기대)</h2>
+  <div class="mermaid-wrap">
+<pre class="mermaid">
+flowchart LR
+  subgraph PyQt["PyQt 관제 앱 (monitoring/)"]
+    direction TB
+    B4["B4 생산 시작"]
+    B5["B5 후처리 ACK"]
+    B10["B10 선택 주문 생산 시작"]
+    B11["B11 행별 생산 시작"]
+    B12["B12 E-Stop <b>(신규)</b>"]
+    B13["B13 AUTO/MANUAL <b>(신규)</b>"]
+    B14["B14 AMR 상태 전이"]
+    B3["B3 패턴 등록"]
+    B6B7B8["B6/B7/B8 조회·계산"]
+  end
+
+  subgraph Mgmt["Management Service :50051 (backend/management/)"]
+    SP["StartProduction"]
+    TAS["TransitionAmrState"]
+    RHA["ReportHandoffAck"]
+    EXE["ExecuteCommand (기존)"]
+    ES["<b>EmergencyStop (신규)</b>"]
+    SAM["<b>SetAutoMode (신규)</b>"]
+  end
+
+  subgraph Interface["Interface Service :8000 (backend/app/)"]
+    PAT["POST /api/production/patterns"]
+    CALC["POST /api/production/schedule/calculate"]
+    READ["READ endpoints"]
+  end
+
+  B4  --> SP
+  B10 --> SP
+  B11 --> SP
+  B5  --> RHA
+  B14 --> TAS
+  B12 --> ES
+  B13 --> SAM
+  B3  --> PAT
+  B6B7B8 --> READ
+  B6B7B8 --> CALC
+
+  ES  --> EXE
+  SAM --> EXE
+
+  classDef btn fill:#0891b2,stroke:#0e7490,color:#fff
+  classDef mgmt fill:#16a34a,stroke:#166534,color:#fff
+  classDef iface fill:#a16207,stroke:#713f12,color:#fff
+  classDef new fill:#dc2626,stroke:#7f1d1d,color:#fff
+  class B3,B4,B5,B6B7B8,B10,B11,B14 btn
+  class B12,B13 new
+  class SP,TAS,RHA,EXE mgmt
+  class ES,SAM new
+  class PAT,CALC,READ iface
+</pre>
+  </div>
+</section>
+
+<!-- ============ 3. 구현 계획 ============ -->
+<section id="plan">
+  <h2>③ 구현 계획 — 미구현 TODO 2건</h2>
+
+  <h3>3.1 B12 — 비상 정지 (Emergency Stop)</h3>
+  <p><strong>현황 (production.py:424-433)</strong>: QMessageBox 경고만 출력하고 실제 장비에는 명령이 전달되지 않는다.</p>
+
+  <h4>요구 사항</h4>
+  <ul>
+    <li>클릭 즉시(≤ 500 ms) 공정상 모든 로봇(Conveyor · AMR · Cobot)에 STOP 명령</li>
+    <li>FMS 자동 진행 시퀀서(Mgmt <code>FMS_AUTOPLAY</code>) 일시 정지</li>
+    <li>이미 할당된 운송 작업(TransportTask)은 "paused" 상태로 동결</li>
+    <li>DB <code>alerts</code> 에 <code>type="emergency_stop"</code> <code>severity="critical"</code> 로 INSERT</li>
+    <li>사용자 확인(QMessageBox) 후 한 번 더 확인 요구 (double-confirm)</li>
+    <li>해제(Resume)는 별도 "재개" 액션으로 분리 (본 SPEC 외)</li>
+  </ul>
+
+  <h4>구현 단계</h4>
+
+  <div class="step"><span class="step-title">Step 1. proto 확장 (backend/management/proto/management.proto)</span>
+    <pre><code>message EmergencyStopRequest {
+  string reason   = 1;   // "operator_button" | "sensor_fault" | ...
+  string issuer   = 2;   // "pyqt_factory_op" 등
+}
+message EmergencyStopResponse {
+  bool   accepted          = 1;
+  int32  stopped_robots    = 2;   // 실제 STOP 수신 로봇 수
+  string alert_id          = 3;
+  string reason            = 4;
+}
+service ManagementService {
+  // ... 기존 ...
+  rpc EmergencyStop(EmergencyStopRequest) returns (EmergencyStopResponse);
+}</code></pre>
+  </div>
+
+  <div class="step"><span class="step-title">Step 2. Management 핸들러 (backend/management/server.py)</span>
+    <ul>
+      <li><code>self.task_manager</code>에 <code>pause_autoplay()</code> 호출 → <code>FMS_AUTOPLAY</code> daemon thread 에 정지 플래그</li>
+      <li>active 로봇 일괄 조회 → <code>robot_executor.execute_command(robot_id, "STOP")</code> fan-out</li>
+      <li>alerts 테이블 INSERT (<code>models_mgmt.Alert</code>)</li>
+      <li>응답에 실제 STOP 전달된 로봇 수와 alert_id 반환</li>
+    </ul>
+  </div>
+
+  <div class="step"><span class="step-title">Step 3. PyQt ManagementClient 메서드 (monitoring/app/management_client.py)</span>
+    <pre><code>def emergency_stop(self, reason: str = "operator_button") -> EmergencyStopResponse:
+    self._ensure_channel()
+    req = management_pb2.EmergencyStopRequest(
+        reason=reason, issuer=os.environ.get("USER", "pyqt")
+    )
+    return self._stub.EmergencyStop(req, timeout=1.5)</code></pre>
+  </div>
+
+  <div class="step"><span class="step-title">Step 4. PyQt 핸들러 (production.py:424)</span>
+    <pre><code>def _on_emergency_stop(self) -> None:
+    confirm = QMessageBox.warning(self, "비상 정지 재확인",
+        "모든 장비를 즉시 정지합니까? 되돌리려면 별도 재개 작업이 필요합니다.",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    if confirm != QMessageBox.Yes: return
+
+    try:
+        resp = self._mgmt.emergency_stop(reason="operator_button")
+    except grpc.RpcError as exc:
+        QMessageBox.critical(self, "비상 정지 실패",
+            f"Mgmt gRPC 오류: {exc.code()}\n물리 E-Stop 버튼을 누르세요.")
+        return
+    QMessageBox.information(self, "비상 정지 완료",
+        f"로봇 {resp.stopped_robots}대 STOP · alert {resp.alert_id} 생성")
+    self._control_panel.set_estop_active(True)  # UI lock</code></pre>
+  </div>
+
+  <div class="step"><span class="step-title">Step 5. ControlPanel UI 잠금</span>
+    <ul>
+      <li><code>ControlPanel.set_estop_active(True)</code>: 빨간 border + AUTO/MANUAL 토글 비활성</li>
+      <li>재개(Resume) 전까지 <code>_on_mode_changed</code>, <code>_on_emergency_stop</code> 다시 누를 수 없도록</li>
+    </ul>
+  </div>
+
+  <h3>3.2 B13 — AUTO/MANUAL 모드 토글</h3>
+  <p><strong>현황 (production.py:435-437)</strong>: <code>mode = "AUTO" if auto else "MANUAL"</code> 문자열만 계산하고 버림.</p>
+
+  <h4>요구 사항</h4>
+  <ul>
+    <li>AUTO 모드: <code>FMS_AUTOPLAY</code> 시퀀서가 item FSM 자동 진행</li>
+    <li>MANUAL 모드: 시퀀서 정지, 모든 상태 전이는 PyQt 버튼(B14) 또는 현장 HW 트리거로만</li>
+    <li>모드 전환이 성공하면 UI 상단 뱃지(AUTO/MANUAL) 업데이트</li>
+    <li>모드는 Mgmt 프로세스 상태이므로 재시작 시 기본값은 <code>FMS_AUTOPLAY</code> 환경변수</li>
+  </ul>
+
+  <h4>구현 단계</h4>
+  <div class="step"><span class="step-title">Step 1. proto 확장</span>
+    <pre><code>message SetAutoModeRequest  { bool auto = 1; }
+message SetAutoModeResponse { bool accepted = 1; bool current_auto = 2; }
+rpc SetAutoMode(SetAutoModeRequest) returns (SetAutoModeResponse);</code></pre>
+  </div>
+  <div class="step"><span class="step-title">Step 2. Management 핸들러</span>
+    <ul>
+      <li><code>fms_sequencer.set_autoplay(auto)</code> 호출로 시퀀서 pause/resume</li>
+      <li>응답의 <code>current_auto</code> 로 실제 적용 상태 반환 (race condition 대비)</li>
+    </ul>
+  </div>
+  <div class="step"><span class="step-title">Step 3. PyQt 핸들러</span>
+    <pre><code>def _on_mode_changed(self, auto: bool) -> None:
+    try:
+        resp = self._mgmt.set_auto_mode(auto)
+    except grpc.RpcError as exc:
+        QMessageBox.warning(self, "모드 전환 실패",
+            f"Mgmt gRPC 오류: {exc.code()}")
+        self._control_panel.mode_toggle.setChecked(not auto)  # 원복
+        return
+    self._status_bar.showMessage(
+        f"모드 전환: {'AUTO' if resp.current_auto else 'MANUAL'}", 3000)</code></pre>
+  </div>
+
+</section>
+
+<!-- ============ 4. 개선 항목 ============ -->
+<section id="improve">
+  <h2>④ 개선 필요 항목 3건 (기능은 동작하지만 UX 약함)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>대상</th><th>현황</th><th>개선</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>I1</td>
+        <td>B8 ⚙ 우선순위 계산</td>
+        <td>실패/빈 결과 시 빈 테이블만</td>
+        <td>StatusBar 또는 "결과 없음" placeholder 로 실패 원인(503/400/network)을 구분 표기</td>
+      </tr>
+      <tr>
+        <td>I2</td>
+        <td>B14 AMR 다음 상태</td>
+        <td>FSM 위반(예: AT_SOURCE 가 아닌데 LOADING) 시 서버 400 후에야 실패 감지</td>
+        <td>클라이언트 측에서도 <code>_NEXT_STATE</code> 테이블로 1차 검증 → 버튼 disable</td>
+      </tr>
+      <tr>
+        <td>I3</td>
+        <td>B5 후처리 ACK</td>
+        <td>성공 시 콘솔 로그만</td>
+        <td>orphan ack / released / duplicate 를 StatusBar · 토스트로 구분 (reason 필드 활용)</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 5. proto 및 백엔드 변경 요약 ============ -->
+<section id="proto">
+  <h2>⑤ proto / Management 백엔드 변경 요약</h2>
+  <table>
+    <thead><tr><th>파일</th><th>변경</th></tr></thead>
+    <tbody>
+      <tr><td><code>backend/management/proto/management.proto</code></td><td>+2 message 4종 (EmergencyStop*, SetAutoMode*) · +2 RPC</td></tr>
+      <tr><td><code>backend/management/management_pb2*.py</code></td><td>재생성 (make proto)</td></tr>
+      <tr><td><code>monitoring/app/generated/management_pb2*.py</code></td><td>재생성 (scripts/gen_proto.sh)</td></tr>
+      <tr><td><code>jetson_publisher/generated/management_pb2*.py</code></td><td>Jetson 은 B12/B13 미사용이지만 stub 일관성 유지 권장 (선택)</td></tr>
+      <tr><td><code>backend/management/server.py</code></td><td>+ <code>EmergencyStop</code>, <code>SetAutoMode</code> 핸들러 2건</td></tr>
+      <tr><td><code>backend/management/services/fms_sequencer.py</code></td><td>+ <code>pause_autoplay()</code>, <code>set_autoplay(bool)</code>, <code>current_auto()</code></td></tr>
+      <tr><td><code>backend/management/services/robot_executor.py</code></td><td>+ <code>broadcast_stop()</code> (active 로봇 일괄 STOP)</td></tr>
+      <tr><td><code>backend/app/models/models_mgmt.py</code></td><td>변경 없음 — Alert 모델 재사용</td></tr>
+      <tr><td><code>monitoring/app/management_client.py</code></td><td>+ <code>emergency_stop()</code>, <code>set_auto_mode()</code> 편의 메서드</td></tr>
+      <tr><td><code>monitoring/app/widgets/gauges.py</code></td><td>+ <code>ControlPanel.set_estop_active(bool)</code> · 시각적 잠금 모드</td></tr>
+      <tr><td><code>monitoring/app/pages/production.py</code></td><td>TODO 2개 제거 + gRPC 호출 + UI 피드백</td></tr>
+      <tr><td><code>backend/app/routes/production.py</code></td><td><strong>불필요</strong> — Interface FastAPI 경유 필요 없음 (PyQt → Mgmt 직결)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 6. 릴리즈 순서 ============ -->
+<section id="rollout">
+  <h2>⑥ 릴리즈 순서</h2>
+  <ol>
+    <li>proto 수정 + <code>make proto</code> (backend) + <code>gen_proto.sh</code> (monitoring)</li>
+    <li>Management 서비스 메서드 2개 구현 + 단위 테스트 (in-memory fms_sequencer mock)</li>
+    <li>PyQt ManagementClient 편의 메서드 + production.py 핸들러 교체</li>
+    <li>gauges.py <code>set_estop_active</code> 추가 및 스타일</li>
+    <li>통합 테스트 (실 PG + 실 Mgmt 서버): §⑦ 체크리스트</li>
+    <li>수동 smoke (Factory Operator PC)</li>
+    <li>Mgmt + PyQt 재시작 (ORM 해시 드리프트 방지)</li>
+    <li>DEPLOY 런북에 "B12/B13 활성화 절차" 한 섹션 추가</li>
+  </ol>
+</section>
+
+<!-- ============ 7. 테스트 체크리스트 ============ -->
+<section id="test">
+  <h2>⑦ 구현 완료 후 테스트 체크리스트</h2>
+
+  <h3>7.1 단위 테스트 (backend, pytest)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>U1. <code>test_emergency_stop_broadcasts_to_all_active_robots()</code> — <em>active 3 로봇 → STOP fan-out 3회 호출 확인</em></span><span class="evidence">tests/test_server.py 확장</span></li>
+    <li><input type="checkbox"> <span>U2. <code>test_emergency_stop_inserts_alert_row()</code> — <em>alerts 테이블에 severity=critical INSERT</em></span></li>
+    <li><input type="checkbox"> <span>U3. <code>test_emergency_stop_pauses_fms_autoplay()</code> — <em>fms_sequencer.autoplay_enabled == False</em></span></li>
+    <li><input type="checkbox"> <span>U4. <code>test_set_auto_mode_toggles_sequencer()</code> — <em>True → AUTO, False → MANUAL</em></span></li>
+    <li><input type="checkbox"> <span>U5. <code>test_set_auto_mode_returns_current_state()</code> — <em>idempotent 재호출 시 current_auto 반영</em></span></li>
+    <li><input type="checkbox"> <span>U6. <code>test_proto_stubs_synced()</code> — <em>backend/monitoring pb2 동일 descriptor</em></span></li>
+  </ul>
+
+  <h3>7.2 통합 테스트 (실 PG + 실 Mgmt, grpcurl)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>I1. <code>grpcurl -plaintext -d '{"reason":"test"}' localhost:50051 .../EmergencyStop</code> → <code>accepted:true</code>, <code>stopped_robots &gt; 0</code>, <code>alert_id</code> 반환</span></li>
+    <li><input type="checkbox"> <span>I2. <code>psql -c "SELECT type, severity FROM public.alerts ORDER BY id DESC LIMIT 1"</code> → <code>emergency_stop | critical</code></span></li>
+    <li><input type="checkbox"> <span>I3. <code>grpcurl -plaintext -d '{"auto":false}' localhost:50051 .../SetAutoMode</code> → <code>current_auto:false</code></span></li>
+    <li><input type="checkbox"> <span>I4. Mgmt 로그에 <code>fms_sequencer pause due to SetAutoMode(false)</code> 줄 출력</span></li>
+    <li><input type="checkbox"> <span>I5. <code>grpcurl ... SetAutoMode {"auto":true}</code> → 재개 확인, item FSM 자동 진행 관측</span></li>
+  </ul>
+
+  <h3>7.3 PyQt 수동 smoke (Factory Operator PC)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>M1. B1 사이드바 토글 — <code>◀</code>↔<code>▶</code> 전환 + Ctrl+B 동작</span></li>
+    <li><input type="checkbox"> <span>M2. B3 패턴 등록 — 존재하지 않는 ord_id 입력 시 400 에러 메시지 표시</span></li>
+    <li><input type="checkbox"> <span>M3. B4 생산 시작 — 패턴 등록된 주문 선택 후 버튼 → item 1건 추가 + EquipTaskTxn QUE 확인</span></li>
+    <li><input type="checkbox"> <span>M4. B5 후처리 ACK — WAIT_HANDOFF AMR 있음 시 "released" 알림 / 없으면 "orphan" 알림</span></li>
+    <li><input type="checkbox"> <span>M5. B6 새로고침 — 화면 전체 리플래시 (로딩 indicator 2초 내)</span></li>
+    <li><input type="checkbox"> <span>M6. B8 우선순위 계산 — 선택된 주문 표시되고 결과 테이블 채워짐</span></li>
+    <li><input type="checkbox"> <span>M7. B9 선택 해제 — 선택된 주문 clear</span></li>
+    <li><input type="checkbox"> <span>M8. B10 ▶ 선택 주문 생산 시작 ▶ — 복수 선택 시 순차 StartProduction 호출</span></li>
+    <li><input type="checkbox"> <span>M9. B11 행별 ▶ 생산 시작 — ready 상태 행에서만 활성화</span></li>
+    <li><input type="checkbox"> <span>M10. <strong>B12 비상 정지</strong> — 재확인 다이얼로그 → 확인 시 모든 로봇 STOP + alert 팝업 + AUTO/MANUAL 토글 비활성</span></li>
+    <li><input type="checkbox"> <span>M11. <strong>B13 AUTO 토글</strong> — AUTO→MANUAL 전환 시 StatusBar 메시지 3초 표시, Mgmt 로그 일치</span></li>
+    <li><input type="checkbox"> <span>M12. <strong>B13 MANUAL 유지 검증</strong> — MANUAL 상태에서 AMR 이 자동 전이하지 않음 (60초 관찰)</span></li>
+    <li><input type="checkbox"> <span>M13. B14 AMR 다음 상태 — IDLE → MOVE_TO_SOURCE → AT_SOURCE 순차 클릭, TransitionAmrState 성공</span></li>
+  </ul>
+
+  <h3>7.4 실패 / Edge 케이스 확인</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>E1. Management 중지 상태에서 B12 클릭 → "Mgmt gRPC 오류" 다이얼로그 + 물리 E-Stop 안내</span></li>
+    <li><input type="checkbox"> <span>E2. B13 토글 중 네트워크 타임아웃 → 원래 상태로 원복 (<code>setChecked(not auto)</code>)</span></li>
+    <li><input type="checkbox"> <span>E3. B12 재확인 다이얼로그에서 "아니오" 선택 → 아무 동작 없음</span></li>
+    <li><input type="checkbox"> <span>E4. B5 연속 2회 클릭 (duplicate) → <code>parse_status=duplicate</code> 처리 후 "이미 처리됨" 표시</span></li>
+    <li><input type="checkbox"> <span>E5. 동시 다중 세션: 2대 PyQt 에서 동시에 B12 → 둘 다 accepted=true, alert 2개 생성 (중복 허용)</span></li>
+    <li><input type="checkbox"> <span>E6. B10 진행 중 재클릭 → 버튼 disabled, 이중 호출 방지</span></li>
+  </ul>
+
+  <h3>7.5 운영/릴리즈 게이트</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>G1. <code>pytest backend/management/tests/ -v</code> 전부 PASS</span></li>
+    <li><input type="checkbox"> <span>G2. <code>ruff check backend/ monitoring/ --select=E,F,W</code> 0 errors</span></li>
+    <li><input type="checkbox"> <span>G3. <code>grep -rn "TODO.*production/emergency_stop\|TODO.*production/mode" monitoring/</code> → 0 matches (TODO 제거 확인)</span></li>
+    <li><input type="checkbox"> <span>G4. DEPLOY 런북에 B12/B13 활성화 섹션 추가됨</span></li>
+    <li><input type="checkbox"> <span>G5. PyQt 창 닫기 시 QThread 정리 정상 (exit 0)</span></li>
+    <li><input type="checkbox"> <span>G6. 문서 <code>docs/pyqt_button_implementation_plan.html</code> 상 모든 체크리스트 G1~G5 체크</span></li>
+    <li><input type="checkbox"> <span>G7. Confluence 페이지 43122699 (Interface Service 감사) 에 B12/B13 구현 완료 기록 추가</span></li>
+  </ul>
+
+  <h3>7.6 회귀 (regression)</h3>
+  <ul class="checklist">
+    <li><input type="checkbox"> <span>R1. 기존 B4/B5/B10/B11/B14 기능이 proto 확장 후에도 동일 동작</span></li>
+    <li><input type="checkbox"> <span>R2. Mgmt <code>Health</code> RPC 응답 &lt; 100ms 유지</span></li>
+    <li><input type="checkbox"> <span>R3. PyQt 주 화면 진입 시간(첫 paint) &lt; 3s 유지</span></li>
+    <li><input type="checkbox"> <span>R4. <code>INTERFACE_PROXY_START_PRODUCTION=1</code> 시 B4 경로도 정상 동작</span></li>
+    <li><input type="checkbox"> <span>R5. SPEC-RFID-001 Wave 2 <code>ReportRfidScan</code> smoke 계속 PASS</span></li>
+  </ul>
+
+</section>
+
+</main>
+
+<footer>
+  <p>Generated 2026-04-21 · Branch <code>feat/v6-phase-c2-proxy</code> · HEAD <code>d1affa2</code></p>
+  <p>
+    관련 문서:
+    <a href="interface_service_audit.html">interface_service_audit.html</a> ·
+    <a href="management_service_design.md">management_service_design.md</a> ·
+    <a href="DEPLOY-phase-a-to-c3.md">DEPLOY-phase-a-to-c3.md</a>
+  </p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'default',
+    themeVariables: { fontFamily: '-apple-system, "Segoe UI", Roboto, sans-serif', fontSize: '14px' },
+    flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06. Shipment Lane Queue</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="breadcrumb"><a href="index.html">← Index</a> / Queue Layer</div>
+      <h1>06. Shipment Lane Queue — 출고 Lane Queue<span class="badge queue">Queue</span></h1>
+      <div class="subtitle">
+        capacity = N (병렬) · 출고 작업 동시 수행 · 우선순위 동일 시 FIFO
+      </div>
+    </header>
+
+    <nav class="toc">
+      <h2>목차</h2>
+      <ol>
+        <li><a href="#s1">개요</a></li>
+        <li><a href="#s2">왜 capacity=N인가</a></li>
+        <li><a href="#s3">Production Queue와 비교</a></li>
+        <li><a href="#s4">자료구조</a></li>
+        <li><a href="#s5">병렬 활성화 알고리즘</a></li>
+        <li><a href="#s6">LIFO/FIFO 출고 정책</a></li>
+        <li><a href="#s7">구현 스케치</a></li>
+        <li><a href="#s8">통합 포인트</a></li>
+      </ol>
+    </nav>
+
+    <section id="s1">
+      <h2>① 개요</h2>
+      <p><strong>Shipment Lane Queue</strong>는 출고 작업들의 대기열입니다. 재고에서 제품을 꺼내 배송 처리하는 작업은 <strong>서로 독립적</strong>이므로 여러 AMR이 동시에 수행할 수 있어 <code>capacity &gt; 1</code>입니다.</p>
+
+      <h3>1.1 역할</h3>
+      <ul>
+        <li>Scheduler에서 넘어온 출고 작업을 대기</li>
+        <li>동시에 여러 개를 active로 승격 가능 (AMR 수만큼)</li>
+        <li>각 출고는 LIFO/FIFO 재고 정책 적용</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2>② 왜 capacity=N인가</h2>
+
+      <p>출고 작업은 <strong>공유 자원 충돌이 적습니다</strong>:</p>
+      <ul>
+        <li>창고 → 출고장 이송: AMR N대가 동시 이동 가능 (Traffic Manager가 경로 조율)</li>
+        <li>서로 다른 제품을 꺼냄: storage_location이 다르면 경합 없음</li>
+        <li>공통 병목은 <strong>출고장 도크</strong>뿐</li>
+      </ul>
+
+      <h3>2.1 Capacity 결정 공식</h3>
+      <pre>capacity = min(
+    사용 가능 AMR 수,        <span class="comment"># 예: 3</span>
+    출고장 도크 수,           <span class="comment"># 예: 2</span>
+    MAX_PARALLEL_SHIPMENTS    <span class="comment"># 환경변수 상한, 예: 5</span>
+)</pre>
+
+      <p>본 프로젝트 기본값: <strong>capacity = 3</strong> (AMR 3대 기준)</p>
+    </section>
+
+    <section id="s3">
+      <h2>③ Production Queue와 비교</h2>
+      <table>
+        <thead><tr><th>측면</th><th>05 Production</th><th>06 Shipment</th></tr></thead>
+        <tbody>
+          <tr><td>Capacity</td><td><strong>1</strong></td><td><strong>N</strong> (기본 3)</td></tr>
+          <tr><td>Active 개수</td><td>0 or 1</td><td>0 ~ N</td></tr>
+          <tr><td>자원 충돌</td><td>높음 (용해로/조형기/주탕로봇)</td><td>낮음 (독립 AMR)</td></tr>
+          <tr><td>선점 (preemption)</td><td>금지</td><td>금지</td></tr>
+          <tr><td>완료 → 승격</td><td>1:1</td><td>Multiple activate</td></tr>
+          <tr><td>자료구조</td><td>heapq (min-heap)</td><td>heapq + active set</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s4">
+      <h2>④ 자료구조</h2>
+
+      <pre>@dataclass
+<span class="kw">class</span> ShipmentLaneQueue:
+    capacity: int = <span class="num">3</span>
+    queue: list = field(default_factory=list)       <span class="comment"># heapq</span>
+    active: dict[int, QueueEntry] = field(default_factory=dict)
+    <span class="comment"># key=work_order_id, value=QueueEntry</span>
+
+    <span class="kw">def</span> is_full(self) -&gt; bool:
+        <span class="kw">return</span> len(self.active) &gt;= self.capacity
+
+    <span class="kw">def</span> slots_available(self) -&gt; int:
+        <span class="kw">return</span> self.capacity - len(self.active)</pre>
+    </section>
+
+    <section id="s5">
+      <h2>⑤ 병렬 활성화 알고리즘</h2>
+
+      <p>Production과 달리, enqueue 시 또는 complete 시 <strong>여러 개를 연속 승격</strong>합니다:</p>
+
+      <pre><span class="kw">def</span> _try_activate_batch(self) -&gt; list[int]:
+    <span class="str">"""사용 가능한 slot만큼 큐 front에서 승격."""</span>
+    activated = []
+    <span class="kw">while</span> self.slots_available() &gt; <span class="num">0</span> <span class="kw">and</span> self._heap:
+        entry = heappop(self._heap)
+        self._active[entry.work_order_id] = entry
+
+        wo = self.db.query(WorkOrder).get(entry.work_order_id)
+        wo.work_status = <span class="str">"running"</span>
+        wo.actual_start_at = datetime.utcnow()
+        activated.append(wo.work_order_id)
+
+        emit_event(<span class="str">"shipment.activated"</span>, work_order_id=wo.work_order_id)
+
+    self.db.commit()
+    <span class="kw">return</span> activated</pre>
+
+      <div class="note info">
+        <strong>Fairness 주의</strong>: 병렬 승격 시에도 우선순위 순서를 지켜야 함. 저우선순위 출고가 먼저 들어왔어도 고우선순위 뒤에 승격되어야 함. heapq가 자동으로 이를 보장.
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2>⑥ LIFO/FIFO 출고 정책</h2>
+
+      <p>Confluence GUI 페이지에서 언급된 <strong>LIFO/FIFO 정책</strong>은 큐 자체가 아니라 <strong>재고에서 어떤 제품을 꺼낼지</strong>의 결정 규칙입니다.</p>
+
+      <table>
+        <thead><tr><th>정책</th><th>의미</th><th>적합 상황</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>LIFO</strong> (Last In First Out)</td>
+            <td>가장 최근 입고 제품부터 출고</td>
+            <td>유통기한 영향 없음, 접근성 우선 (주물처럼 변질 없음)</td>
+          </tr>
+          <tr>
+            <td><strong>FIFO</strong> (First In First Out)</td>
+            <td>가장 오래된 입고 제품부터 출고</td>
+            <td>재고 회전, 변질/부식 우려</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note good">
+        <strong>본 프로젝트 기본</strong>: <strong>LIFO</strong>. 주물은 변질 우려가 없고, 창고 랙 최상단에서 꺼내는 것이 AMR 동선상 효율적.
+      </div>
+
+      <h3>6.1 정책 적용 위치</h3>
+      <p>LIFO/FIFO는 Shipment Queue가 아니라 <a href="10_resource_reservation_manager.html">Resource Reservation Manager</a>의 storage_location 선택 로직에서 처리:</p>
+      <pre><span class="kw">def</span> pick_storage_location(product_id, quantity, policy: str):
+    <span class="kw">if</span> policy == <span class="str">"LIFO"</span>:
+        order_by = storage_location.c.stored_at.desc()
+    <span class="kw">else</span>:  <span class="comment"># FIFO</span>
+        order_by = storage_location.c.stored_at.asc()
+
+    candidates = db.query(StorageLocation).filter_by(
+        product_id=product_id,
+        status=<span class="str">"occupied"</span>,
+    ).order_by(order_by).limit(quantity).all()
+    <span class="kw">return</span> candidates</pre>
+    </section>
+
+    <section id="s7">
+      <h2>⑦ 구현 스케치</h2>
+
+      <pre><span class="kw">class</span> ShipmentLaneQueue:
+    CAPACITY = <span class="num">3</span>
+
+    <span class="kw">def</span> __init__(self, db_session):
+        self.db = db_session
+        self._heap: list[QueueEntry] = []
+        self._active: dict[int, QueueEntry] = {}
+        self._lock = threading.RLock()
+
+    <span class="kw">def</span> enqueue(self, work_order) -&gt; <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            entry = QueueEntry(
+                sort_key=(
+                    -work_order.priority_score,
+                    work_order.released_at,
+                    work_order.work_order_id,
+                ),
+                work_order_id=work_order.work_order_id,
+                priority_score=work_order.priority_score,
+                released_at=work_order.released_at,
+                lane=<span class="str">"shipment"</span>,
+            )
+            heappush(self._heap, entry)
+
+            wo = work_order
+            wo.work_status = <span class="str">"queued"</span>
+            self.db.commit()
+
+            self._try_activate_batch()
+
+    <span class="kw">def</span> complete(self, work_order_id: int, success: bool) -&gt; <span class="kw">None</span>:
+        <span class="kw">with</span> self._lock:
+            <span class="kw">if</span> work_order_id <span class="kw">not in</span> self._active:
+                <span class="kw">return</span>
+            self._active.pop(work_order_id)
+
+            wo = self.db.query(WorkOrder).get(work_order_id)
+            wo.work_status = <span class="str">"completed"</span> <span class="kw">if</span> success <span class="kw">else</span> <span class="str">"failed"</span>
+            wo.actual_end_at = datetime.utcnow()
+            self.db.commit()
+
+            self._try_activate_batch()  <span class="comment"># 빈 slot 채우기</span>
+
+    <span class="kw">def</span> active_count(self) -&gt; int:
+        <span class="kw">return</span> len(self._active)
+
+    <span class="kw">def</span> update_capacity(self, new_cap: int) -&gt; <span class="kw">None</span>:
+        <span class="str">"""AMR 고장 / 복구 시 capacity 동적 조정."""</span>
+        <span class="kw">with</span> self._lock:
+            self.capacity = new_cap
+            self._try_activate_batch()  <span class="comment"># 증가 시 즉시 승격</span></pre>
+    </section>
+
+    <section id="s8">
+      <h2>⑧ 통합 포인트</h2>
+      <h3>상류</h3>
+      <ul>
+        <li><a href="04_work_order_scheduler.html"><strong>04 Scheduler</strong></a>: enqueue</li>
+      </ul>
+      <h3>하류</h3>
+      <ul>
+        <li><a href="07_workflow_task_manager.html"><strong>07 Workflow / Task Manager</strong></a>: 출고 task DAG 생성</li>
+        <li><a href="10_resource_reservation_manager.html"><strong>10 Resource Reservation</strong></a>: LIFO/FIFO 기반 storage_location 선택</li>
+        <li><a href="12_execution_monitor.html"><strong>12 Execution Monitor</strong></a>: complete 호출</li>
+      </ul>
+
+      <div class="cross-links">
+        <a href="05_production_lane_queue.html">
+          <div class="label">← 이전</div>
+          <div class="name">05. Production Lane Queue</div>
+        </a>
+        <a href="07_workflow_task_manager.html">
+          <div class="label">다음 →</div>
+          <div class="name">07. Workflow / Task Manager</div>
+        </a>
+      </div>
+    </section>
+
+    <footer>Casting Factory Architecture · 06. Shipment Lane Queue · 2026-04-08</footer>
+  </div>
+</body>
+</html>
