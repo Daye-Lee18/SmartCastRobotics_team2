@@ -184,8 +184,63 @@ export function fetchProcessStages(): Promise<ProcessStageData[]> {
 
 // ── 품질 검사 ──
 
-export function fetchInspections(): Promise<InspectionRecord[]> {
-  return apiFetch<InspectionRecord[]>("/api/quality/inspections");
+type SmartcastInspectionTask = {
+  txnId: number;
+  itemId: number | null;
+  resId: string | null;
+  txnStat: string | null;
+  result: boolean | null;
+  reqAt: string | null;
+  startAt: string | null;
+  endAt: string | null;
+};
+
+function adaptInspection(raw: Partial<InspectionRecord> & Partial<SmartcastInspectionTask>): InspectionRecord {
+  if (raw.id && raw.castingId && raw.inspectedAt) {
+    return {
+      id: raw.id,
+      productId: raw.productId ?? "",
+      castingId: raw.castingId,
+      orderId: raw.orderId ?? "",
+      result: raw.result === "fail" ? "fail" : "pass",
+      defectTypeCode: raw.defectTypeCode ?? "",
+      confidence: Number(raw.confidence ?? 0),
+      inspectorId: raw.inspectorId ?? "",
+      imageId: raw.imageId ?? "",
+      inspectedAt: raw.inspectedAt,
+      defectType: raw.defectType,
+      defectDetail: raw.defectDetail,
+    };
+  }
+
+  const itemId = raw.itemId ?? null;
+  const hasResult = typeof raw.result === "boolean";
+  return {
+    id: raw.txnId != null ? `INSP-${raw.txnId}` : "",
+    productId: itemId != null ? `ITEM-${itemId}` : "",
+    castingId: itemId != null ? `ITEM-${itemId}` : "---",
+    orderId: "",
+    result: raw.result === false ? "fail" : "pass",
+    defectTypeCode: raw.result === false ? "D00" : "",
+    confidence: hasResult ? 100 : 0,
+    inspectorId: raw.resId ?? "CAM-001",
+    imageId: raw.txnId != null ? `IMG-${raw.txnId}` : "",
+    inspectedAt: raw.endAt ?? raw.startAt ?? raw.reqAt ?? "",
+    defectType: raw.result === false ? "검사 불합격" : undefined,
+    defectDetail:
+      raw.result === false
+        ? "비전 검사 결과 불합격"
+        : raw.result === null
+          ? "검사 진행 중"
+          : undefined,
+  };
+}
+
+export async function fetchInspections(): Promise<InspectionRecord[]> {
+  const raw = await apiFetch<Array<Partial<InspectionRecord> & Partial<SmartcastInspectionTask>>>(
+    "/api/quality/inspections",
+  );
+  return raw.map(adaptInspection);
 }
 
 export function fetchQualityStats(): Promise<{
