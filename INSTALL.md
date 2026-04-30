@@ -69,7 +69,7 @@ SMARTCAST_SCHEMA=public
 ### 3.3 실행
 
 ```bash
-PYTHONPATH=src uvicorn main_service.app.main:app --host 0.0.0.0 --port 8000 --env-file .env.local --reload
+PYTHONPATH=src/main_service:src uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env.local --reload
 ```
 
 확인: `curl http://localhost:8000/api/dashboard/stats` → 200 응답
@@ -122,7 +122,7 @@ npm run dev -- --port 3001
 | `psycopg.errors.UndefinedTable` | 잘못된 스키마 | `SMARTCAST_SCHEMA=public` 명시 |
 | PyQt 가 백엔드 응답 못함 | 포트/방화벽 | `lsof -i :8000` 으로 LISTEN 확인 |
 | Next.js dev 가 다른 포트 점유 | 좀비 프로세스 | `lsof -i :3001` → `kill <PID>` 후 재시작 |
-| `ModuleNotFoundError: main_service` | PYTHONPATH 미지정 | 명령 앞에 `PYTHONPATH=src` 추가 |
+| `ModuleNotFoundError: app` 또는 `main_service` | PYTHONPATH 미지정 | backend 는 `PYTHONPATH=src/main_service:src`, gRPC 는 `PYTHONPATH=src` 추가 |
 
 ## 8. 운영 메모
 

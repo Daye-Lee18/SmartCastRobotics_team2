@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 3 서비스 중단 — tmux 세션 종료 + 포트별 프로세스 kill.
+# 3 서비스 중단 — 기존 tmux 세션 정리 + 포트별 프로세스 kill.
 set -uo pipefail
 
-# tmux 세션
+# 예전 run-all.sh 로 띄운 tmux 세션이 있으면 같이 정리
 if command -v tmux >/dev/null 2>&1 && tmux has-session -t smartcast 2>/dev/null; then
   tmux kill-session -t smartcast
   echo "✓ tmux 세션 'smartcast' 종료"

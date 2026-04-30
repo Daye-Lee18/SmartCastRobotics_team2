@@ -19,7 +19,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
-from services.order_manager import (
+from services.core.order_manager import (
     CreateOrderInput,
     IOrderManager,
     OrderDetailInput,

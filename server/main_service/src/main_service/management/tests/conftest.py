@@ -42,8 +42,8 @@ def _smartcast_schema() -> Iterator[None]:
     """세션 1회: smartcast schema + 33 테이블 create_all."""
     from sqlalchemy import text
 
-    import app.models  # noqa: F401  populate Base.metadata
-    from app.database import Base, engine
+    import smart_cast_db.models  # noqa: F401  populate Base.metadata
+    from smart_cast_db.database import Base, engine
 
     with engine.begin() as conn:
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS smartcast"))
@@ -56,7 +56,7 @@ def _truncate_all() -> None:
     """모든 metadata 테이블 TRUNCATE — fixture 격리."""
     from sqlalchemy import text
 
-    from app.database import Base, engine
+    from smart_cast_db.database import Base, engine
 
     with engine.begin() as conn:
         names = ", ".join(t.fullname for t in reversed(Base.metadata.sorted_tables))
@@ -66,8 +66,8 @@ def _truncate_all() -> None:
 
 def _seed_user_and_res() -> None:
     """공통 시드: customer user_id=1 + RA1 res (Item.cur_res / EquipTaskTxn.res_id FK)."""
-    from app.database import SessionLocal
-    from app.models import Res, UserAccount
+    from smart_cast_db.database import SessionLocal
+    from smart_cast_db.models import Res, UserAccount
 
     with SessionLocal() as db:
         db.add(
@@ -94,8 +94,8 @@ def postgresql_smartcast_empty(_smartcast_schema):
 @pytest.fixture
 def postgresql_with_smartcast_seed(_smartcast_schema):
     """ord_id=42 + Pattern(42, ptn_loc=1) 시드 (happy path)."""
-    from app.database import SessionLocal
-    from app.models import Ord, Pattern
+    from smart_cast_db.database import SessionLocal
+    from smart_cast_db.models import Ord, Pattern
 
     _truncate_all()
     _seed_user_and_res()
@@ -110,8 +110,8 @@ def postgresql_with_smartcast_seed(_smartcast_schema):
 @pytest.fixture
 def postgresql_ord_without_pattern(_smartcast_schema):
     """ord_id=100 만 (Pattern 없음 → TaskManagerError 검증용)."""
-    from app.database import SessionLocal
-    from app.models import Ord
+    from smart_cast_db.database import SessionLocal
+    from smart_cast_db.models import Ord
 
     _truncate_all()
     _seed_user_and_res()

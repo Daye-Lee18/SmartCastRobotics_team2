@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from services.image_forwarder import ForwarderConfig, ImageForwarder
+from services.adapters.vision.image_forwarder import ForwarderConfig, ImageForwarder
 
 
 class FakeSink:

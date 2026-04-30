@@ -23,8 +23,13 @@ ok "python/node/npm 확인"
 log "[1/3] server/main_service venv + 의존성"
 cd "$ROOT/server/main_service"
 PY=$(command -v python3.11 || command -v python3)
+if [ -x .venv/bin/python ] && ! .venv/bin/python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)'; then
+  log "기존 server/main_service/.venv 가 Python 3.11 미만이라 재생성"
+  rm -rf .venv
+fi
 [ -d .venv ] || $PY -m venv .venv
 source .venv/bin/activate
+python -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else "backend 는 Python 3.11 이상이 필요합니다.")'
 pip install --upgrade pip --quiet
 pip install -r requirements.txt --quiet
 deactivate

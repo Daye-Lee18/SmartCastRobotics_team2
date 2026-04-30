@@ -129,7 +129,7 @@ class Ros2Adapter:
         if state_machine is None:
             return False
 
-        from services.amr_state_machine import TaskState
+        from services.core.amr_state_machine import TaskState
 
         task_id = payload_dict.get("task_id", "")
         loaded_item = payload_dict.get("item_id", "")
