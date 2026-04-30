@@ -75,10 +75,26 @@ export const storageSlotColorMap: Record<StorageSlotStatus, string> = {
   unavailable: "bg-red-200 border-red-400",
 };
 
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T/;
+const ISO_TZ_SUFFIX = /(Z|[+-]\d{2}:?\d{2})$/;
+
+export function parseApiDate(dateStr: string): Date {
+  const normalized = ISO_DATETIME.test(dateStr) && !ISO_TZ_SUFFIX.test(dateStr)
+    ? `${dateStr}Z`
+    : dateStr;
+  return new Date(normalized);
+}
+
 export function formatDate(dateStr: string): string {
   if (!dateStr) return "-";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const d = parseApiDate(dateStr);
+  return d.toLocaleDateString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
+  });
 }
 
 export function formatCurrency(amount: number): string {

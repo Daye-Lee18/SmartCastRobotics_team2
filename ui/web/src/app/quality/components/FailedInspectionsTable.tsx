@@ -38,7 +38,13 @@ export function FailedInspectionsTable({ failedInspections }: FailedInspectionsT
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {failedInspections.map((ins) => (
+            {failedInspections.map((ins) => {
+              const confidence =
+                typeof ins.confidence === "number" && Number.isFinite(ins.confidence)
+                  ? ins.confidence
+                  : 0;
+
+              return (
               <tr key={ins.id} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
                 {/* 이미지 플레이스홀더 */}
                 <td className="px-4 py-3">
@@ -67,17 +73,17 @@ export function FailedInspectionsTable({ failedInspections }: FailedInspectionsT
                       <div
                         className={cn(
                           "h-1.5 rounded-full transition-all",
-                          ins.confidence >= 95
+                          confidence >= 95
                             ? "bg-green-500"
-                            : ins.confidence >= 90
+                            : confidence >= 90
                               ? "bg-yellow-500"
                               : "bg-red-500"
                         )}
-                        style={{ width: `${ins.confidence}%` }}
+                        style={{ width: `${confidence}%` }}
                       />
                     </div>
                     <span className="text-sm font-semibold text-gray-700">
-                      {ins.confidence.toFixed(1)}%
+                      {confidence.toFixed(1)}%
                     </span>
                   </div>
                 </td>
@@ -85,7 +91,8 @@ export function FailedInspectionsTable({ failedInspections }: FailedInspectionsT
                   {formatDate(ins.inspectedAt)}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

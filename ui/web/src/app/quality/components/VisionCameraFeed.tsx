@@ -11,6 +11,10 @@ interface VisionCameraFeedProps {
 // 비전 카메라 시뮬레이션 (스캔라인 + 그리드 + 비네팅 + PASS/FAIL 배지 + REC).
 export function VisionCameraFeed({ latestInspection }: VisionCameraFeedProps) {
   const isLatestPass = latestInspection?.result === "pass";
+  const confidence =
+    typeof latestInspection?.confidence === "number" && Number.isFinite(latestInspection.confidence)
+      ? latestInspection.confidence
+      : null;
 
   return (
     <div className="relative bg-gray-950 rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-gray-800">
@@ -65,7 +69,7 @@ export function VisionCameraFeed({ latestInspection }: VisionCameraFeedProps) {
       {/* 신뢰도 표시 */}
       <div className="absolute bottom-3 left-3 z-20">
         <span className="text-sm font-mono text-green-400 bg-black/70 px-2.5 py-1 rounded-md border border-green-900/50">
-          신뢰도: {latestInspection?.confidence.toFixed(1)}%
+          신뢰도: {confidence === null ? "--" : `${confidence.toFixed(1)}%`}
         </span>
       </div>
       {/* 타임스탬프 */}

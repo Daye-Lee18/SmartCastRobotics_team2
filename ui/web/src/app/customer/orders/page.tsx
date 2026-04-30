@@ -22,7 +22,7 @@ import {
   Mail,
 } from "lucide-react";
 import { fetchOrderDetails, fetchOrdersByEmail } from "@/lib/api";
-import { orderStatusMap, formatDate, formatCurrency as formatKRW } from "@/lib/utils";
+import { orderStatusMap, formatDate, formatCurrency as formatKRW, parseApiDate } from "@/lib/utils";
 import type { Order, OrderDetail, OrderStatus } from "@/lib/types";
 import { SmartCastHeader } from "@/components/SmartCastHeader";
 
@@ -123,7 +123,7 @@ function OrderDetailPanel({
   const info = orderStatusMap[order.status];
 
   // 시뮬레이션: 최근 상태 변경 알림 (updatedAt이 3일 이내)
-  const updatedDate = new Date(order.updatedAt);
+  const updatedDate = parseApiDate(order.updatedAt);
   const now = new Date();
   const daysDiff = (now.getTime() - updatedDate.getTime()) / (1000 * 60 * 60 * 24);
   const recentlyChanged = daysDiff <= 3;
