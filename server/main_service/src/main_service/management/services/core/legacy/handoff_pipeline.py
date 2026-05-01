@@ -32,14 +32,18 @@ class HandoffApplyResult:
 
     released: bool
     orphan: bool
-    task_id: int | None  # trans_task_txn.trans_task_txn_id
-    amr_id: str | None  # trans_id
+    task_id: int | None  # trans_task_txn.txn_id
+    amr_id: str | None  # trans_task_txn.res_id
     item_id: int | None
     ord_id: int | None
     pp_task_txn_ids: list[int]
     item_cur_stat: str | None
     handoff_ack_id: int | None
     reason: str
+
+
+def _item_state_label(item) -> str | None:
+    return getattr(item, "flow_stat", None)
 
 
 def apply_handoff(
@@ -63,17 +67,11 @@ def apply_handoff(
       HandoffApplyResult — released=False 인 경우 orphan=True (해제 대상 없음)
     """
     # 지연 import: 순환 회피 + 모델 로딩 한 곳에 묶음
-    from smart_cast_db.models import (
-        HandoffAck,
-        Item,
-        OrdPpMap,
-        PpOption,
-        PpTaskTxn,
-        TransStat,
-        TransTaskTxn,
-    )
+    from smart_cast_db.models import Item, OrdPpMap, PpOption, PpTaskTxn, TransStat, TransTaskTxn
+    from smart_cast_db.models.models_legacy import HandoffAck
 
-    # 가장 오래된 ToPP/PROC 중 cur_stat=WAIT_HANDOFF 인 1건 픽업 (FIFO)
+    # 가장 오래된 ToPP/PROC 1건 픽업 (FIFO).
+    # v21에는 legacy WAIT_HANDOFF item 상태가 없으므로 transport txn 자체를 기준으로 본다.
     candidates = (
         db.query(TransTaskTxn)
         .filter(TransTaskTxn.task_type == "ToPP", TransTaskTxn.txn_stat == "PROC")
@@ -83,10 +81,10 @@ def apply_handoff(
     target: TransTaskTxn | None = None
     target_stat: TransStat | None = None
     for t in candidates:
-        if not t.trans_id:
+        if not t.res_id:
             continue
-        s = db.get(TransStat, t.trans_id)
-        if s and s.cur_stat == "WAIT_HANDOFF":
+        s = db.get(TransStat, t.res_id)
+        if s is not None:
             target = t
             target_stat = s
             break
@@ -122,8 +120,8 @@ def apply_handoff(
             reason="orphan_no_waiting_task",
         )
 
-    # (1) trans_stat: WAIT_HANDOFF → WAIT_DLD
-    target_stat.cur_stat = "WAIT_DLD"
+    # (1) trans_stat: 목적지 하차 완료로 본다.
+    target_stat.cur_stat = "SUCC"
     target_stat.updated_at = now
 
     # (2) trans_task_txn: PROC → SUCC
@@ -132,16 +130,14 @@ def apply_handoff(
 
     # (3) item 갱신
     pp_txn_ids: list[int] = []
-    item_id = target.item_id
+    item_id = target.item_stat_id
     item_cur_stat: str | None = None
     item: Item | None = db.get(Item, item_id) if item_id else None
     if item is not None:
-        item.cur_stat = "PP"
-        item.trans_task_type = None
-        item.equip_task_type = "PP"
-        item.cur_res = None
+        item.flow_stat = "PP"
+        item.zone_nm = "PP"
         item.updated_at = now
-        item_cur_stat = item.cur_stat
+        item_cur_stat = _item_state_label(item)
 
         # (4) pp_task_txn 다건 INSERT — ord_pp_map 행 수만큼 QUE
         maps = (
@@ -166,9 +162,9 @@ def apply_handoff(
 
         # 후처리 옵션이 0건이면 PP 단계 건너뛰고 ToINSP 로 직행
         if not maps:
-            item.equip_task_type = "ToINSP"
-            item.cur_stat = "ToINSP"
-            item_cur_stat = item.cur_stat
+            item.flow_stat = "WAIT_INSP"
+            item.zone_nm = "INSP"
+            item_cur_stat = _item_state_label(item)
 
     # (5) handoff_acks 감사 로그
     # transport_tasks(VARCHAR id) 와 trans_task_txn(SERIAL int) 은 별도 도메인.
@@ -177,12 +173,12 @@ def apply_handoff(
         ack_at=now_utc,
         task_id=None,
         zone="postprocessing",
-        amr_id=target.trans_id,
+        amr_id=target.res_id,
         ack_source=ack_source,
         button_device_id=button_device_id,
         orphan_ack=False,
         idempotency_key=idempotency_key,
-        extra={"via": via, "trans_task_txn_id": target.trans_task_txn_id},
+        extra={"via": via, "trans_task_txn_id": target.txn_id},
     )
     db.add(ack)
     db.flush()
@@ -190,14 +186,14 @@ def apply_handoff(
     return HandoffApplyResult(
         released=True,
         orphan=False,
-        task_id=target.trans_task_txn_id,
-        amr_id=target.trans_id,
+        task_id=target.txn_id,
+        amr_id=target.res_id,
         item_id=item_id,
         ord_id=target.ord_id,
         pp_task_txn_ids=pp_txn_ids,
         item_cur_stat=item_cur_stat,
         handoff_ack_id=ack.id,
-        reason="WAIT_HANDOFF → WAIT_DLD + item PP 진입 + pp_task_txn QUE 등록",
+        reason="ToPP transport completed + item PP/WAIT_INSP transition + pp_task_txn QUE registration",
     )
 
 
@@ -231,7 +227,7 @@ def apply_tof1(
     item 선택 우선순위:
       1) explicit item_id
       2) rfid_payload (`order_<ord>_item_<YYYYMMDD>_<seq>`) → item lookup
-      3) cur_stat='PP' 인 가장 최근 item
+      3) flow_stat='PP' 인 가장 최근 item
 
     Returns Tof1ApplyResult (ok=False 면 item 미발견)
     """
@@ -243,7 +239,7 @@ def apply_tof1(
     elif rfid_payload:
         item = _resolve_item_by_payload(db, rfid_payload)
     else:
-        item = db.query(Item).filter(Item.cur_stat == "PP").order_by(desc(Item.updated_at)).first()
+        item = db.query(Item).filter(Item.flow_stat == "PP").order_by(desc(Item.updated_at)).first()
 
     if item is None:
         return Tof1ApplyResult(
@@ -276,11 +272,9 @@ def apply_tof1(
             t.operator_id = operator_id
         pp_succ_ids.append(t.txn_id)
 
-    # (2) item 갱신 — PP → ToINSP
-    item.cur_stat = "ToINSP"
-    item.equip_task_type = "ToINSP"
-    item.trans_task_type = None
-    item.cur_res = res_id
+    # (2) item 갱신 — PP/PA 완료 후 검사 대기 상태로 전환
+    item.flow_stat = "WAIT_INSP"
+    item.zone_nm = "INSP"
     item.updated_at = now
 
     # (3) equip_task_txn 신규 (ToINSP, PROC)
@@ -288,7 +282,8 @@ def apply_tof1(
         res_id=res_id,
         task_type="ToINSP",
         txn_stat="PROC",
-        item_id=item.item_id,
+        item_stat_id=item.item_stat_id,
+        ord_id=item.ord_id,
         req_at=now,
         start_at=now,
     )
@@ -299,7 +294,7 @@ def apply_tof1(
     db.add(
         EquipStat(
             res_id=res_id,
-            item_id=item.item_id,
+            item_stat_id=item.item_stat_id,
             txn_type="ToINSP",
             cur_stat="ON",
             updated_at=now,
@@ -308,13 +303,13 @@ def apply_tof1(
 
     return Tof1ApplyResult(
         ok=True,
-        item_id=item.item_id,
+        item_id=item.item_stat_id,
         ord_id=item.ord_id,
         res_id=res_id,
         pp_task_txn_succ=pp_succ_ids,
         equip_task_txn_id=new_txn.txn_id,
-        item_cur_stat=item.cur_stat,
-        reason="TOF1 진입 → pp_task_txn SUCC + ToINSP PROC 시작 + CONV ON",
+        item_cur_stat=_item_state_label(item),
+        reason="TOF1 detected -> pp_task_txn SUCC + WAIT_INSP + ToINSP equip task PROC",
     )
 
 
@@ -391,25 +386,23 @@ def apply_tof2(
     db.add(
         EquipStat(
             res_id=res_id,
-            item_id=item.item_id,
+            item_stat_id=item.item_stat_id,
             txn_type="ToINSP",
             cur_stat="OFF",
             updated_at=now,
         )
     )
 
-    # (3) item ToINSP → INSP
-    item.cur_stat = "INSP"
-    item.equip_task_type = "INSP"
-    item.cur_res = res_id
+    # (3) item WAIT_INSP → INSP
+    item.flow_stat = "INSP"
+    item.zone_nm = "INSP"
     item.updated_at = now
 
     # (4) insp_task_txn 신규 (PROC, start_at=now)
     insp = InspTaskTxn(
-        item_id=item.item_id,
+        item_stat_id=item.item_stat_id,
         res_id=res_id,
         txn_stat="PROC",
-        result=None,
         req_at=now,
         start_at=now,
     )
@@ -418,13 +411,13 @@ def apply_tof2(
 
     return Tof2ApplyResult(
         ok=True,
-        item_id=item.item_id,
+        item_id=item.item_stat_id,
         ord_id=item.ord_id,
         res_id=res_id,
         equip_task_txn_succ_id=txn.txn_id,
         insp_task_txn_id=insp.txn_id,
-        item_cur_stat=item.cur_stat,
-        reason="TOF2 감지 → ToINSP SUCC + CONV OFF + INSP 시작",
+        item_cur_stat=_item_state_label(item),
+        reason="TOF2 detected -> ToINSP SUCC + INSP started",
     )
 
 

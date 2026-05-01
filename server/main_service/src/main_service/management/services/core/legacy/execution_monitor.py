@@ -33,7 +33,7 @@ import management_pb2  # type: ignore
 from db_session import SessionLocal
 from sqlalchemy import select
 
-from smart_cast_db.models import Alert, Item  # SPEC-C3: Alert 는 legacy public-schema · Item 은 smartcast
+from smart_cast_db.models import Alert, Item
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,22 @@ _STAGE_TO_ENUM = {
     "IP": 6,
     "TR_LD": 7,
     "SH": 8,
+}
+
+_FLOW_TO_LEGACY_STAGE = {
+    "CREATED": "QUE",
+    "CAST": "MM",
+    "WAIT_PP": "TR_PP",
+    "PP": "PP",
+    "WAIT_INSP": "QUE",
+    "INSP": "IP",
+    "WAIT_PA": "QUE",
+    "PA": "PP",
+    "STORED": "TR_LD",
+    "PICK": "TR_LD",
+    "READY_TO_SHIP": "SH",
+    "DISCARDED": "SH",
+    "HOLD": "QUE",
 }
 
 # stage 별 SLA (초). 0 또는 음수면 무한 (감시 안 함)
@@ -93,6 +109,10 @@ def _now_iso() -> str:
 
 def _now_mono() -> float:
     return time.monotonic()
+
+
+def _legacy_stage_from_item(flow_stat: str | None) -> str:
+    return _FLOW_TO_LEGACY_STAGE.get((flow_stat or "").upper(), "QUE")
 
 
 class ExecutionMonitor:
@@ -273,11 +293,8 @@ class ExecutionMonitor:
         now_mono = _now_mono()
 
         with SessionLocal() as db:
-            # SPEC-C3: smartcast Item 컬럼명 (item_id/cur_stat/cur_res/ord_id).
-            # 참고: SLA stage 맵(QUE/MM/DM/TR_PP/...)은 smartcast stage 라벨
-            # (MM/POUR/DM/PP/ToINSP/INSP/PA/PICK/SHIP/ToPP/ToSTRG/ToSHIP)과 부분 일치.
-            # 불일치 stage 는 _stage_enum 이 0 반환 + SLA 무시되어 안전하게 fallback.
-            stmt = select(Item.item_id, Item.cur_stat, Item.cur_res, Item.ord_id)
+            # v21 item_stat(flow_stat/zone_nm) -> legacy monitor stage projection.
+            stmt = select(Item.item_id, Item.flow_stat, Item.zone_nm, Item.ord_id)
             if order_filter:
                 try:
                     stmt = stmt.where(Item.ord_id == int(order_filter))
@@ -288,7 +305,7 @@ class ExecutionMonitor:
 
             for row in rows:
                 item_id = int(row[0])
-                stage = str(row[1] or "QUE")
+                stage = _legacy_stage_from_item(row[1])
                 robot = row[2] or ""
                 new_snapshot[item_id] = stage
 
@@ -363,26 +380,31 @@ class ExecutionMonitor:
             return None
         self._last_alert[key] = now_mono
 
-        # alerts INSERT
-        alert_id = f"ALT-{uuid.uuid4().hex[:12]}"
+        # alerts INSERT 는 실제 task/res_id 기반으로 다시 설계할 때까지 비활성화.
+        # 지금은 item_stat.flow_stat / zone_nm 만 보고 SLA 경고를 만들기 때문에
+        # 실제 설비 할당이 없는 상태에서도 alerts_stat FK 위반을 만들 수 있다.
+        #
+        # alert_id = f"ALT-{uuid.uuid4().hex[:12]}"
+        # msg = f"Item {item_id} stage={stage} elapsed={elapsed:.0f}s > SLA {sla:.0f}s"
+        # try:
+        #     db.add(
+        #         Alert(
+        #             id=alert_id,
+        #             equipment_id=robot_id or "",
+        #             type="stage_timeout",
+        #             severity="warning",
+        #             error_code=f"SLA_{stage}",
+        #             message=msg,
+        #             abnormal_value=f"{elapsed:.0f}s",
+        #             zone=stage,
+        #             timestamp=_now_iso(),
+        #             acknowledged=False,
+        #         )
+        #     )
+        #     logger.warning("SLA 위반: %s (alert=%s)", msg, alert_id)
+        # except Exception as exc:  # noqa: BLE001
+        #     logger.exception("alerts INSERT 실패: %s", exc)
         msg = f"Item {item_id} stage={stage} elapsed={elapsed:.0f}s > SLA {sla:.0f}s"
-        try:
-            db.add(
-                Alert(
-                    id=alert_id,
-                    equipment_id=robot_id or "",
-                    type="stage_timeout",
-                    severity="warning",
-                    error_code=f"SLA_{stage}",
-                    message=msg,
-                    abnormal_value=f"{elapsed:.0f}s",
-                    zone=stage,
-                    timestamp=_now_iso(),
-                    acknowledged=False,
-                )
-            )
-            logger.warning("SLA 위반: %s (alert=%s)", msg, alert_id)
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("alerts INSERT 실패: %s", exc)
+        logger.warning("SLA 위반 감지(INSERT 비활성화): %s", msg)
 
         return self._make_event(item_id, stage, robot_id, message=f"sla_timeout:{sla:.0f}s")

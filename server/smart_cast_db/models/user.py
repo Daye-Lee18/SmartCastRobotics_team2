@@ -20,4 +20,4 @@ class UserAccount(Base):
     role = Column(String)
     phone = Column(String)
     email = Column(String, nullable=False, unique=True)
-    password = Column(String)
+    password = Column(String, nullable=False)

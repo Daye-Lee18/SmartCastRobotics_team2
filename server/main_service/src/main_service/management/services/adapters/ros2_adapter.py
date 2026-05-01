@@ -16,10 +16,10 @@ V6 정책 (2026-04-14):
                  → pick/place/charge 등 범용 명령
 
 Command 종류:
-- navigate  → nav_goal 토픽 publish + SM MOVE_TO_SOURCE or MOVE_TO_DEST
-- pick      → cmd 토픽 publish + SM LOADING
-- place     → cmd 토픽 publish + SM UNLOADING
-- charge    → nav_goal(HOME) + SM MOVE_TO_SOURCE
+- navigate  → nav_goal 토픽 publish
+- pick      → cmd 토픽 publish
+- place     → cmd 토픽 publish
+- charge    → nav_goal(HOME)
 
 @MX:WARN: import rclpy 는 lazy. 모듈 로드 시점 충돌 회피.
 """
@@ -44,7 +44,7 @@ class Ros2Adapter:
     """ROS2 publisher/action 어댑터.
 
     MGMT_ROS2_ENABLED=1 설정 시 rclpy 를 init 하고 DDS 통신 활성화.
-    ROS2 미활성 시에도 state_machine 전이는 수행 (테스트/시뮬레이션).
+    ROS2 미활성 시에는 no-op accepted 로 테스트/시뮬레이션을 허용한다.
     """
 
     name = "ros2"
@@ -58,7 +58,7 @@ class Ros2Adapter:
         if ROS2_ENABLED:
             self._init_rclpy()
         else:
-            logger.info("Ros2Adapter: MGMT_ROS2_ENABLED 미설정 — state_machine 전이만 수행.")
+            logger.info("Ros2Adapter: MGMT_ROS2_ENABLED 미설정 — no-op dispatch 모드.")
 
     def _init_rclpy(self) -> None:
         try:
@@ -81,10 +81,9 @@ class Ros2Adapter:
         payload: bytes,
         state_machine: Any = None,
     ) -> tuple[bool, str]:
-        """command 별 라우팅 + state machine 전이.
+        """command 별 라우팅.
 
-        state_machine 이 주입되면 ROS2 publish 와 무관하게 전이를 수행한다.
-        ROS2 미활성 시에도 SM 전이만으로 시뮬레이션/테스트 가능.
+        state_machine 파라미터는 legacy compatibility 용으로만 남겨두며 사용하지 않는다.
         """
 
         payload_str = payload.decode("utf-8", errors="replace") if payload else ""
@@ -93,15 +92,7 @@ class Ros2Adapter:
         except json.JSONDecodeError:
             payload_dict = {}
 
-        # 1) state machine 전이
-        sm_ok = self._apply_state_transition(
-            robot_id,
-            command,
-            payload_dict,
-            state_machine,
-        )
-
-        # 2) ROS2 publish (활성 시)
+        # ROS2 publish (활성 시)
         ros2_ok, ros2_msg = self._publish_ros2(
             item_id,
             robot_id,
@@ -110,50 +101,12 @@ class Ros2Adapter:
             payload_dict,
         )
 
-        if sm_ok and not ros2_ok and not ROS2_ENABLED:
-            return (True, f"sm_only: {command} (ROS2 비활성, state_machine 전이 완료)")
-
+        if not ros2_ok and not ROS2_ENABLED:
+            return (True, f"noop_dispatch: {command} (ROS2 비활성)")
         if not ros2_ok:
             return (False, ros2_msg)
 
         return (True, ros2_msg)
-
-    def _apply_state_transition(
-        self,
-        robot_id: str,
-        command: str,
-        payload_dict: dict,
-        state_machine: Any,
-    ) -> bool:
-        """command 에 따른 state machine 전이."""
-        if state_machine is None:
-            return False
-
-        from services.core.amr_state_machine import TaskState
-
-        task_id = payload_dict.get("task_id", "")
-        loaded_item = payload_dict.get("item_id", "")
-
-        # command → target state 매핑
-        transition_map: dict[str, TaskState] = {
-            "navigate": TaskState.MOVE_TO_SOURCE,
-            "navigate_to_dest": TaskState.MOVE_TO_DEST,
-            "charge": TaskState.MOVE_TO_SOURCE,
-            "pick": TaskState.LOADING,
-            "place": TaskState.UNLOADING,
-        }
-
-        target = transition_map.get(command)
-        if target is None:
-            return False
-
-        kwargs: dict[str, str] = {}
-        if task_id:
-            kwargs["task_id"] = task_id
-        if loaded_item:
-            kwargs["loaded_item"] = loaded_item
-
-        return state_machine.transition(robot_id, target, **kwargs)
 
     def _publish_ros2(
         self,

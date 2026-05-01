@@ -15,7 +15,8 @@ class TaskCompletedEvent(BaseModel):
 
 class ItemStatusChangedEvent(BaseModel):
     item_id: int
-    cur_stat: str
+    flow_stat: str
+    zone_nm: Optional[str] = None
 
 class TaskAssignedEvent(BaseModel):
     task_id: str
@@ -27,8 +28,8 @@ class TaskAssignedEvent(BaseModel):
 # =======================
 class CreateTaskInput(BaseModel):
     item_id: int
-    cur_stat: Optional[str] = None
-    cur_res: Optional[str] = None
+    flow_stat: Optional[str] = None
+    zone_nm: Optional[str] = None
 
 class TaskInfo(BaseModel):
     task_id: str
@@ -44,7 +45,7 @@ class AllocateTaskInput(BaseModel):
     task_id: str
     req_robot_type: str
     item_id: int
-    cur_res: Optional[str] = None
+    zone_nm: Optional[str] = None
     task_type: Optional[str] = None
 
 class AllocateTaskResult(BaseModel):

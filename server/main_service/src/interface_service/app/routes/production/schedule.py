@@ -1,7 +1,7 @@
 """Production scheduling endpoints — 우선순위 계산 + 큐 등록.
 
 Endpoints:
-    GET  /api/production/schedule/jobs           생산 대기열 (APPR/MFG)
+    GET  /api/production/schedule/jobs           생산 대기열 (MFG)
     POST /api/production/schedule/calculate      우선순위 계산 (dry-run)
     POST /api/production/schedule/start          큐 등록 (ord_stat MFG transition)
     GET  /api/production/schedule/priority-log   우선순위 변경 이력 (현재 빈 배열)
@@ -13,15 +13,18 @@ Endpoints:
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from smart_cast_db.database import get_db
-from smart_cast_db.models import Ord, OrdStat
+from smart_cast_db.models import Ord, OrdLog, OrdStat
 
 from ._helpers import (
     ScheduleOrderIdsIn,
+    _is_schedule_queue_candidate,
     _latest_ord_stat,
     _parse_ord_id,
     _priority_result,
@@ -36,13 +39,13 @@ def production_schedule_jobs(db: Session = Depends(get_db)) -> list[dict]:
     """smartcast 생산 대기열.
 
     legacy ProductionJob 테이블은 smartcast 스키마에 없으므로 latest ord_stat 이
-    APPR/MFG 인 주문을 PyQt/웹 호환 ProductionJob shape 로 투영한다.
+    MFG 인 주문만 PyQt/웹 호환 ProductionJob shape 로 투영한다.
     """
     rows: list[dict] = []
     candidates = db.query(Ord).order_by(desc(Ord.created_at)).all()
     rank = 1
     for ord_obj in candidates:
-        if _latest_ord_stat(db, ord_obj.ord_id) not in {"APPR", "MFG"}:
+        if not _is_schedule_queue_candidate(db, ord_obj.ord_id):
             continue
         rows.append(_virtual_production_job(db, ord_obj, rank=rank))
         rank += 1
@@ -60,11 +63,10 @@ def production_schedule_calculate(
     orders = db.query(Ord).filter(Ord.ord_id.in_(ord_ids)).all()
     if not orders:
         raise HTTPException(404, "selected orders not found")
-    allowed = {"APPR", "MFG"}
     results = [
         _priority_result(db, ord_obj)
         for ord_obj in orders
-        if _latest_ord_stat(db, ord_obj.ord_id) in allowed
+        if _is_schedule_queue_candidate(db, ord_obj.ord_id)
     ]
     results.sort(key=lambda r: float(r.get("total_score", 0)), reverse=True)
     for idx, result in enumerate(results, start=1):
@@ -97,8 +99,24 @@ def production_schedule_start(
                 400,
                 f"ord_id={ord_id} must be APPR/MFG before production approval; current={latest}",
             )
+        if latest == "MFG" and not _is_schedule_queue_candidate(db, ord_id):
+            raise HTTPException(400, f"ord_id={ord_id} already started on line")
         if latest != "MFG":
-            db.add(OrdStat(ord_id=ord_id, ord_stat="MFG"))
+            stat = db.query(OrdStat).filter(OrdStat.ord_id == ord_id).first()
+            if stat is None:
+                stat = OrdStat(ord_id=ord_id, ord_stat="MFG")
+                db.add(stat)
+            else:
+                stat.ord_stat = "MFG"
+                stat.updated_at = datetime.utcnow()
+            db.add(
+                OrdLog(
+                    ord_id=ord_id,
+                    prev_stat=latest,
+                    new_stat="MFG",
+                    changed_by=None,
+                )
+            )
         jobs.append(_virtual_production_job(db, ord_obj, rank=rank))
     db.commit()
     return jobs

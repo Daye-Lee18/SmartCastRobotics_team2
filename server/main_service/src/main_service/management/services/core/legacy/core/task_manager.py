@@ -1,4 +1,4 @@
-"""Task Manager — smartcast v2 기반 단건 생산 개시 (SPEC-C2 Iteration 3).
+"""Task Manager — v21 schema 기반 생산 개시/조회 호환 레이어.
 
 canonical 아키텍처: Interface POST /api/production/start 가 Management gRPC StartProduction
 으로 proxy 되며, legacy PyQt schedule 페이지는 `order_ids=[...]` 로 동일 RPC 호출.
@@ -11,8 +11,8 @@ canonical 아키텍처: Interface POST /api/production/start 가 Management gRPC
 - ord_id > 0 → smartcast v2 로직 단건 처리
 - order_ids 비어있지 않음 → 각 원소를 int 로 변환해 smartcast v2 로직 반복
 
-smartcast v2 트랜잭션 (Interface production.py:94 와 동일 경계):
-    OrdStat(MFG) + Item(cur_stat='QUE', cur_res='RA1', equip_task_type='MM')
+v21 트랜잭션:
+    OrdStat(MFG) + ItemStat(flow_stat='CREATED', zone_nm='CAST')
     + EquipTaskTxn(res_id='RA1', task_type='MM', txn_stat='QUE')
     단일 `db.commit()` 으로 atomic.
 
@@ -25,6 +25,8 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
+from types import SimpleNamespace
 
 from smart_cast_db.database import SessionLocal
 from smart_cast_db.models import (
@@ -36,6 +38,37 @@ from smart_cast_db.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+_LEGACY_STAGE_TO_FLOW_STATS = {
+    "QUE": ("CREATED", "WAIT_INSP", "WAIT_PA", "HOLD"),
+    "MM": ("CAST",),
+    "DM": tuple(),
+    "TR_PP": ("WAIT_PP",),
+    "PP": ("PP", "PA"),
+    "IP": ("INSP",),
+    "TR_LD": ("STORED", "PICK"),
+    "SH": ("READY_TO_SHIP", "DISCARDED"),
+}
+
+_FLOW_TO_LEGACY_STAGE = {
+    "CREATED": "QUE",
+    "CAST": "MM",
+    "WAIT_PP": "TR_PP",
+    "PP": "PP",
+    "WAIT_INSP": "QUE",
+    "INSP": "IP",
+    "WAIT_PA": "QUE",
+    "PA": "PP",
+    "STORED": "TR_LD",
+    "PICK": "TR_LD",
+    "READY_TO_SHIP": "SH",
+    "DISCARDED": "SH",
+    "HOLD": "QUE",
+}
+
+
+def _legacy_stage_from_flow(flow_stat: str | None) -> str:
+    return _FLOW_TO_LEGACY_STAGE.get((flow_stat or "").upper(), "QUE")
 
 
 @dataclass(frozen=True)
@@ -53,17 +86,17 @@ class TaskManagerError(ValueError):
 
 
 class TaskManager:
-    """smartcast v2 ORM 기반 생산 개시."""
+    """v21 ORM 기반 생산 개시 + legacy read compatibility."""
 
     def start_production_single(self, ord_id: int) -> StartProductionResult:
         """단일 발주의 smartcast v2 생산 개시.
 
         선행 조건:
-            - ord_id 가 smartcast `ord` 테이블에 존재
-            - `pattern` 테이블에 ord_id 키의 패턴 등록됨
+            - ord_id 가 `ord` 테이블에 존재
+            - `pattern_stat` 테이블에 ord_id 키의 패턴 등록됨
         효과 (atomic):
             - OrdStat INSERT (ord_stat='MFG')
-            - Item INSERT (cur_stat='QUE', cur_res='RA1', equip_task_type='MM')
+            - ItemStat INSERT (flow_stat='CREATED', zone_nm='CAST')
             - EquipTaskTxn INSERT (res_id='RA1', task_type='MM', txn_stat='QUE')
         """
         if not ord_id or ord_id <= 0:
@@ -78,14 +111,19 @@ class TaskManager:
                     f"pattern for ord_id={ord_id} not registered",
                 )
 
-            db.add(OrdStat(ord_id=ord_id, ord_stat="MFG"))
+            ord_stat = db.query(OrdStat).filter(OrdStat.ord_id == ord_id).first()
+            if ord_stat is None:
+                ord_stat = OrdStat(ord_id=ord_id, ord_stat="MFG")
+                db.add(ord_stat)
+            else:
+                ord_stat.ord_stat = "MFG"
+                ord_stat.updated_at = datetime.utcnow()
 
             new_item = Item(
                 ord_id=ord_id,
-                equip_task_type="MM",
-                trans_task_type=None,
-                cur_stat="QUE",
-                cur_res="RA1",
+                flow_stat="CREATED",
+                zone_nm="CAST",
+                result=None,
             )
             db.add(new_item)
             db.flush()  # new_item.item_id 확보
@@ -145,11 +183,11 @@ class TaskManager:
         stage: str | None,
         limit: int,
     ) -> list[Item]:
-        """smartcast Item 목록 조회 (ListItems RPC 핸들러 용).
+        """smartcast v21 item_stat 목록을 legacy ListItems shape 로 투영한다.
 
         Args:
             order_id: ord_id (int 문자열). None 이면 전체.
-            stage: smartcast Item.cur_stat 필터. None 이면 전체.
+            stage: legacy proto stage filter. v21 flow_stat set 으로 매핑한다.
             limit: 상한 (기본 100).
         """
         with SessionLocal() as db:
@@ -160,5 +198,18 @@ class TaskManager:
                 except (TypeError, ValueError):
                     logger.warning("list_items: invalid order_id=%r — 필터 무시", order_id)
             if stage:
-                q = q.filter(Item.cur_stat == stage)
-            return q.order_by(Item.item_id.asc()).limit(limit or 100).all()
+                flow_stats = _LEGACY_STAGE_TO_FLOW_STATS.get(stage, ())
+                if not flow_stats:
+                    return []
+                q = q.filter(Item.flow_stat.in_(flow_stats))
+            rows = q.order_by(Item.updated_at.desc(), Item.item_id.asc()).limit(limit or 100).all()
+            return [
+                SimpleNamespace(
+                    item_id=row.item_id,
+                    ord_id=row.ord_id,
+                    cur_stat=_legacy_stage_from_flow(row.flow_stat),
+                    cur_res=row.zone_nm or "",
+                    updated_at=row.updated_at,
+                )
+                for row in rows
+            ]

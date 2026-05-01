@@ -7,9 +7,11 @@
 
   S1. ToPP 도착 + 작업자 핸드오프 버튼
         POST /api/debug/handoff-ack
-        → trans_stat.cur_stat: WAIT_HANDOFF → WAIT_DLD
         → trans_task_txn(ToPP).txn_stat: PROC → SUCC
-        → item.cur_stat: ToPP → PP, equip_task_type=PP, trans_task_type=NULL, cur_res=NULL
+        → trans_stat.cur_stat: SUCC
+        → trans_task_txn(ToPP).txn_stat: PROC → SUCC
+        → item.flow_stat: WAIT_PP 계열 → PP 또는 WAIT_INSP
+        → item.zone_nm: PP 또는 INSP
         → pp_task_txn 다건 INSERT (ord_pp_map 기준, txn_stat=QUE)
         → handoff_acks 감사 로그 INSERT
 
@@ -21,7 +23,7 @@
   S3. 후처리 완료 + RFID 부착 + 컨베이어 TOF1 진입
         POST /api/debug/sim/conveyor-tof1
         → 해당 item 의 모든 pp_task_txn(QUE/PROC) → SUCC, end_at=now()
-        → item.cur_stat: PP → ToINSP, equip_task_type=ToINSP
+        → item.flow_stat: PP → WAIT_INSP
         → equip_task_txn 신규 INSERT (task_type=ToINSP, txn_stat=PROC, res_id=CONV-01)
         → equip_stat INSERT (cur_stat=ON)
 
@@ -41,7 +43,7 @@ from sqlalchemy.orm import Session
 
 from smart_cast_db.database import get_db
 from smart_cast_db.models import (
-    Item,
+    ItemStat,
     OrdPpMap,
     PpOption,
     PpTaskTxn,
@@ -56,14 +58,30 @@ RFID_PAYLOAD_RE = re.compile(r"^order_(?P<ord>\d+)_item_(?P<date>\d{8})_(?P<seq>
 # 가상 모드의 기본 컨베이어 자원 ID
 DEFAULT_CONV_RES_ID = "CONV-01"
 
+_FLOW_TO_LEGACY_STAGE = {
+    "CREATED": "QUE",
+    "CAST": "MM",
+    "WAIT_PP": "TR_PP",
+    "PP": "PP",
+    "WAIT_INSP": "QUE",
+    "INSP": "IP",
+    "WAIT_PA": "QUE",
+    "PA": "PP",
+    "STORED": "TR_LD",
+    "PICK": "TR_LD",
+    "READY_TO_SHIP": "SH",
+    "DISCARDED": "SH",
+    "HOLD": "QUE",
+}
+
 
 # ----------------------------------------------------------------------------
 # 공용 헬퍼
 # ----------------------------------------------------------------------------
 
 
-def _resolve_item_by_payload(db: Session, payload: str) -> Item | None:
-    """RFID payload (`order_X_item_YYYYMMDD_N`) → smartcast.item 1건.
+def _resolve_item_by_payload(db: Session, payload: str) -> ItemStat | None:
+    """RFID payload (`order_X_item_YYYYMMDD_N`) → smartcast.item_stat 1건.
 
     payload 의 ord_id 와 item.ord_id 만 사용해 동일 ord 의 가장 최근 item 을 매칭.
     sequence 정합성은 가상 모드에서 강하게 검사하지 않는다.
@@ -74,13 +92,27 @@ def _resolve_item_by_payload(db: Session, payload: str) -> Item | None:
     ord_id = int(m.group("ord"))
     seq = int(m.group("seq"))
     # 우선 ord_id + seq 매칭 시도, 실패 시 ord_id 의 최신 item
-    item = db.query(Item).filter(Item.ord_id == ord_id, Item.item_id == seq).first()
+    item = db.query(ItemStat).filter(ItemStat.ord_id == ord_id, ItemStat.item_stat_id == seq).first()
     if item is not None:
         return item
-    return db.query(Item).filter(Item.ord_id == ord_id).order_by(desc(Item.item_id)).first()
+    return db.query(ItemStat).filter(ItemStat.ord_id == ord_id).order_by(desc(ItemStat.item_stat_id)).first()
 
 
-def _build_pp_options_view(db: Session, item: Item) -> list[dict]:
+def _debug_item_view(item: ItemStat) -> dict:
+    flow_stat = item.flow_stat or ""
+    return {
+        "item_id": item.item_stat_id,
+        "ord_id": item.ord_id,
+        "flow_stat": flow_stat,
+        "cur_stat": _FLOW_TO_LEGACY_STAGE.get(flow_stat, "QUE"),
+        "zone_nm": item.zone_nm,
+        "cur_res": item.zone_nm,
+        "result": item.result,
+        "is_defective": None if item.result is None else (not item.result),
+    }
+
+
+def _build_pp_options_view(db: Session, item: ItemStat) -> list[dict]:
     """안 b: ord_pp_map 정의 + pp_task_txn 진행 현황 동시 노출."""
     rows = (
         db.query(OrdPpMap, PpOption)
@@ -94,7 +126,7 @@ def _build_pp_options_view(db: Session, item: Item) -> list[dict]:
     # item 별 pp_task_txn 최신 1건씩 (pp_nm 기준)
     txns = (
         db.query(PpTaskTxn)
-        .filter(PpTaskTxn.item_id == item.item_id)
+        .filter(PpTaskTxn.item_stat_id == item.item_stat_id)
         .order_by(PpTaskTxn.pp_nm.asc(), desc(PpTaskTxn.req_at))
         .all()
     )
@@ -148,7 +180,7 @@ def simulate_handoff_ack(
     )
     if _MGMT_DIR not in sys.path:
         sys.path.insert(0, _MGMT_DIR)
-    from services.core.handoff_pipeline import apply_handoff  # type: ignore
+    from services.core.legacy.handoff_pipeline import apply_handoff  # type: ignore
 
     operator_id = payload.get("operator_id")
     now_ms = int(datetime.now().timestamp() * 1000)
@@ -213,7 +245,7 @@ def simulate_rfid_scan(
             raw_payload=raw_payload,
             ord_id=str(item.ord_id) if item else None,
             item_key=raw_payload,
-            item_id=item.item_id if item else None,
+            item_stat_id=item.item_stat_id if item else None,
             parse_status=parse_status,
             idempotency_key=idem,
             extra={"via": "fastapi_debug_sim"},
@@ -232,15 +264,7 @@ def simulate_rfid_scan(
     return {
         "matched": True,
         "parse_status": parse_status,
-        "item": {
-            "item_id": item.item_id,
-            "ord_id": item.ord_id,
-            "cur_stat": item.cur_stat,
-            "equip_task_type": item.equip_task_type,
-            "trans_task_type": item.trans_task_type,
-            "cur_res": item.cur_res,
-            "is_defective": item.is_defective,
-        },
+        "item": _debug_item_view(item),
         "pp_options": _build_pp_options_view(db, item),
     }
 
@@ -262,14 +286,6 @@ def lookup_item_by_rfid(
     if item is None:
         raise HTTPException(status_code=404, detail=f"item not found for payload={payload}")
     return {
-        "item": {
-            "item_id": item.item_id,
-            "ord_id": item.ord_id,
-            "cur_stat": item.cur_stat,
-            "equip_task_type": item.equip_task_type,
-            "trans_task_type": item.trans_task_type,
-            "cur_res": item.cur_res,
-            "is_defective": item.is_defective,
-        },
+        "item": _debug_item_view(item),
         "pp_options": _build_pp_options_view(db, item),
     }

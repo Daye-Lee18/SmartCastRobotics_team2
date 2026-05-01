@@ -18,7 +18,7 @@ from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from smart_cast_db.database import SessionLocal
-from smart_cast_db.models import EquipStat, OrdStat, TransStat
+from smart_cast_db.models import EquipStat, OrdStat, TransCoord, TransStat, Zone
 
 router = APIRouter()
 
@@ -53,6 +53,10 @@ def _snapshot() -> dict:
     """현재 시점 상태 스냅샷 (DB 폴링)."""
     db = SessionLocal()
     try:
+        zone_by_coord_id = {
+            c.trans_coord_id: z.zone_nm
+            for c, z in db.query(TransCoord, Zone).join(Zone, Zone.zone_id == TransCoord.zone_id).all()
+        }
         equip_stats = [
             {
                 "res_id": s.res_id,
@@ -67,7 +71,7 @@ def _snapshot() -> dict:
                 "res_id": s.res_id,
                 "cur_stat": s.cur_stat,
                 "battery_pct": s.battery_pct,
-                "cur_zone_type": s.cur_zone_type,
+                "cur_zone_type": zone_by_coord_id.get(s.cur_trans_coord_id),
                 "updated_at": s.updated_at.isoformat() if s.updated_at else None,
             }
             for s in db.query(TransStat).all()

@@ -136,11 +136,9 @@ class CreateItemStatInput(BaseModel):
 
 
 class UpdateItemStatInput(BaseModel):
-    cur_stat: Optional[str] = None
-    cur_res: Optional[str] = None
-    equip_task_type: Optional[EquipTaskType] = None
-    trans_task_type: Optional[TransTaskType] = None
-    is_defective: Optional[bool] = None
+    flow_stat: Optional[str] = None
+    zone_nm: Optional[str] = None
+    result: Optional[bool] = None
 
 
 class ItemStatRecord(BaseModel):
@@ -148,11 +146,9 @@ class ItemStatRecord(BaseModel):
 
     item_stat_id: int
     ord_id: int
-    equip_task_type: Optional[EquipTaskType] = None
-    trans_task_type: Optional[TransTaskType] = None
-    cur_stat: Optional[str] = None
-    cur_res: Optional[str] = None
-    is_defective: Optional[bool] = None
+    flow_stat: Optional[str] = None
+    zone_nm: Optional[str] = None
+    result: Optional[bool] = None
     updated_at: Optional[datetime] = None
 
 
@@ -216,7 +212,7 @@ class EquipStatRecord(BaseModel):
 
 
 class AssignTransTaskInput(BaseModel):
-    trans_id: str
+    res_id: str
     task_type: TransTaskType
     item_stat_id: Optional[int] = None
     ord_id: Optional[int] = None
@@ -232,8 +228,8 @@ class UpdateTransTaskInput(BaseModel):
 class TransTaskTxnRecord(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    trans_task_txn_id: int
-    trans_id: Optional[str] = None
+    txn_id: int
+    res_id: Optional[str] = None
     task_type: TransTaskType
     txn_stat: Optional[TxnStat] = None
     chg_loc_id: Optional[int] = None
@@ -249,14 +245,14 @@ class CreateTransStatInput(BaseModel):
     cur_stat: TransStat = TransStat.IDLE
     battery_pct: Optional[int] = None
     item_stat_id: Optional[int] = None
-    cur_zone_type: Optional[str] = None
+    cur_trans_coord_id: Optional[int] = None
 
 
 class UpdateTransStatInput(BaseModel):
     cur_stat: Optional[TransStat] = None
     battery_pct: Optional[int] = None
     item_stat_id: Optional[int] = None
-    cur_zone_type: Optional[str] = None
+    cur_trans_coord_id: Optional[int] = None
 
 
 class TransStatRecord(BaseModel):
@@ -266,7 +262,7 @@ class TransStatRecord(BaseModel):
     item_stat_id: Optional[int] = None
     cur_stat: Optional[TransStat] = None
     battery_pct: Optional[int] = None
-    cur_zone_type: Optional[str] = None
+    cur_trans_coord_id: Optional[int] = None
     updated_at: datetime
 
 
@@ -280,7 +276,6 @@ class CreateInspTaskInput(BaseModel):
 
 class UpdateInspTaskInput(BaseModel):
     txn_stat: TxnStat
-    result: Optional[bool] = None
     start_at: Optional[datetime] = None
     end_at: Optional[datetime] = None
 
@@ -292,7 +287,6 @@ class InspTaskTxnRecord(BaseModel):
     item_stat_id: Optional[int] = None
     res_id: Optional[str] = None
     txn_stat: Optional[TxnStat] = None
-    result: Optional[bool] = None
     req_at: datetime
     start_at: Optional[datetime] = None
     end_at: Optional[datetime] = None

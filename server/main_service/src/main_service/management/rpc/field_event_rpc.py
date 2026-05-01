@@ -14,14 +14,89 @@ from services.adapters.sensors.rfid_service import RfidServiceError
 logger = logging.getLogger(__name__)
 
 
+def _item_state_label(item) -> str:
+    return getattr(item, "flow_stat", None) or ""
+
+
+def _handoff_task_id_from_extra(extra: object) -> str:
+    if not isinstance(extra, dict):
+        return ""
+    task_id = extra.get("trans_task_txn_id")
+    return str(task_id) if task_id is not None else ""
+
+
+def _pp_option_proto(option: dict) -> management_pb2.PpOptionView:
+    return management_pb2.PpOptionView(
+        pp_id=int(option.get("pp_id") or 0),
+        pp_nm=option.get("pp_nm") or "",
+        extra_cost=float(option.get("extra_cost") or 0.0),
+        txn_stat=str(option.get("txn_stat") or ""),
+        txn_id=int(option.get("txn_id") or 0),
+        map_id=int(option.get("map_id") or 0),
+    )
+
+
+def _notify_handoff_ack(result, *, zone: str, ack_at_iso: str) -> None:
+    import json as _json
+    import urllib.request
+
+    notify_url = os.environ.get(
+        "INTERFACE_NOTIFY_URL",
+        "http://localhost:8000/api/debug/_notify/handoff-ack",
+    )
+    body = _json.dumps(
+        {
+            "task_id": result.task_id,
+            "amr_id": result.amr_id or "",
+            "item_id": result.item_id,
+            "ord_id": result.ord_id,
+            "zone": zone,
+            "ack_at": ack_at_iso,
+            "orphan": result.orphan,
+            "source": "management_grpc",
+            "pp_task_txn_ids": result.pp_task_txn_ids,
+            "item_cur_stat": result.item_cur_stat,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        notify_url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    urllib.request.urlopen(req, timeout=1.0).read()
+
+
+def _build_rfid_ack_details(item_id: int) -> tuple[str, int, list[management_pb2.PpOptionView]]:
+    from services.core.legacy.handoff_pipeline import build_pp_options_view
+
+    from smart_cast_db.database import SessionLocal
+    from smart_cast_db.models import ItemStat
+
+    item_cur_stat = ""
+    ord_id_int = 0
+    pp_options_proto: list[management_pb2.PpOptionView] = []
+    db = SessionLocal()
+    try:
+        item = db.get(ItemStat, item_id)
+        if item is not None:
+            item_cur_stat = _item_state_label(item)
+            ord_id_int = int(item.ord_id) if item.ord_id else 0
+            for opt in build_pp_options_view(db, item):
+                pp_options_proto.append(_pp_option_proto(opt))
+    finally:
+        db.close()
+    return item_cur_stat, ord_id_int, pp_options_proto
+
+
 class FieldEventRpcMixin:
     """Handoff, RFID, and conveyor event RPCs."""
 
     def ReportHandoffAck(self, request, context):
-        from services.core.handoff_pipeline import apply_handoff
+        from services.core.legacy.handoff_pipeline import apply_handoff
 
         from smart_cast_db.database import SessionLocal
-        from smart_cast_db.models import HandoffAck
+        from smart_cast_db.models.models_legacy import HandoffAck
 
         zone = request.zone or "postprocessing"
         source_device = request.source_device or "unknown"
@@ -40,9 +115,7 @@ class FieldEventRpcMixin:
                     logger.info("ReportHandoffAck: 중복 이벤트 skip key=%s", idempotency_key)
                     return management_pb2.HandoffAckResponse(
                         accepted=True,
-                        task_id=dup.extra.get("trans_task_txn_id")
-                        if isinstance(dup.extra, dict)
-                        else "",
+                        task_id=_handoff_task_id_from_extra(dup.extra),
                         amr_id=dup.amr_id or "",
                         reason="duplicate",
                         ack_at=dup.ack_at.isoformat() if dup.ack_at else now_utc.isoformat(),
@@ -76,34 +149,7 @@ class FieldEventRpcMixin:
                 fsm_reason = f"db_committed_fsm_reject:{_r}"
 
         try:
-            import json as _json
-            import urllib.request
-
-            notify_url = os.environ.get(
-                "INTERFACE_NOTIFY_URL",
-                "http://localhost:8000/api/debug/_notify/handoff-ack",
-            )
-            body = _json.dumps(
-                {
-                    "task_id": result.task_id,
-                    "amr_id": result.amr_id or "",
-                    "item_id": result.item_id,
-                    "ord_id": result.ord_id,
-                    "zone": zone,
-                    "ack_at": now_utc.isoformat(),
-                    "orphan": result.orphan,
-                    "source": "management_grpc",
-                    "pp_task_txn_ids": result.pp_task_txn_ids,
-                    "item_cur_stat": result.item_cur_stat,
-                }
-            ).encode()
-            req = urllib.request.Request(
-                notify_url,
-                data=body,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
-            urllib.request.urlopen(req, timeout=1.0).read()
+            _notify_handoff_ack(result, zone=zone, ack_at_iso=now_utc.isoformat())
         except Exception as e:  # noqa: BLE001
             logger.warning("Handoff WebSocket notify 실패 (무시): %s", e)
 
@@ -131,32 +177,9 @@ class FieldEventRpcMixin:
 
         item_cur_stat = ""
         ord_id_int = 0
-        pp_options_proto: list = []
+        pp_options_proto: list[management_pb2.PpOptionView] = []
         if result.accepted and result.item_id:
-            from services.core.handoff_pipeline import build_pp_options_view
-
-            from smart_cast_db.database import SessionLocal
-            from smart_cast_db.models import Item
-
-            db = SessionLocal()
-            try:
-                item = db.get(Item, result.item_id)
-                if item is not None:
-                    item_cur_stat = item.cur_stat or ""
-                    ord_id_int = int(item.ord_id) if item.ord_id else 0
-                    for opt in build_pp_options_view(db, item):
-                        pp_options_proto.append(
-                            management_pb2.PpOptionView(
-                                pp_id=int(opt.get("pp_id") or 0),
-                                pp_nm=opt.get("pp_nm") or "",
-                                extra_cost=float(opt.get("extra_cost") or 0.0),
-                                txn_stat=str(opt.get("txn_stat") or ""),
-                                txn_id=int(opt.get("txn_id") or 0),
-                                map_id=int(opt.get("map_id") or 0),
-                            )
-                        )
-            finally:
-                db.close()
+            item_cur_stat, ord_id_int, pp_options_proto = _build_rfid_ack_details(result.item_id)
 
         return management_pb2.RfidScanAck(
             accepted=result.accepted,
@@ -169,7 +192,7 @@ class FieldEventRpcMixin:
         )
 
     def ReportConveyorEvent(self, request, context):
-        from services.core.handoff_pipeline import apply_tof1, apply_tof2
+        from services.core.legacy.handoff_pipeline import apply_tof1, apply_tof2
 
         from smart_cast_db.database import SessionLocal
 
@@ -215,4 +238,3 @@ class FieldEventRpcMixin:
                 return management_pb2.ConveyorEventAck()
         finally:
             db.close()
-

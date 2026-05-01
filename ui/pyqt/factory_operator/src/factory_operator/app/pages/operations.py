@@ -135,7 +135,9 @@ class OperationsPage(QWidget):
         self._item_stage_cache: dict[int, str] = {}  # item_id → stage_code (gRPC stream)
         # QThread 참조 보관 — GC 방지 + 중복 실행 방지
         self._refresh_thread: QThread | None = None
+        self._refresh_worker: _RefreshWorker | None = None
         self._ord_thread: QThread | None = None
+        self._ord_worker: _OrdItemsWorker | None = None
         self._build_ui()
         self.refresh()
         self._start_item_stream()
@@ -421,11 +423,13 @@ class OperationsPage(QWidget):
 
         worker = _RefreshWorker(self._api)
         thread = QThread(self)
+        self._refresh_worker = worker
         worker.moveToThread(thread)
         worker.data_ready.connect(self._on_refresh_done)
         worker.data_ready.connect(lambda _: thread.quit())
         thread.started.connect(worker.run)
         thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._clear_refresh_worker)
         self._refresh_thread = thread
         thread.start()
 
@@ -590,13 +594,23 @@ class OperationsPage(QWidget):
 
         worker = _OrdItemsWorker(self._api, ord_id)
         thread = QThread(self)
+        self._ord_worker = worker
         worker.moveToThread(thread)
         worker.data_ready.connect(self._on_ord_items_done)
         worker.data_ready.connect(lambda *_: thread.quit())
         thread.started.connect(worker.run)
         thread.finished.connect(worker.deleteLater)
+        thread.finished.connect(self._clear_ord_worker)
         self._ord_thread = thread
         thread.start()
+
+    @pyqtSlot()
+    def _clear_refresh_worker(self) -> None:
+        self._refresh_worker = None
+
+    @pyqtSlot()
+    def _clear_ord_worker(self) -> None:
+        self._ord_worker = None
 
     @pyqtSlot(int, list)
     def _on_ord_items_done(self, ord_id: int, enriched: list) -> None:

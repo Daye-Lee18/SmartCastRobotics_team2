@@ -190,6 +190,9 @@ class PatternOut(_ORM):
 class ItemOut(_ORM):
     item_id: int
     ord_id: int
+    flow_stat: str | None = None
+    zone_nm: str | None = None
+    result: bool | None = None
     equip_task_type: str | None = None
     trans_task_type: str | None = None
     cur_stat: str | None = None
@@ -227,6 +230,8 @@ class EquipStatOut(_ORM):
 
 
 class TransTaskTxnOut(_ORM):
+    txn_id: int | None = None
+    res_id: str | None = None
     trans_task_txn_id: int
     trans_id: str | None = None
     task_type: str | None = None
@@ -244,6 +249,7 @@ class TransStatOut(_ORM):
     item_id: int | None = None
     cur_stat: str | None = None
     battery_pct: int | None = None
+    cur_trans_coord_id: int | None = None
     cur_zone_type: str | None = None
     updated_at: datetime | None = None
 

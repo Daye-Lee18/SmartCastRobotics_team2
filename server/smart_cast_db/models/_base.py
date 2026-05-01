@@ -20,6 +20,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -44,6 +45,7 @@ __all__ = [
     "Integer",
     "Numeric",
     "String",
+    "UniqueConstraint",
     "func",
     "relationship",
 ]

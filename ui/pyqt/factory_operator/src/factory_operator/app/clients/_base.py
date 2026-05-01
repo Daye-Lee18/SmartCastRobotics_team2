@@ -21,7 +21,7 @@ logger = logging.getLogger("app.clients")
 DATA_MODE: str = os.environ.get("CASTING_DATA_MODE", "fallback").lower()
 
 # 일시적 실패(ConnectionError/Timeout)는 TTL 동안 재시도 차단 → 메인 스레드 블록 최소화
-_TRANSIENT_FAILURE_TTL_SEC: float = 60.0
+_TRANSIENT_FAILURE_TTL_SEC: float = 5.0
 
 _ORD_STAT_TO_LEGACY_STATUS = {
     "RCVD": "pending",

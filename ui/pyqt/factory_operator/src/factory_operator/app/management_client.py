@@ -222,27 +222,6 @@ class ManagementClient:
             logger.warning("GetRobotStatus 실패: %s", e)
             return []
 
-    def transition_amr_state(
-        self,
-        robot_id: str,
-        new_state: int,
-        task_id: str = "",
-        loaded_item: str = "",
-    ) -> tuple[bool, str]:
-        """AMR 상태 전이 요청. (accepted, reason) 반환."""
-        try:
-            req = management_pb2.TransitionAmrStateRequest(
-                robot_id=robot_id,
-                new_state=new_state,
-                task_id=task_id,
-                loaded_item=loaded_item,
-            )
-            resp = self._stub.TransitionAmrState(req, timeout=self._timeout)
-            return (resp.accepted, resp.reason)
-        except grpc.RpcError as e:
-            logger.warning("TransitionAmrState 실패: %s", e)
-            return (False, f"grpc_error: {e}")
-
     @staticmethod
     def stage_code_to_label(code: int) -> str:
         """proto enum 정수 → 코드 문자열 (UI 매핑용)."""

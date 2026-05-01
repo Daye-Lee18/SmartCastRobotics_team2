@@ -10,6 +10,8 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from smart_cast_db.models import (
+    EquipTaskTxn,
+    ItemStat,
     Ord,
     OrdStat,
     Pattern,
@@ -54,9 +56,38 @@ def _latest_ord_stat(db: Session, ord_id: int) -> str:
     return latest.ord_stat if latest else "RCVD"
 
 
+def _is_schedule_queue_candidate(db: Session, ord_id: int) -> bool:
+    """생산 계획 큐 후보 여부.
+
+    기준:
+    - 주문 상태는 MFG 여야 함
+    - 아직 실제 라인 투입 흔적(item_stat / equip_task_txn)이 없어야 함
+    """
+    if _latest_ord_stat(db, ord_id) != "MFG":
+        return False
+
+    has_item = (
+        db.query(ItemStat.item_stat_id)
+        .filter(ItemStat.ord_id == ord_id)
+        .first()
+        is not None
+    )
+    if has_item:
+        return False
+
+    has_equip_txn = (
+        db.query(EquipTaskTxn.txn_id)
+        .filter(EquipTaskTxn.ord_id == ord_id)
+        .first()
+        is not None
+    )
+    return not has_equip_txn
+
+
 def _virtual_production_job(db: Session, ord_obj: Ord, rank: int = 1) -> dict[str, Any]:
     latest = _latest_ord_stat(db, ord_obj.ord_id)
     detail = ord_obj.detail
+    user = ord_obj.user
     qty = int(detail.qty or 0) if detail else 0
     est_days = 3 + (qty // 50)
     created_at = (
@@ -76,9 +107,15 @@ def _virtual_production_job(db: Session, ord_obj: Ord, rank: int = 1) -> dict[st
         "assigned_stage": "production-planning",
         "status": "queued" if latest in {"APPR", "MFG"} else "completed",
         "estimated_completion": estimated_completion,
-        "started_at": created_at if latest == "MFG" else None,
+        "started_at": None,
         "completed_at": None,
         "created_at": created_at,
+        "company_name": user.co_nm if user else "-",
+        "customer_name": user.user_nm if user else "-",
+        "total_amount": float(detail.final_price or 0) if detail else 0.0,
+        "requested_delivery": due_date.isoformat() if due_date else None,
+        "confirmed_delivery": due_date.isoformat() if due_date else None,
+        "order_status": "in_production" if latest == "MFG" else "approved",
     }
 
 
@@ -156,9 +193,14 @@ def _priority_result(db: Session, ord_obj: Ord, rank: int = 1) -> dict[str, Any]
     delay_risk = "high" if days_left <= 3 else "medium" if days_left <= 7 else "low"
     product_summary = "주물 제품"
     if detail:
-        product_summary = (
-            " / ".join(str(v) for v in (detail.material, detail.load_class) if v) or product_summary
-        )
+        # v21 ord_detail 에는 material/load_class 가 없다.
+        # product relation 또는 prod_id 기준으로만 안전하게 요약한다.
+        product = getattr(detail, "product", None)
+        parts = [
+            getattr(product, "cate_cd", None) if product is not None else None,
+            f"prod:{detail.prod_id}" if getattr(detail, "prod_id", None) is not None else None,
+        ]
+        product_summary = " / ".join(str(v) for v in parts if v) or product_summary
     return {
         "order_id": str(ord_obj.ord_id),
         "company_name": user.co_nm if user else "-",

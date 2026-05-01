@@ -15,8 +15,9 @@ import pytest
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _MGMT_DIR = os.path.dirname(_THIS_DIR)
 _BACKEND_DIR = os.path.dirname(_MGMT_DIR)
+_SERVER_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_BACKEND_DIR)))
 
-for p in (_MGMT_DIR, _BACKEND_DIR):
+for p in (_MGMT_DIR, _BACKEND_DIR, _SERVER_DIR):
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -65,7 +66,7 @@ def _truncate_all() -> None:
 
 
 def _seed_user_and_res() -> None:
-    """공통 시드: customer user_id=1 + RA1 res (Item.cur_res / EquipTaskTxn.res_id FK)."""
+    """공통 시드: customer user_id=1 + RA1 res (초기 equip_task_txn.res_id 참조용)."""
     from smart_cast_db.database import SessionLocal
     from smart_cast_db.models import Res, UserAccount
 
@@ -77,6 +78,7 @@ def _seed_user_and_res() -> None:
                 user_nm="tester",
                 role="customer",
                 email="test@example.com",
+                password="pw",
             )
         )
         db.add(Res(res_id="RA1", res_type="RA", model_nm="TEST-RA"))
