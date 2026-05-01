@@ -8,7 +8,7 @@ import grpc
 import management_pb2  # type: ignore
 import management_pb2_grpc  # type: ignore
 
-from services.core.command_queue import queue as command_queue
+from services.core.legacy.core.command_queue import queue as command_queue
 from services.adapters.vision.image_sink import sink as image_sink
 
 logger = logging.getLogger(__name__)
@@ -40,20 +40,11 @@ class HardwareRpcMixin:
         logger.info("WatchConveyorCommands closed subscriber=%s", subscriber_id)
 
     def WatchCameraFrames(self, request, context):
-        cam = request.camera_id or ""
-        if not cam:
-            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-            context.set_details("camera_id required")
-            return
-        last_seq = int(request.after_sequence)
-        logger.info("WatchCameraFrames subscriber camera=%s after_seq=%d", cam, last_seq)
-        while context.is_active():
-            frame = image_sink.wait_new(cam, last_seq, timeout=10.0)
-            if frame is None:
-                continue
-            last_seq = int(frame.get("sequence", 0))
-            yield self._frame_to_response(cam, frame)
-        logger.info("WatchCameraFrames subscriber closed camera=%s", cam)
+        # UI live camera streaming is intentionally disabled.
+        # Keep PublishFrames -> image_sink -> AI snapshot path intact.
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("WatchCameraFrames is disabled")
+        return
 
     @staticmethod
     def _frame_to_response(cam: str, frame: dict):
@@ -99,4 +90,3 @@ class ImagePublisherServicer(management_pb2_grpc.ImagePublisherServiceServicer):
             accepted=True,
             message=f"received {count} frames",
         )
-

@@ -46,6 +46,67 @@ def start_result_to_proto(r):
     )
 
 
+def start_result_to_order_ack(r, *, accepted=True, reason=""):
+    """StartProductionResult dataclass -> canonical StartProductionOrderAck proto."""
+    return management_pb2.StartProductionOrderAck(
+        ord_id=r.ord_id,
+        accepted=accepted,
+        reason=reason or r.message or "",
+        item_id=r.item_id,
+        equip_task_txn_id=r.equip_task_txn_id,
+    )
+
+
+def build_batch_start_ack(order_ids, results):
+    """Build per-order batch ack while keeping legacy TaskManager behavior.
+
+    Legacy TaskManager currently returns only successful rows and silently skips
+    invalid/missing/unregistered orders. For the skeleton response we preserve
+    that behavior but expose it as explicit per-order accepted/rejected results.
+    """
+    normalized_order_ids = list(order_ids)
+    accepted_by_ord_id = {int(r.ord_id): r for r in results}
+    order_acks = []
+    accepted_count = 0
+
+    for raw in normalized_order_ids:
+        try:
+            parsed = int(str(raw).strip())
+        except ValueError:
+            order_acks.append(
+                management_pb2.StartProductionOrderAck(
+                    ord_id=0,
+                    accepted=False,
+                    reason=f"invalid order_id: {raw}",
+                )
+            )
+            continue
+
+        result = accepted_by_ord_id.get(parsed)
+        if result is None:
+            order_acks.append(
+                management_pb2.StartProductionOrderAck(
+                    ord_id=parsed,
+                    accepted=False,
+                    reason="rejected_or_skipped_by_legacy_path",
+                )
+            )
+            continue
+
+        accepted_count += 1
+        order_acks.append(start_result_to_order_ack(result))
+
+    requested_count = len(normalized_order_ids)
+    rejected_count = requested_count - accepted_count
+    return management_pb2.StartProductionAck(
+        requested_count=requested_count,
+        accepted_count=accepted_count,
+        rejected_count=rejected_count,
+        orders=order_acks,
+        message=f"{accepted_count}/{requested_count} orders accepted",
+    )
+
+
 def result_to_legacy_work_order(r):
     """smartcast start_production_single result -> legacy WorkOrder proto."""
     return management_pb2.WorkOrder(

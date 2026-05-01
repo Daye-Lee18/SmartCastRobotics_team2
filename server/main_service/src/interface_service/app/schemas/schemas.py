@@ -1,9 +1,3 @@
-"""Pydantic v2 스키마 — smartcast schema (Confluence 32342045 v59 기준).
-
-신규 27 테이블에 대응하는 Request/Response 모델.
-Legacy 모델은 backend/app/schemas/schemas_legacy.py 에 보관.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime

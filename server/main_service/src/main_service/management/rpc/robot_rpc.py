@@ -34,7 +34,7 @@ class RobotRpcMixin:
         return management_pb2.GetRobotStatusResponse(robots=entries)
 
     def TransitionAmrState(self, request, context):
-        from services.core.amr_state_machine import TaskState
+        from services.core.legacy.amr_state_machine import TaskState
 
         try:
             new_state = TaskState(request.new_state)

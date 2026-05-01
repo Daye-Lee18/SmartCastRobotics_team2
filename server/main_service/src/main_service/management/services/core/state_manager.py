@@ -252,3 +252,17 @@ async def transaction(
             except Exception as exc:
                 logger.error("[DB] transaction ROLLBACK | reason=%s", exc)
                 raise
+
+
+class StateManager:
+    """Canonical DB write owner skeleton for orchestrated production flows.
+
+    NOTE:
+    - 현재 런타임 write 경로는 legacy TaskManager 가 들고 있다.
+    - 이 클래스는 팀이 production-start write 를 이관할 목표 인터페이스를
+      한 곳에 모아 두기 위한 스켈레톤이다.
+    """
+
+    def start_production_batch(self, order_ids: list[int]):
+        """Create initial production records and return per-order ack results."""
+        raise NotImplementedError

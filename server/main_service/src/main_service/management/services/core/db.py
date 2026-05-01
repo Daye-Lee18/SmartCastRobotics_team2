@@ -17,7 +17,6 @@ _DB_CONFIG: dict = {
     "max_size": 10,
 }
 
-
 async def create_pool() -> asyncpg.Pool:
     ssl_ctx = ssl.create_default_context(cafile=str(_SSL_CERT))
     return await asyncpg.create_pool(**_DB_CONFIG, ssl=ssl_ctx)

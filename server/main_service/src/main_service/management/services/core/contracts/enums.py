@@ -96,3 +96,9 @@ class AdminActionType(str, Enum):
     INSERT = "INSERT"
     UPDATE = "UPDATE"
     DELETE = "DELETE"
+
+
+class EventType(str, Enum):
+    TASK_COMPLETED = "TASK_COMPLETED"
+    ITEM_STATUS_CHANGED = "ITEM_STATUS_CHANGED"
+    TASK_ASSIGNED = "TASK_ASSIGNED"
