@@ -34,6 +34,23 @@ class EquipTaskType(str, Enum):
     SHIP   = "SHIP"
 
 
+class ZoneNm(str, Enum):
+    CAST = "CAST"
+    PP   = "PP"
+    INSP = "INSP"
+    STRG = "STRG"
+    PICK = "PICK"
+    SHIP = "SHIP"
+    CHG  = "CHG"
+
+
+class PoseNm(str, Enum):
+    HOME         = "HOME"
+    AMR_HANDOFF  = "AMR_HANDOFF"
+    DEFECT_HOVER = "DEFECT_HOVER"
+    DEFECT_DROP  = "DEFECT_DROP"
+
+
 class TransTaskType(str, Enum):
     ToPP   = "ToPP"
     ToSTRG = "ToSTRG"

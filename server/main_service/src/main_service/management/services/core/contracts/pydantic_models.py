@@ -14,6 +14,7 @@ from enums import (
     LocStatus,
     OrdStat,
     OrdTxnType,
+    PoseNm,
     RfidParseStatus,
     TransStat,
     TransTaskType,
@@ -216,7 +217,7 @@ class AssignTransTaskInput(BaseModel):
     task_type: TransTaskType
     item_stat_id: Optional[int] = None
     ord_id: Optional[int] = None
-    chg_loc_id: Optional[int] = None
+    trans_coord_id: Optional[int] = None
 
 
 class UpdateTransTaskInput(BaseModel):
@@ -232,7 +233,7 @@ class TransTaskTxnRecord(BaseModel):
     res_id: Optional[str] = None
     task_type: TransTaskType
     txn_stat: Optional[TxnStat] = None
-    chg_loc_id: Optional[int] = None
+    trans_coord_id: Optional[int] = None
     item_stat_id: Optional[int] = None
     ord_id: Optional[int] = None
     req_at: datetime
@@ -324,11 +325,50 @@ class PpTaskTxnRecord(BaseModel):
     end_at: Optional[datetime] = None
 
 
+# ─── RA Coord ─────────────────────────────────────────────────────────────────
+
+
+class CreateRaCoordInput(BaseModel):
+    loc_id: Optional[int] = None
+    pose_nm: Optional[PoseNm] = None
+    waypoint_ord: int = Field(default=1, ge=1)
+    j1: Decimal
+    j2: Decimal
+    j3: Decimal
+    j4: Decimal
+    j5: Decimal
+    j6: Decimal
+
+
+class UpdateRaCoordInput(BaseModel):
+    j1: Optional[Decimal] = None
+    j2: Optional[Decimal] = None
+    j3: Optional[Decimal] = None
+    j4: Optional[Decimal] = None
+    j5: Optional[Decimal] = None
+    j6: Optional[Decimal] = None
+
+
+class RaCoordRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ra_coord_id: int
+    loc_id: Optional[int] = None
+    pose_nm: Optional[PoseNm] = None
+    waypoint_ord: int
+    j1: Decimal
+    j2: Decimal
+    j3: Decimal
+    j4: Decimal
+    j5: Decimal
+    j6: Decimal
+
+
 # ─── Location Stat ────────────────────────────────────────────────────────────
 
 
 class UpdateChgLocStatInput(BaseModel):
-    status: LocStatus
+    stat: LocStatus
 
 
 class ChgLocStatRecord(BaseModel):
@@ -339,13 +379,13 @@ class ChgLocStatRecord(BaseModel):
     res_id: Optional[str] = None
     loc_row: Optional[int] = None
     loc_col: Optional[int] = None
-    status: Optional[LocStatus] = None
+    stat: Optional[LocStatus] = None
     stored_at: datetime
 
 
 class UpdateStrgLocStatInput(BaseModel):
     item_stat_id: Optional[int] = None
-    status: LocStatus
+    stat: LocStatus
 
 
 class StrgLocStatRecord(BaseModel):
@@ -356,14 +396,14 @@ class StrgLocStatRecord(BaseModel):
     item_stat_id: Optional[int] = None
     loc_row: Optional[int] = None
     loc_col: Optional[int] = None
-    status: Optional[LocStatus] = None
+    stat: Optional[LocStatus] = None
     stored_at: datetime
 
 
 class UpdateShipLocStatInput(BaseModel):
     item_stat_id: Optional[int] = None
     ord_id: Optional[int] = None
-    status: LocStatus
+    stat: LocStatus
 
 
 class ShipLocStatRecord(BaseModel):
@@ -375,7 +415,7 @@ class ShipLocStatRecord(BaseModel):
     item_stat_id: Optional[int] = None
     loc_row: Optional[int] = None
     loc_col: Optional[int] = None
-    status: Optional[LocStatus] = None
+    stat: Optional[LocStatus] = None
     stored_at: datetime
 
 

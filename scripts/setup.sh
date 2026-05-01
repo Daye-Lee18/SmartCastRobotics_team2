@@ -13,11 +13,11 @@ fail() { echo -e "${RED}  ✗${NC} $*"; exit 1; }
 
 # 1. 사전 도구 점검
 log "사전 도구 점검"
-command -v python3.11 >/dev/null || { python3 --version 2>&1 | grep -q "3.11" || fail "python3.11 필요 (brew install python@3.11)"; }
-command -v python3.12 >/dev/null || { python3 --version 2>&1 | grep -q "3.12" || log "python3.12 권장 (PyQt). python3 으로 진행."; }
+python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' \
+  || fail "Python 3.11 이상 필요 (현재: $(python3 --version 2>&1)). sudo apt install python3.11 또는 pyenv 사용"
 command -v node >/dev/null || fail "node 필요 (https://nodejs.org)"
 command -v npm  >/dev/null || fail "npm 필요"
-ok "python/node/npm 확인"
+ok "python($(python3 --version 2>&1 | awk '{print $2}'))/node/npm 확인"
 
 # 2. backend
 log "[1/3] server/main_service venv + 의존성"
