@@ -12,12 +12,14 @@
 설치 후 **`server/main_service/.env.local` 의 DATABASE_URL** 비밀번호와 RDS 엔드포인트만 채우면 됩니다 (팀장에게 별도로 받음).
 
 개별 실행 (서비스별 별도 터미널):
-- `run-backend.sh` / `.bat` — FastAPI :8000 + Management gRPC 어댑터
+- `run-backend.sh` / `.bat` — FastAPI :8000
+- `run-management.sh` — Management gRPC :50051
 - `run-pyqt.sh` / `.bat` — PyQt Monitoring 데스크톱
 - `run-web.sh` / `.bat` — Next.js :3001
 
-`run-all.sh` 는 tmux 가 있으면 세션 `smartcast` 에 3 windows, 없으면 `logs/{backend,pyqt,web}.log` 에 백그라운드 출력.
-`run-all.bat` 는 별도 cmd 창 3 개를 띄웁니다.
+`run-all.sh` 는 GUI 터미널(`gnome-terminal`, `konsole`, `xfce4-terminal`, `mate-terminal`, `lxterminal`, `xterm`)이 있으면 `backend / management / pyqt / web` 을 각각 별도 창으로 실행합니다.
+GUI 터미널을 열 수 없으면 `logs/{backend,management,pyqt,web}.log` 로 백그라운드 실행합니다.
+`run-all.bat` 는 별도 cmd 창을 띄웁니다.
 
 ---
 
@@ -69,7 +71,8 @@ SMARTCAST_SCHEMA=public
 ### 3.3 실행
 
 ```bash
-PYTHONPATH=src/main_service:src uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env.local --reload
+PYTHONPATH=src/interface_service:src/main_service:src \
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env.local --reload
 ```
 
 확인: `curl http://localhost:8000/api/dashboard/stats` → 200 응답
@@ -77,7 +80,8 @@ PYTHONPATH=src/main_service:src uvicorn app.main:app --host 0.0.0.0 --port 8000 
 ### 3.4 (선택) Management gRPC 서버
 
 ```bash
-PYTHONPATH=src python -m main_service.management.server
+PYTHONPATH=src/interface_service:src/main_service:src \
+python src/main_service/management/server.py
 # :50051 LISTEN
 ```
 
@@ -122,7 +126,7 @@ npm run dev -- --port 3001
 | `psycopg.errors.UndefinedTable` | 잘못된 스키마 | `SMARTCAST_SCHEMA=public` 명시 |
 | PyQt 가 백엔드 응답 못함 | 포트/방화벽 | `lsof -i :8000` 으로 LISTEN 확인 |
 | Next.js dev 가 다른 포트 점유 | 좀비 프로세스 | `lsof -i :3001` → `kill <PID>` 후 재시작 |
-| `ModuleNotFoundError: app` 또는 `main_service` | PYTHONPATH 미지정 | backend 는 `PYTHONPATH=src/main_service:src`, gRPC 는 `PYTHONPATH=src` 추가 |
+| `ModuleNotFoundError: app` 또는 `main_service` | PYTHONPATH 미지정 | backend / management 는 `PYTHONPATH=src/interface_service:src/main_service:src` 추가 |
 
 ## 8. 운영 메모
 
