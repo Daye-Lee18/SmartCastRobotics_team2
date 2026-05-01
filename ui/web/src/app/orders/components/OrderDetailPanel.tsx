@@ -231,7 +231,7 @@ export function OrderDetailPanel({
               <div>
                 <p className="text-sm text-gray-500">이메일</p>
                 <p className="text-base font-medium text-gray-900">
-                  {order.contact?.includes("@") ? order.contact : "-"}
+                  {order.email?.includes("@") ? order.email : "-"}
                 </p>
               </div>
             </div>
@@ -291,75 +291,75 @@ export function OrderDetailPanel({
         order.status === "in_production" ||
         order.status === "production_completed" ||
         order.status === "shipping_ready") && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <div className="flex gap-3">
-            {order.status === "pending" && (
-              <>
+          <div className="px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="flex gap-3">
+              {order.status === "pending" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "approved")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-base hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
+                    승인
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "rejected")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-red-600 text-white rounded-lg font-semibold text-base hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsDown size={16} />}
+                    반려
+                  </button>
+                </>
+              )}
+              {order.status === "approved" && (
                 <button
                   type="button"
                   disabled={actionLoading}
-                  onClick={() => onStatusChange(order.id, "approved")}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-base hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                  onClick={() => onApproveProduction(order.id)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                  title="생산 대기열에 등록합니다. 실제 순위 계산과 착수는 PyQt5 생산 계획 페이지에서 수행됩니다."
                 >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
-                  승인
+                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Factory size={16} />}
+                  생산 승인
                 </button>
+              )}
+              {order.status === "in_production" && (
+                <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg font-medium text-sm">
+                  <Factory size={16} className="text-yellow-600" />
+                  생산 진행 중 — 생산 완료는 공정 시스템(PyQt5)이 DB에 기록합니다
+                </div>
+              )}
+              {order.status === "production_completed" && (
                 <button
                   type="button"
                   disabled={actionLoading}
-                  onClick={() => onStatusChange(order.id, "rejected")}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-red-600 text-white rounded-lg font-semibold text-base hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                  onClick={() => onStatusChange(order.id, "shipping_ready")}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-purple-600 text-white rounded-lg font-semibold text-base hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50"
+                  title="생산이 완료된 주문을 출고 단계로 전환합니다. 출고 시각이 자동 기록됩니다."
                 >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsDown size={16} />}
-                  반려
+                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />}
+                  출고 처리
                 </button>
-              </>
-            )}
-            {order.status === "approved" && (
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => onApproveProduction(order.id)}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                title="생산 대기열에 등록합니다. 실제 순위 계산과 착수는 PyQt5 생산 계획 페이지에서 수행됩니다."
-              >
-                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Factory size={16} />}
-                생산 승인
-              </button>
-            )}
-            {order.status === "in_production" && (
-              <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg font-medium text-sm">
-                <Factory size={16} className="text-yellow-600" />
-                생산 진행 중 — 생산 완료는 공정 시스템(PyQt5)이 DB에 기록합니다
-              </div>
-            )}
-            {order.status === "production_completed" && (
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => onStatusChange(order.id, "shipping_ready")}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-purple-600 text-white rounded-lg font-semibold text-base hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50"
-                title="생산이 완료된 주문을 출고 단계로 전환합니다. 출고 시각이 자동 기록됩니다."
-              >
-                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />}
-                출고 처리
-              </button>
-            )}
-            {order.status === "shipping_ready" && (
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={() => onStatusChange(order.id, "completed")}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 text-white rounded-lg font-semibold text-base hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
-                title="출고가 완료되어 주문을 최종 완료 처리합니다."
-              >
-                {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                출고 완료
-              </button>
-            )}
+              )}
+              {order.status === "shipping_ready" && (
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => onStatusChange(order.id, "completed")}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 text-white rounded-lg font-semibold text-base hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                  title="출고가 완료되어 주문을 최종 완료 처리합니다."
+                >
+                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                  출고 완료
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
