@@ -38,14 +38,14 @@ TIMEOUT = float(os.environ.get("MANAGEMENT_GRPC_TIMEOUT", "5.0"))
 
 
 @dataclass
-class WorkOrderInfo:
-    """StartProduction 응답 1건 — UI 에 표시하기 좋은 dict-like."""
+class ProductionStartOrderAck:
+    """StartProduction 주문별 결과 1건."""
 
-    id: int
-    order_id: str
-    qty: int
-    status: str  # QUE / PROC / SUCC / FAIL
-    plan_start_iso: str  # ISO 8601 또는 "" (없음)
+    ord_id: int
+    accepted: bool
+    reason: str
+    item_id: int
+    equip_task_txn_id: int
 
 
 _STATUS_CODE = {1: "QUE", 2: "PROC", 3: "SUCC", 4: "FAIL"}
@@ -61,13 +61,23 @@ _STAGE_CODE = {
 }
 
 
-def _wo_from_proto(proto_wo) -> WorkOrderInfo:
-    return WorkOrderInfo(
-        id=proto_wo.id,
-        order_id=proto_wo.order_id,
-        qty=proto_wo.qty,
-        status=_STATUS_CODE.get(proto_wo.status, "UNSPECIFIED"),
-        plan_start_iso=proto_wo.plan_start.iso8601 if proto_wo.plan_start else "",
+def _ack_from_proto(proto_ack) -> ProductionStartOrderAck:
+    return ProductionStartOrderAck(
+        ord_id=proto_ack.ord_id,
+        accepted=proto_ack.accepted,
+        reason=proto_ack.reason or "",
+        item_id=proto_ack.item_id,
+        equip_task_txn_id=proto_ack.equip_task_txn_id,
+    )
+
+
+def _legacy_wo_to_ack(proto_wo) -> ProductionStartOrderAck:
+    return ProductionStartOrderAck(
+        ord_id=int(proto_wo.order_id or 0),
+        accepted=True,
+        reason=_STATUS_CODE.get(proto_wo.status, "QUE"),
+        item_id=proto_wo.id,
+        equip_task_txn_id=0,
     )
 
 
@@ -76,9 +86,9 @@ class ManagementClient:
 
     사용 예:
         client = ManagementClient()
-        wos = client.start_production(["ORD-2026-006"])
-        for wo in wos:
-            print(wo.id, wo.order_id, wo.qty, wo.status)
+        acks = client.start_production(["2026"])
+        for ack in acks:
+            print(ack.ord_id, ack.accepted, ack.reason)
     """
 
     def __init__(self, host: str = HOST, port: int = PORT, timeout: float = TIMEOUT) -> None:
@@ -157,8 +167,8 @@ class ManagementClient:
             logger.warning("Management health check failed: %s", e)
             return False
 
-    def start_production(self, order_ids: list[str]) -> list[WorkOrderInfo]:
-        """승인 주문들을 생산 개시. WorkOrderInfo 리스트 반환.
+    def start_production(self, order_ids: list[str]) -> list[ProductionStartOrderAck]:
+        """승인 주문들을 생산 개시. 주문별 ack 리스트 반환.
 
         Raises:
             grpc.RpcError: 서버 에러/연결 실패 등 (호출자가 try/except 처리)
@@ -168,7 +178,9 @@ class ManagementClient:
             raise ValueError("order_ids 가 비어있습니다")
         req = management_pb2.StartProductionRequest(order_ids=order_ids)
         resp = self._stub.StartProduction(req, timeout=self._timeout)
-        return [_wo_from_proto(wo) for wo in resp.work_orders]
+        if resp.HasField("ack") and resp.ack.orders:
+            return [_ack_from_proto(order_ack) for order_ack in resp.ack.orders]
+        return [_legacy_wo_to_ack(wo) for wo in resp.work_orders]
 
     def list_items(self, order_id: str | None = None, limit: int = 100):
         """현재 활성 item 목록. proto Item 메시지 그대로 반환."""

@@ -2,19 +2,17 @@
 
 구성:
   1. KPI 4개 (조건부 색상 적용)
-  2. 카메라 라이브 뷰 + 분류 다이얼 (가로 분할)
-  3. TOP3 불량 배지 + 검사 기준 참조 패널
-  4. 차트 3개 (불량률 추이 / 불량 분포 / 생산량 vs 불량)
-  5. 검사 이력 테이블
+  2. 분류 다이얼 + TOP3 불량 배지 + 검사 기준 참조 패널
+  3. 차트 3개 (불량률 추이 / 불량 분포 / 생산량 vs 불량)
+  4. 검사 이력 테이블
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
-from PyQt5.QtCore import Qt, QThread
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
     QGridLayout,
@@ -31,7 +29,6 @@ from PyQt5.QtWidgets import (
 
 from app.api_client import ApiClient
 from app.pages.dashboard import KpiCard
-from app.widgets.camera_view import CameraLiveView
 from app.widgets.charts import (
     DefectRateChart,
     DefectTypeDistChart,
@@ -42,55 +39,18 @@ from app.widgets.sorter_dial import SorterCard
 
 logger = logging.getLogger(__name__)
 
-# Jetson 실시간 프레임 (Stage B: server streaming via CameraFrameWorker)
-_LIVE_CAMERA_ID = os.environ.get("MGMT_IP_CAMERA_ID", "CAM-INSP-01")
-
 
 class QualityPage(QWidget):
     def __init__(self, api: ApiClient) -> None:
         super().__init__()
         self._api = api
         self._kpis: dict[str, KpiCard] = {}
-        self._frame_thread: QThread | None = None
-        self._frame_worker = None  # type: ignore[var-annotated]
         self._build_ui()
         self.refresh()
-        # Stage B — Server streaming worker
-        self._start_frame_stream()
-
-    def _start_frame_stream(self) -> None:
-        try:
-            from app.workers.camera_frame_worker import CameraFrameWorker
-        except ImportError:
-            logger.exception("CameraFrameWorker import 실패")
-            return
-        self._frame_thread = QThread(self)
-        self._frame_worker = CameraFrameWorker(camera_id=_LIVE_CAMERA_ID)
-        self._frame_worker.moveToThread(self._frame_thread)
-        self._frame_worker.frame_received.connect(self._on_frame)
-        self._frame_thread.started.connect(self._frame_worker.run)
-        self._frame_thread.start()
-        logger.info("CameraFrameWorker 기동: camera=%s", _LIVE_CAMERA_ID)
-
-    def _on_frame(self, data: bytes, encoding: str, sequence: int, received_at: str) -> None:
-        """worker 에서 signal 로 받은 프레임을 카메라 뷰에 반영 (메인 스레드)."""
-        self._camera.set_frame_bytes(
-            data=data,
-            encoding=encoding,
-            sequence=sequence,
-            received_at=received_at,
-        )
 
     def shutdown(self) -> None:
-        """앱 종료 시 main_window 에서 호출 (없어도 daemon thread 라 프로세스 종료 시 정리됨)."""
-        if self._frame_worker is not None:
-            try:
-                self._frame_worker.request_stop()
-            except Exception:  # noqa: BLE001
-                pass
-        if self._frame_thread is not None:
-            self._frame_thread.quit()
-            self._frame_thread.wait(2000)
+        """앱 종료 시 main_window 에서 호출."""
+        return None
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -116,12 +76,9 @@ class QualityPage(QWidget):
             kpi_grid.addWidget(card, 0, col)
         layout.addLayout(kpi_grid)
 
-        # ===== 카메라 뷰 + 분류 다이얼 + TOP3 + 기준 =====
+        # ===== 분류 다이얼 + TOP3 + 기준 =====
         top_row = QHBoxLayout()
         top_row.setSpacing(14)
-
-        self._camera = CameraLiveView()
-        top_row.addWidget(self._camera, stretch=3)
 
         self._sorter_card = SorterCard()
         top_row.addWidget(self._sorter_card, stretch=2)
@@ -130,7 +87,7 @@ class QualityPage(QWidget):
         top_row.addWidget(self._top_defects, stretch=2)
 
         self._standards = InspectionStandardsPanel()
-        top_row.addWidget(self._standards, stretch=3)
+        top_row.addWidget(self._standards, stretch=4)
 
         layout.addLayout(top_row, stretch=1)
 
@@ -197,17 +154,6 @@ class QualityPage(QWidget):
             self._kpis["ng"].update_value(ng)
             self._kpis["rate"].update_value(f"{rate:.1f}")
             self._colorize_rate(rate)
-
-        # 카메라 피드
-        vision = self._api.get_vision_feed()
-        if vision:
-            self._camera.set_result(
-                result=str(vision.get("result", "idle")),
-                product_id=str(vision.get("product_id", "-")),
-                confidence=float(vision.get("confidence", 0)),
-                inspected_at=str(vision.get("inspected_at", "-")),
-                defect_type=str(vision.get("defect_type", "")),
-            )
 
         # 분류 다이얼
         sorter = self._api.get_sorter_state()

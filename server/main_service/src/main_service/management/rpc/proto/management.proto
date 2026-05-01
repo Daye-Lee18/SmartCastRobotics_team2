@@ -98,9 +98,27 @@ message StartProductionResult {
   string message           = 4;   // "Production started: RA1/MM task queued."
 }
 
+// StartProduction 배치 ack — PyQt/UI 는 이 필드를 주 응답으로 사용한다.
+message StartProductionOrderAck {
+  int32  ord_id            = 1;
+  bool   accepted          = 2;
+  string reason            = 3;   // 승인/반려 사유 또는 skip 사유
+  int32  item_id           = 4;   // 생성된 첫 item (없으면 0)
+  int32  equip_task_txn_id = 5;   // 생성된 초기 txn (없으면 0)
+}
+
+message StartProductionAck {
+  int32 requested_count = 1;
+  int32 accepted_count  = 2;
+  int32 rejected_count  = 3;
+  repeated StartProductionOrderAck orders = 4;
+  string message = 5;
+}
+
 message StartProductionResponse {
   repeated WorkOrder work_orders = 1;   // legacy PyQt 응답
   StartProductionResult result   = 2;   // smartcast v2 응답 (ord_id 요청 시 채워짐)
+  StartProductionAck ack         = 3;   // canonical batch/single ack
 }
 
 // Confluence Item 테이블과 1:1 매핑
