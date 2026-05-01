@@ -300,11 +300,12 @@ const LEGACY_TO_ORD_STAT: Record<OrderStatus, string> = {
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
+  adminUserId = 1,
 ): Promise<Order> {
   const numericId = orderId.replace(/^ord_/, "");
   const newStat = LEGACY_TO_ORD_STAT[status];
   const res = await fetch(
-    `${API_BASE}/api/orders/${numericId}/status?new_stat=${newStat}`,
+    `${API_BASE}/api/orders/${numericId}/status?new_stat=${newStat}&user_id=${adminUserId}`,
     { method: "POST" },
   );
   if (!res.ok) throw new Error(`API 오류: ${res.status} ${res.statusText}`);

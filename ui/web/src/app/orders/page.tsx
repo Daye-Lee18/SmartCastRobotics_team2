@@ -11,15 +11,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   fetchOrderDetails,
   fetchOrders,
-  startProduction,
   updateOrderStatus,
 } from "@/lib/api";
 import type { Order, OrderDetail, OrderStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { OrderCard } from "./components/OrderCard";
 import { OrderDetailPanel } from "./components/OrderDetailPanel";
-import { ProductionApproveBanner } from "./components/ProductionApproveBanner";
-import { ProductionApproveModal } from "./components/ProductionApproveModal";
 import { STATUS_TABS } from "./data/statusTabs";
 
 export default function OrdersPage() {
@@ -31,12 +28,6 @@ export default function OrdersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 생산 승인 확인 모달
-  const [productionConfirmOrderId, setProductionConfirmOrderId] = useState<string | null>(null);
-  const [productionApproveResult, setProductionApproveResult] = useState<{
-    jobId: string;
-    orderId: string;
-  } | null>(null);
 
   // 주문 목록 로드
   const loadOrders = useCallback(async () => {
@@ -81,42 +72,6 @@ export default function OrdersPage() {
       setActionLoading(false);
     }
   }, []);
-
-  // 생산 승인 요청 (확인 모달 오픈)
-  const handleRequestApproveProduction = useCallback((orderId: string) => {
-    setProductionConfirmOrderId(orderId);
-  }, []);
-
-  // 생산 승인 확정 (확인 모달에서 "승인" 클릭 시)
-  //
-  // 동작:
-  // 1. POST /api/production/schedule/start — ProductionJob 생성 + 주문 상태 in_production 전이
-  // 2. 백엔드가 ProductionJob 레코드를 생성해 PyQt5 생산 계획 페이지 풀에 들어감
-  // 3. 우선순위 계산/순서 조정/실제 개시는 PyQt5에서 수행
-  const handleConfirmApproveProduction = useCallback(async () => {
-    if (!productionConfirmOrderId) return;
-    const orderId = productionConfirmOrderId;
-    try {
-      setActionLoading(true);
-      const jobs = await startProduction([orderId]);
-      // 주문 목록/상세 갱신 (백엔드가 이미 in_production으로 전환함)
-      const refreshed = await fetchOrders();
-      setOrders(refreshed);
-      const updatedOrder = refreshed.find((o) => o.id === orderId);
-      if (updatedOrder) setSelectedOrder(updatedOrder);
-
-      // 성공 결과 배너 (3초 후 자동 사라짐)
-      if (jobs.length > 0) {
-        setProductionApproveResult({ jobId: jobs[0].id, orderId });
-        setTimeout(() => setProductionApproveResult(null), 5000);
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "생산 승인 실패");
-    } finally {
-      setActionLoading(false);
-      setProductionConfirmOrderId(null);
-    }
-  }, [productionConfirmOrderId]);
 
   // 탭 필터
   const filteredOrders =
@@ -252,24 +207,6 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* -- 성공 배너 (생산 승인 완료) -- */}
-        {productionApproveResult && (
-          <ProductionApproveBanner
-            jobId={productionApproveResult.jobId}
-            orderId={productionApproveResult.orderId}
-          />
-        )}
-
-        {/* -- 확인 모달 (생산 승인) -- */}
-        {productionConfirmOrderId && (
-          <ProductionApproveModal
-            orderId={productionConfirmOrderId}
-            actionLoading={actionLoading}
-            onCancel={() => setProductionConfirmOrderId(null)}
-            onConfirm={handleConfirmApproveProduction}
-          />
-        )}
-
         {/* -- 우측: 주문 상세 -- */}
         <div className="flex-1 bg-gray-50 flex flex-col">
           {selectedOrder ? (
@@ -282,7 +219,6 @@ export default function OrdersPage() {
                 order={selectedOrder}
                 details={selectedDetails}
                 onStatusChange={handleStatusChange}
-                onApproveProduction={handleRequestApproveProduction}
                 actionLoading={actionLoading}
               />
             )

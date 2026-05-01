@@ -13,6 +13,7 @@ import {
   ThumbsUp,
   Truck,
   User,
+  Info,
 } from "lucide-react";
 import type { Order, OrderDetail, OrderStatus } from "@/lib/types";
 import { cn, formatCurrency, formatDate, orderStatusMap } from "@/lib/utils";
@@ -22,17 +23,15 @@ interface OrderDetailPanelProps {
   order: Order;
   details: OrderDetail[];
   onStatusChange: (orderId: string, status: OrderStatus) => void;
-  onApproveProduction: (orderId: string) => void;
   actionLoading: boolean;
 }
 
 // 우측 메인 영역 — 주문 상세 + 상태 스텝퍼 + 액션 버튼.
-// 액션 버튼은 status 별로 다르게 렌더링 (pending→승인/반려, approved→생산 승인, ...).
+// 액션 버튼: pending→승인/반려, approved→안내 메시지(생산 시작은 PyQt), ...
 export function OrderDetailPanel({
   order,
   details,
   onStatusChange,
-  onApproveProduction,
   actionLoading,
 }: OrderDetailPanelProps) {
   const statusInfo = orderStatusMap[order.status];
@@ -291,6 +290,7 @@ export function OrderDetailPanel({
         order.status === "in_production" ||
         order.status === "production_completed" ||
         order.status === "shipping_ready") && (
+<<<<<<< Updated upstream
         <div className="px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex gap-3">
             {order.status === "pending" && (
@@ -304,6 +304,45 @@ export function OrderDetailPanel({
                   {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
                   승인
                 </button>
+=======
+          <div className="px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="flex gap-3">
+              {order.status === "pending" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "approved")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-base hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
+                    승인
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "rejected")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-red-600 text-white rounded-lg font-semibold text-base hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsDown size={16} />}
+                    반려
+                  </button>
+                </>
+              )}
+              {order.status === "approved" && (
+                <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg font-medium text-sm">
+                  <Info size={16} className="text-blue-500 shrink-0" />
+                  승인 완료 — 생산 시작은 관제실 PyQt 앱에서 처리합니다
+                </div>
+              )}
+              {order.status === "in_production" && (
+                <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg font-medium text-sm">
+                  <Factory size={16} className="text-yellow-600" />
+                  생산 진행 중 — 생산 완료는 공정 시스템(PyQt5)이 DB에 기록합니다
+                </div>
+              )}
+              {order.status === "production_completed" && (
+>>>>>>> Stashed changes
                 <button
                   type="button"
                   disabled={actionLoading}
