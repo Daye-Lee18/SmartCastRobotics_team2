@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QMessageBox,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
@@ -179,8 +178,6 @@ class LogisticsPage(QWidget):
             card = self._amr_cards.get(amr_id)
             if card is None:
                 card = AmrStatusCard(amr_id)
-                card.transition_requested.connect(self._on_amr_transition)
-                card.repair_requested.connect(self._on_amr_repair)
                 self._amr_cards[amr_id] = card
                 self._amr_row.addWidget(card, stretch=1)
             card.update_from_dict(amr)
@@ -254,54 +251,6 @@ class LogisticsPage(QWidget):
             status_item = QTableWidgetItem(STATUS_TEXT.get(status, status))
             status_item.setTextAlignment(Qt.AlignCenter)
             self._outbound_table.setItem(row, 5, status_item)
-
-    def _on_amr_transition(self, robot_id: str, new_state: int) -> None:
-        """AMR 카드 상태 전이 버튼 클릭 → gRPC TransitionAmrState 호출."""
-        try:
-            from app.management_client import ManagementClient
-
-            client = ManagementClient()
-            accepted, reason = client.transition_amr_state(robot_id, new_state)
-            client.close()
-            if accepted:
-                logger.info("AMR 전이 성공: %s → state=%d (%s)", robot_id, new_state, reason)
-            else:
-                logger.warning("AMR 전이 거부: %s → state=%d (%s)", robot_id, new_state, reason)
-                QMessageBox.warning(self, "전이 거부", f"{robot_id}: {reason}")
-        except Exception as exc:
-            logger.exception("AMR 전이 실패: %s", exc)
-            QMessageBox.critical(self, "오류", f"전이 요청 실패: {exc}")
-
-    def _on_amr_repair(self, robot_id: str) -> None:
-        """AMR 수리 완료 버튼 → FAILED→IDLE 전이 (DB 동기화)."""
-        reply = QMessageBox.question(
-            self,
-            "수리 완료 확인",
-            f"<b>{robot_id}</b>의 수리가 완료되었습니까?<br>"
-            "상태가 <b>대기(IDLE)</b>로 전환되고 DB에 반영됩니다.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if reply != QMessageBox.Yes:
-            return
-        try:
-            from app.management_client import ManagementClient
-
-            client = ManagementClient()
-            # TaskState.IDLE = 1
-            accepted, reason = client.transition_amr_state(robot_id, 1)
-            client.close()
-            if accepted:
-                logger.info("AMR 수리 완료: %s → IDLE (%s)", robot_id, reason)
-                QMessageBox.information(
-                    self, "수리 완료", f"{robot_id}이(가) 대기 상태로 전환되었습니다."
-                )
-            else:
-                logger.warning("AMR 수리 전이 거부: %s (%s)", robot_id, reason)
-                QMessageBox.warning(self, "전이 거부", f"{robot_id}: {reason}")
-        except Exception as exc:
-            logger.exception("AMR 수리 전이 실패: %s", exc)
-            QMessageBox.critical(self, "오류", f"수리 완료 요청 실패: {exc}")
 
     def update_amr_live(self, amr_list: list[dict[str, Any]]) -> None:
         """AMR 실시간 데이터(배터리 등) 수신 — 이후 refresh()에서도 이 데이터를 사용."""

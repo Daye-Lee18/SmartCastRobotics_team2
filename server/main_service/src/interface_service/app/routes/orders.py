@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+from datetime import date, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
@@ -25,6 +27,7 @@ from smart_cast_db.models import (
     EquipLoadSpec,
     Ord,
     OrdDetail,
+    OrdLog,
     OrdPpMap,
     OrdStat,
     OrdTxn,
@@ -82,6 +85,77 @@ def _to_full(db: Session, ord_obj: Ord) -> OrdFull:
     )
 
 
+def _resolve_product_id(db: Session, raw_product_id: str | None) -> int | None:
+    """Best-effort frontend product id -> v21 product.prod_id."""
+    if not raw_product_id:
+        return None
+
+    text = raw_product_id.strip()
+    if text.isdigit():
+        candidate = int(text)
+        return candidate if db.get(Product, candidate) is not None else None
+
+    prefix = text[:1].upper()
+    cate_cd = {"R": "RMH", "S": "CMH", "O": "EMH"}.get(prefix)
+    if cate_cd is None:
+        return None
+
+    row = db.query(Product).filter(Product.cate_cd == cate_cd).order_by(Product.prod_id.asc()).first()
+    return row.prod_id if row is not None else None
+
+
+def _parse_due_date_or_400(raw_due_date: str | None) -> date:
+    if not raw_due_date:
+        raise HTTPException(400, "requested_delivery is required")
+    try:
+        return date.fromisoformat(raw_due_date[:10])
+    except ValueError as exc:
+        raise HTTPException(400, f"invalid requested_delivery: {raw_due_date}") from exc
+
+
+def _require_ship_addr_or_400(raw_ship_addr: str | None) -> str:
+    ship_addr = (raw_ship_addr or "").strip()
+    if not ship_addr:
+        raise HTTPException(400, "shipping_address is required")
+    return ship_addr
+
+
+def _normalize_ord_status(raw_status: str) -> str:
+    status = (raw_status or "").strip().upper()
+    if status == "SHIP":
+        return "SHIPPING"
+    return status
+
+
+def _append_ord_log(
+    db: Session,
+    *,
+    ord_id: int,
+    prev_stat: str | None,
+    new_stat: str,
+    changed_by: int | None,
+) -> None:
+    db.add(
+        OrdLog(
+            ord_id=ord_id,
+            prev_stat=prev_stat,
+            new_stat=new_stat,
+            changed_by=changed_by,
+        )
+    )
+
+
+def _append_ord_txn_if_supported(db: Session, *, ord_id: int, new_stat: str) -> None:
+    txn_type = {
+        "RCVD": "RCVD",
+        "APPR": "APPR",
+        "REJT": "REJT",
+        "CNCL": "CNCL",
+    }.get(new_stat)
+    if txn_type is not None:
+        db.add(OrdTxn(ord_id=ord_id, txn_type=txn_type))
+
+
 # -------------------------------------------------------------------------
 # Order CRUD
 # -------------------------------------------------------------------------
@@ -101,7 +175,14 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     db.add(new_ord)
     db.flush()  # ord_id 확보
 
-    detail = OrdDetail(ord_id=new_ord.ord_id, **payload.detail.model_dump(exclude_none=True))
+    detail = OrdDetail(
+        ord_id=new_ord.ord_id,
+        prod_id=payload.detail.prod_id,
+        qty=payload.detail.qty,
+        final_price=payload.detail.final_price,
+        due_date=payload.detail.due_date,
+        ship_addr=payload.detail.ship_addr,
+    )
     db.add(detail)
 
     for pp_id in payload.pp_ids:
@@ -110,6 +191,13 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     # 초기 상태 RCVD (txn + stat 동시 INSERT)
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
     db.add(OrdStat(ord_id=new_ord.ord_id, user_id=payload.user_id, ord_stat="RCVD"))
+    _append_ord_log(
+        db,
+        ord_id=new_ord.ord_id,
+        prev_stat=None,
+        new_stat="RCVD",
+        changed_by=payload.user_id,
+    )
     db.commit()
     db.refresh(new_ord)
     return _to_full(db, new_ord)
@@ -220,7 +308,7 @@ def create_customer_order(
             role="customer",
             phone=payload.phone,
             email=payload.email,
-            password=None,
+            password="__customer_placeholder__",
         )
         db.add(user)
         db.flush()
@@ -241,52 +329,17 @@ def create_customer_order(
         raise HTTPException(400, "details 가 비어있습니다.")
     d0 = payload.details[0]
 
-    # 폼의 diameter/thickness 는 다양한 형식:
-    #   "600mm"      → 600.0 (원형맨홀)
-    #   "450x450mm"  → 450.0 (사각맨홀 — 첫 값만)
-    #   "450x300mm"  → 450.0 (타원맨홀 — 첫 값만)
-    #   "50"         → 50.0
-    # 첫 번째 숫자군만 추출하여 DECIMAL 에 저장.
-    import re
-
-    _NUM_RE = re.compile(r"\d+(?:\.\d+)?")
-
-    def _strip_unit(v: str | None) -> float | None:
-        if v is None:
-            return None
-        m = _NUM_RE.search(str(v))
-        return float(m.group()) if m else None
-
-    from datetime import date
-
-    due_date = None
-    if payload.requested_delivery:
-        try:
-            due_date = date.fromisoformat(payload.requested_delivery[:10])
-        except ValueError:
-            pass
-
-    # prod_id 는 product 테이블에 실제 존재할 때만 사용 (없으면 NULL → FK 위반 방지).
-    # 폼이 보내는 product_id 는 frontend mock-data 의 string id 이므로 즉시 매칭 어려움.
-    candidate_prod_id: int | None = (
-        int(d0.product_id) if (d0.product_id and d0.product_id.isdigit()) else None
-    )
-    safe_prod_id: int | None = None
-    if candidate_prod_id is not None:
-        if db.get(Product, candidate_prod_id) is not None:
-            safe_prod_id = candidate_prod_id
+    due_date = _parse_due_date_or_400(payload.requested_delivery)
+    ship_addr = _require_ship_addr_or_400(payload.shipping_address)
+    safe_prod_id = _resolve_product_id(db, d0.product_id)
 
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=safe_prod_id,
-        diameter=_strip_unit(d0.diameter),
-        thickness=_strip_unit(d0.thickness),
-        material=d0.material,
-        load_class=d0.load_class,
         qty=d0.quantity,
         final_price=payload.total_amount,
         due_date=due_date,
-        ship_addr=payload.shipping_address,
+        ship_addr=ship_addr,
     )
     db.add(detail)
 
@@ -310,6 +363,13 @@ def create_customer_order(
     # 6. 초기 상태 RCVD
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
     db.add(OrdStat(ord_id=new_ord.ord_id, user_id=user.user_id, ord_stat="RCVD"))
+    _append_ord_log(
+        db,
+        ord_id=new_ord.ord_id,
+        prev_stat=None,
+        new_stat="RCVD",
+        changed_by=user.user_id,
+    )
     db.commit()
     db.refresh(new_ord)
 
@@ -363,11 +423,28 @@ def update_order_status(
     o = db.get(Ord, ord_id)
     if not o:
         raise HTTPException(404, f"ord_id={ord_id} not found")
-    valid = {"RCVD", "APPR", "MFG", "DONE", "SHIP", "COMP", "REJT", "CNCL"}
-    if new_stat not in valid:
+    normalized_stat = _normalize_ord_status(new_stat)
+    valid = {"RCVD", "APPR", "MFG", "DONE", "SHIPPING", "COMP", "REJT", "CNCL"}
+    if normalized_stat not in valid:
         raise HTTPException(400, f"invalid status: {new_stat}")
-    stat = OrdStat(ord_id=ord_id, user_id=user_id, ord_stat=new_stat)
-    db.add(stat)
+    stat = db.query(OrdStat).filter(OrdStat.ord_id == ord_id).first()
+    prev_stat = stat.ord_stat if stat is not None else None
+    if stat is None:
+        stat = OrdStat(ord_id=ord_id, user_id=user_id, ord_stat=normalized_stat)
+        db.add(stat)
+    else:
+        stat.user_id = user_id
+        stat.ord_stat = normalized_stat
+        stat.updated_at = datetime.utcnow()
+    if prev_stat != normalized_stat:
+        _append_ord_txn_if_supported(db, ord_id=ord_id, new_stat=normalized_stat)
+        _append_ord_log(
+            db,
+            ord_id=ord_id,
+            prev_stat=prev_stat,
+            new_stat=normalized_stat,
+            changed_by=user_id,
+        )
     db.commit()
     db.refresh(stat)
     return OrdStatOut.model_validate(stat)

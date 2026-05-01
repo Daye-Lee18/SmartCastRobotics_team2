@@ -93,7 +93,7 @@ message WorkOrder {
 // SPEC-C2 신규: smartcast v2 단건 응답 (Interface proxy 용)
 message StartProductionResult {
   int32  ord_id            = 1;
-  int32  item_id           = 2;   // 생성된 첫 item (smartcast Item.item_id)
+  int32  item_id           = 2;   // 생성된 첫 item_stat.item_stat_id (legacy field name 유지)
   int32  equip_task_txn_id = 3;   // RA1/MM QUE 트랜잭션 ID
   string message           = 4;   // "Production started: RA1/MM task queued."
 }
@@ -103,7 +103,7 @@ message StartProductionOrderAck {
   int32  ord_id            = 1;
   bool   accepted          = 2;
   string reason            = 3;   // 승인/반려 사유 또는 skip 사유
-  int32  item_id           = 4;   // 생성된 첫 item (없으면 0)
+  int32  item_id           = 4;   // 생성된 첫 item_stat.item_stat_id (없으면 0)
   int32  equip_task_txn_id = 5;   // 생성된 초기 txn (없으면 0)
 }
 
@@ -121,14 +121,14 @@ message StartProductionResponse {
   StartProductionAck ack         = 3;   // canonical batch/single ack
 }
 
-// Confluence Item 테이블과 1:1 매핑
+// Legacy Item wire shape. canonical source는 smartcast.item_stat 이다.
 message Item {
-  int64     id          = 1;   // item_id (SERIAL)
+  int64     id          = 1;   // item_stat.item_stat_id
   string    order_id    = 2;   // ord_id FK
-  ItemStage cur_stage   = 3;   // QUE/MM/DM/TR_PP/PP/IP/TR_LD/SH
-  string    curr_res    = 4;   // res_id FK → resource (현재 점유 자원)
-  int64     insp_id     = 5;   // FK → inspection_result (없으면 0)
-  Timestamp mfg_at      = 6;   // 공정별 시작 시각
+  ItemStage cur_stage   = 3;   // flow_stat 에서 projection 한 legacy stage
+  string    curr_res    = 4;   // zone_nm 에서 projection 한 legacy current resource label
+  int64     insp_id     = 5;   // legacy placeholder (현재 0)
+  Timestamp mfg_at      = 6;   // item_stat.updated_at 기반 시각
 }
 
 message ListItemsRequest {

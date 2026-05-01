@@ -64,7 +64,13 @@ class IStateManager(Protocol):
     def mark_task_started(self, task_id: str, robot_id: str, is_trans: bool) -> None:
         ...
         
-    def update_item_status(self, item_id: int, cur_stat: str = None, equip_task_type: str = None, trans_task_type: str = None) -> None:
+    def update_item_status(
+        self,
+        item_id: int,
+        flow_stat: str | None = None,
+        zone_nm: str | None = None,
+        result: bool | None = None,
+    ) -> None:
         ...
         
     def update_robot_status_memory(self, robot_id: str, x: float, y: float, battery_pct: int) -> None:

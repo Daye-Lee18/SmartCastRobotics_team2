@@ -7,6 +7,7 @@ requests and keep the rest of the pipeline dormant.
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -23,6 +24,29 @@ class MockStateManager:
         self._tasks: dict[str, dict[str, Any]] = {}
         self._next_item_id = 1000
         self._next_equip_task_txn_id = 2000
+        self._db_ready = False
+        self._session_factory = None
+        self._ord_model = None
+        self._ord_stat_model = None
+        self._ord_log_model = None
+        self._pattern_model = None
+        self._item_model = None
+        self._equip_task_txn_model = None
+        try:
+            from db_session import SessionLocal
+            from smart_cast_db.models import EquipTaskTxn, ItemStat, Ord, OrdLog, OrdStat, Pattern
+
+            self._session_factory = SessionLocal
+            self._ord_model = Ord
+            self._ord_stat_model = OrdStat
+            self._ord_log_model = OrdLog
+            self._pattern_model = Pattern
+            self._item_model = ItemStat
+            self._equip_task_txn_model = EquipTaskTxn
+            self._db_ready = True
+            logger.info("[MockStateManager] DB-backed start_production enabled")
+        except Exception as exc:
+            logger.warning("[MockStateManager] DB-backed start_production unavailable: %s", exc)
         logger.info("[MockStateManager] stub mode enabled")
 
     def start_production(self, ord_id: int) -> StartProductionOrderAckModel:
@@ -35,6 +59,9 @@ class MockStateManager:
                 reason="Invalid Order ID (Mock)",
             )
 
+        if self._db_ready:
+            return self._start_production_db(ord_id)
+
         item_id = self._next_item_id
         equip_task_txn_id = self._next_equip_task_txn_id
         self._next_item_id += 1
@@ -43,11 +70,9 @@ class MockStateManager:
         self._items[item_id] = {
             "item_id": item_id,
             "ord_id": ord_id,
-            "cur_stat": "QUE",
-            "cur_res": "RA1",
-            "equip_task_type": "MM",
-            "trans_task_type": None,
-            "is_defective": None,
+            "flow_stat": "CREATED",
+            "zone_nm": None,
+            "result": None,
         }
         self._tasks[f"task_{equip_task_txn_id}"] = {
             "ord_id": ord_id,
@@ -64,6 +89,114 @@ class MockStateManager:
             equip_task_txn_id=equip_task_txn_id,
         )
 
+    def _start_production_db(self, ord_id: int) -> StartProductionOrderAckModel:
+        if (
+            self._session_factory is None
+            or self._ord_model is None
+            or self._ord_stat_model is None
+            or self._ord_log_model is None
+            or self._pattern_model is None
+            or self._item_model is None
+            or self._equip_task_txn_model is None
+        ):
+            return StartProductionOrderAckModel(
+                ord_id=ord_id,
+                accepted=False,
+                reason="DB-backed start_production is not fully initialized.",
+            )
+
+        with self._session_factory() as db:
+            ord_obj = db.get(self._ord_model, ord_id)
+            if ord_obj is None:
+                return StartProductionOrderAckModel(
+                    ord_id=ord_id,
+                    accepted=False,
+                    reason=f"ord_id={ord_id} not found",
+                )
+            if db.get(self._pattern_model, ord_id) is None:
+                return StartProductionOrderAckModel(
+                    ord_id=ord_id,
+                    accepted=False,
+                    reason=f"pattern for ord_id={ord_id} not registered",
+                )
+
+            existing_item = db.query(self._item_model).filter(self._item_model.ord_id == ord_id).first()
+            existing_txn = (
+                db.query(self._equip_task_txn_model)
+                .filter(self._equip_task_txn_model.ord_id == ord_id)
+                .first()
+            )
+            if existing_item is not None or existing_txn is not None:
+                return StartProductionOrderAckModel(
+                    ord_id=ord_id,
+                    accepted=False,
+                    reason=f"ord_id={ord_id} already started on line",
+                    item_id=getattr(existing_item, "item_stat_id", None),
+                    equip_task_txn_id=getattr(existing_txn, "txn_id", None),
+                )
+
+            stat = db.query(self._ord_stat_model).filter(self._ord_stat_model.ord_id == ord_id).first()
+            prev_stat = stat.ord_stat if stat is not None else None
+            if stat is None:
+                stat = self._ord_stat_model(ord_id=ord_id, ord_stat="MFG")
+                db.add(stat)
+            else:
+                stat.ord_stat = "MFG"
+                stat.updated_at = datetime.utcnow()
+            if prev_stat != "MFG":
+                db.add(
+                    self._ord_log_model(
+                        ord_id=ord_id,
+                        prev_stat=prev_stat,
+                        new_stat="MFG",
+                        changed_by=None,
+                    )
+                )
+
+            new_item = self._item_model(
+                ord_id=ord_id,
+                flow_stat="CREATED",
+                zone_nm=None,
+                result=None,
+            )
+            db.add(new_item)
+            db.flush()
+
+            txn = self._equip_task_txn_model(
+                res_id="RA1",
+                task_type="MM",
+                txn_stat="QUE",
+                item_stat_id=new_item.item_stat_id,
+                ord_id=ord_id,
+            )
+            db.add(txn)
+            db.commit()
+            db.refresh(new_item)
+            db.refresh(txn)
+
+            self._items[new_item.item_stat_id] = {
+                "item_id": new_item.item_stat_id,
+                "ord_id": ord_id,
+                "flow_stat": new_item.flow_stat,
+                "zone_nm": new_item.zone_nm,
+                "result": new_item.result,
+            }
+            self._tasks[f"task_{txn.txn_id}"] = {
+                "ord_id": ord_id,
+                "item_id": new_item.item_stat_id,
+                "txn_id": txn.txn_id,
+                "status": txn.txn_stat,
+                "res_id": txn.res_id,
+            }
+
+            return StartProductionOrderAckModel(
+                ord_id=ord_id,
+                accepted=True,
+                reason="Production started: item_stat and equip_task_txn created.",
+                item_id=new_item.item_stat_id,
+                equip_task_txn_id=txn.txn_id,
+            )
+
     def create_order_with_items(self, ord_id: int, qty: int) -> list[int]:
         item_ids: list[int] = []
         for _ in range(max(qty, 0)):
@@ -72,7 +205,9 @@ class MockStateManager:
             self._items[item_id] = {
                 "item_id": item_id,
                 "ord_id": ord_id,
-                "status": "CREATED",
+                "flow_stat": "CREATED",
+                "zone_nm": None,
+                "result": None,
             }
             item_ids.append(item_id)
         return item_ids
@@ -93,7 +228,14 @@ class MockStateManager:
         ]
 
     def get_item(self, item_id: int) -> dict[str, Any]:
-        return self._items.get(item_id, {"item_id": item_id, "status": "MOCK_STATUS"})
+        item = dict(self._items.get(item_id, {"item_id": item_id, "flow_stat": "HOLD"}))
+        flow_stat = item.get("flow_stat")
+        zone_nm = item.get("zone_nm")
+        result = item.get("result")
+        item.setdefault("cur_stat", flow_stat)
+        item.setdefault("cur_res", zone_nm)
+        item.setdefault("is_defective", None if result is None else (not result))
+        return item
 
     def add_task(self, task: dict[str, Any]) -> str:
         task_id = f"task_{len(self._tasks) + 1}"
@@ -123,18 +265,23 @@ class MockStateManager:
     def update_item_status(
         self,
         item_id: int,
-        cur_stat: str | None = None,
-        equip_task_type: str | None = None,
-        trans_task_type: str | None = None,
+        flow_stat: str | None = None,
+        zone_nm: str | None = None,
+        result: bool | None = None,
     ) -> None:
         item = self._items.setdefault(item_id, {"item_id": item_id})
-        if cur_stat is not None:
-            item["cur_stat"] = cur_stat
-        if equip_task_type is not None:
-            item["equip_task_type"] = equip_task_type
-        if trans_task_type is not None:
-            item["trans_task_type"] = trans_task_type
-        logger.info("[MockStateManager] update_item_status: item=%s cur_stat=%s", item_id, cur_stat)
+        if flow_stat is not None:
+            item["flow_stat"] = flow_stat
+        if zone_nm is not None:
+            item["zone_nm"] = zone_nm
+        if result is not None:
+            item["result"] = result
+        logger.info(
+            "[MockStateManager] update_item_status: item=%s flow_stat=%s zone_nm=%s",
+            item_id,
+            flow_stat,
+            zone_nm,
+        )
 
     def update_robot_status_memory(self, robot_id: str, x: float, y: float, battery_pct: int) -> None:
         logger.debug(

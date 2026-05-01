@@ -9,8 +9,6 @@ from typing import Any
 
 from app import mock_data
 
-from ._base import _ORD_STAT_TO_LEGACY_STATUS
-
 
 class OrdersMixin:
     """발주 및 패턴 등록 endpoints."""
@@ -56,70 +54,30 @@ class OrdersMixin:
     def get_approved_and_running_orders(self) -> list[dict[str, Any]]:
         """생산 계획 화면에서 볼 주문 목록.
 
-        - approved: 생산 승인되지 않은 대기 주문 (참고용)
-        - in_production: 승인 완료 → ProductionJob 존재, 우선순위 계산 대상
+        backend `/api/production/schedule/jobs` 가 이미 다음 조건으로 필터링한다.
+        - ord_stat == MFG
+        - 아직 item_stat / equip_task_txn 이 없는 큐 후보만
 
         Returns: 정규화된 주문 리스트 (id, company_name, total_amount,
                  requested_delivery, status 등).
         """
-        data = self._get("/api/orders", mock_value=[])
+        data = self._get("/api/production/schedule/jobs", mock_value=[])
         if not isinstance(data, list):
             return []
 
-        target_statuses = {"approved", "in_production"}
         result: list[dict[str, Any]] = []
         for item in data:
-            raw_status = (
-                item.get("status") or item.get("latest_stat") or item.get("latestStat") or ""
-            )
-            status = str(raw_status).lower()
-            if str(raw_status).upper() in _ORD_STAT_TO_LEGACY_STATUS:
-                status = _ORD_STAT_TO_LEGACY_STATUS[str(raw_status).upper()]
-            if status not in target_statuses:
-                continue
-            detail = item.get("detail") if isinstance(item.get("detail"), dict) else {}
-            ord_id = item.get("ord_id", item.get("ordId", item.get("id", "")))
+            ord_id = item.get("order_id", item.get("orderId", item.get("id", "")))
             result.append(
                 {
-                    # Management gRPC StartProduction expects numeric smartcast ord_id strings.
                     "id": str(ord_id).replace("ord_", ""),
-                    "company_name": (
-                        item.get("company_name")
-                        or item.get("companyName")
-                        or item.get("user_co_nm")
-                        or item.get("userCoNm")
-                        or "-"
-                    ),
-                    "customer_name": (
-                        item.get("customer_name")
-                        or item.get("customerName")
-                        or item.get("user_nm")
-                        or item.get("userNm")
-                        or "-"
-                    ),
-                    "total_amount": (
-                        item.get("total_amount")
-                        or item.get("totalAmount")
-                        or detail.get("final_price")
-                        or detail.get("finalPrice")
-                        or 0
-                    ),
-                    "requested_delivery": (
-                        item.get("requested_delivery")
-                        or item.get("requestedDelivery")
-                        or detail.get("due_date")
-                        or detail.get("dueDate")
-                        or ""
-                    ),
-                    "confirmed_delivery": (
-                        item.get("confirmed_delivery")
-                        or item.get("confirmedDelivery")
-                        or detail.get("due_date")
-                        or detail.get("dueDate")
-                        or ""
-                    ),
+                    "company_name": item.get("company_name") or item.get("companyName") or "-",
+                    "customer_name": item.get("customer_name") or item.get("customerName") or "-",
+                    "total_amount": item.get("total_amount") or item.get("totalAmount") or 0,
+                    "requested_delivery": item.get("requested_delivery") or item.get("requestedDelivery") or "",
+                    "confirmed_delivery": item.get("confirmed_delivery") or item.get("confirmedDelivery") or "",
                     "created_at": item.get("created_at") or item.get("createdAt") or "",
-                    "status": status,
+                    "status": "in_production",
                 }
             )
         return result

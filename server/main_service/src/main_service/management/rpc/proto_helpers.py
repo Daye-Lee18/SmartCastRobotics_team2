@@ -16,6 +16,22 @@ _STAGE_NAME_TO_ENUM = {
     "SH": 8,
 }
 
+_FLOW_TO_LEGACY_STAGE = {
+    "CREATED": "QUE",
+    "CAST": "MM",
+    "WAIT_PP": "TR_PP",
+    "PP": "PP",
+    "WAIT_INSP": "QUE",
+    "INSP": "IP",
+    "WAIT_PA": "QUE",
+    "PA": "PP",
+    "STORED": "TR_LD",
+    "PICK": "TR_LD",
+    "READY_TO_SHIP": "SH",
+    "DISCARDED": "SH",
+    "HOLD": "QUE",
+}
+
 _WO_STATUS_TO_ENUM = {"QUE": 1, "PROC": 2, "SUCC": 3, "FAIL": 4}
 
 
@@ -23,14 +39,36 @@ def _ts(iso_str):
     return management_pb2.Timestamp(iso8601=iso_str or "")
 
 
+def _legacy_stage(item) -> str:
+    flow_stat = getattr(item, "flow_stat", None)
+    if flow_stat is None:
+        cur_stat = getattr(item, "cur_stat", None)
+        if cur_stat:
+            return str(cur_stat)
+    return _FLOW_TO_LEGACY_STAGE.get((flow_stat or "").upper(), "QUE")
+
+
+def _current_resource(item) -> str:
+    zone_nm = getattr(item, "zone_nm", None)
+    if zone_nm is None:
+        cur_res = getattr(item, "cur_res", None)
+        if cur_res:
+            return str(cur_res)
+    return zone_nm or ""
+
+
 def item_to_proto(item):
     """smartcast Item -> proto Item (SPEC-C3, 2026-04-20)."""
     updated = item.updated_at.isoformat() if getattr(item, "updated_at", None) else ""
+    stage = _legacy_stage(item)
+    item_id = getattr(item, "item_stat_id", None)
+    if item_id is None:
+        item_id = getattr(item, "item_id", 0)
     return management_pb2.Item(
-        id=item.item_id,
-        order_id=str(item.ord_id or ""),
-        cur_stage=_STAGE_NAME_TO_ENUM.get(item.cur_stat or "", 0),
-        curr_res=item.cur_res or "",
+        id=item_id,
+        order_id=str(getattr(item, "ord_id", "") or ""),
+        cur_stage=_STAGE_NAME_TO_ENUM.get(stage, 0),
+        curr_res=_current_resource(item),
         insp_id=0,
         mfg_at=_ts(updated),
     )
@@ -119,4 +157,3 @@ def result_to_legacy_work_order(r):
         act_start=_ts(None),
         act_end=_ts(None),
     )
-
