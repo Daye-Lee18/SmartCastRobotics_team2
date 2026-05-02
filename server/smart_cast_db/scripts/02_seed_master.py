@@ -1,9 +1,9 @@
 """Phase 0-2: 마스터 데이터 시드 (테이블 생성 후 한 번만).
 
-DB: 02_seed_master_v22.sql 실행
+DB: seed/seed_master.sql 실행
     - user_account, product, product_option, pp_options
-    - zone, res, equip, strg_loc_stat, ship_loc_stat
-    - trans, ra_motion_step, ai_model 등
+    - zone, res, equip, chg_location_stat, strg_location_stat, ship_location_stat
+    - trans, trans_task_bat_threshold, ra_motion_step, ai_model 등
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import sys
 
 import _db
 
-_SQL = pathlib.Path(__file__).parent.parent / "sql" / "02_seed_master_v22.sql"
+_SQL = pathlib.Path(__file__).parent.parent / "seed" / "seed_master.sql"
 
 
 def main() -> int:
@@ -25,11 +25,12 @@ def main() -> int:
             cur.execute(_SQL.read_text())
             print(f"마스터 데이터 시드 완료  ({_SQL.name})")
 
-            # 결과 요약
             tables = [
                 "user_account", "category", "product", "product_option",
                 "pp_options", "zone", "res", "equip",
-                "strg_loc_stat", "ship_loc_stat", "trans", "ai_model",
+                "equip_load_spec", "chg_location_stat",
+                "strg_location_stat", "ship_location_stat", "trans",
+                "trans_task_bat_threshold", "ra_motion_step", "ai_model",
             ]
             print()
             print("--- 시드 결과 ---")

@@ -1,23 +1,14 @@
--- =============================================
--- SmartCast FMS Test Master Seed for DB Schema v22
--- File: FMS_test/seed_master_v22.sql
--- =============================================
+-- ============================================================
+-- SmartCast FMS Master Seed Data
+-- Source of truth for schema: server/smart_cast_db/schema/create_tables.sql
+-- ============================================================
 -- Purpose:
---   Fill only master/reference tables needed before FMS scenario tests.
+--   Fill master/reference tables needed before FMS scenario tests.
 --
 -- Run order on a fresh DB:
---   1. psql <db_name> -f ../DB/create_tables_v22.sql
---   2. psql <db_name> -f seed_master_v22.sql
---
--- Notes:
---   - This file does NOT insert orders, order details, item states, or task txns.
---   - Product names/codes from the Web UI are kept in comments because v22 product
---     currently has no prod_cd/prod_nm columns.
---   - Product category mapping:
---       round  -> CMH
---       square -> RMH
---       oval   -> EMH
--- =============================================
+--   1. python scripts/01_create_tables.py
+--   2. python scripts/02_seed_master.py
+-- ============================================================
 
 BEGIN;
 
@@ -50,7 +41,7 @@ INSERT INTO category (cate_cd, cate_nm) VALUES
 ON CONFLICT (cate_cd) DO UPDATE SET
     cate_nm = EXCLUDED.cate_nm;
 
--- UI source:
+-- UI product codes:
 --   1 R-D450 원형 맨홀뚜껑 KS D-450
 --   2 R-D500 원형 맨홀뚜껑 KS D-500
 --   3 R-D550 원형 맨홀뚜껑 KS D-550
@@ -75,9 +66,6 @@ ON CONFLICT (prod_id) DO UPDATE SET
     base_price = EXCLUDED.base_price,
     img_url = EXCLUDED.img_url;
 
--- Representative orderable product options.
--- diameter stores the main numeric size in mm. For square/oval products,
--- detailed text like 400x400mm is not representable in v22 yet.
 INSERT INTO product_option
     (prod_opt_id, prod_id, mat_type, diameter, thickness, material, load_class)
 VALUES
@@ -135,24 +123,8 @@ ON CONFLICT (pp_id) DO UPDATE SET
     extra_cost = EXCLUDED.extra_cost;
 
 -- =====================
--- FLOW / ZONE / RESOURCE MASTER
+-- ZONE / RESOURCE MASTER
 -- =====================
-
-INSERT INTO flow_stat_cd (flow_stat) VALUES
-('CREATED'),
-('CAST'),
-('WAIT_PP'),
-('PP'),
-('WAIT_INSP'),
-('INSP'),
-('WAIT_PA'),
-('PA'),
-('STORED'),
-('PICK'),
-('READY_TO_SHIP'),
-('DISCARDED'),
-('HOLD')
-ON CONFLICT (flow_stat) DO NOTHING;
 
 INSERT INTO zone (zone_id, zone_nm) VALUES
 (1, 'CAST'),
@@ -200,15 +172,13 @@ ON CONFLICT (load_spec_id) DO UPDATE SET
     tol_val = EXCLUDED.tol_val;
 
 -- =====================
--- LOCATION / COORD MASTER
+-- LOCATION MASTER
 -- =====================
 
--- Insert charge slots first without trans_coord_id because chg_loc_stat and
--- trans_coord reference each other.
-INSERT INTO chg_loc_stat (loc_id, zone_id, trans_coord_id, res_id, loc_row, loc_col, status, stored_at) VALUES
-(1, 7, NULL, 'AMR1', 1, 1, 'occupied', now()),
-(2, 7, NULL, NULL,   1, 2, 'empty',    now()),
-(3, 7, NULL, 'AMR2', 1, 3, 'occupied', now())
+INSERT INTO chg_location_stat (loc_id, zone_id, res_id, loc_row, loc_col, status, stored_at) VALUES
+(1, 7, 'AMR1', 1, 1, 'occupied', now()),
+(2, 7, NULL,   1, 2, 'empty',    now()),
+(3, 7, 'AMR2', 1, 3, 'occupied', now())
 ON CONFLICT (loc_id) DO UPDATE SET
     zone_id = EXCLUDED.zone_id,
     res_id = EXCLUDED.res_id,
@@ -216,32 +186,11 @@ ON CONFLICT (loc_id) DO UPDATE SET
     loc_col = EXCLUDED.loc_col,
     status = EXCLUDED.status;
 
-INSERT INTO trans_coord (trans_coord_id, zone_id, chg_loc_id, x, y, theta) VALUES
-(1, 1, NULL,  1.50, 2.30,   0.00),
-(2, 2, NULL,  5.20, 2.10,  90.00),
-(3, 3, NULL,  9.10, 2.30,   0.00),
-(4, 4, NULL, 12.50, 3.00, 180.00),
-(5, 5, NULL, 15.30, 2.30,   0.00),
-(6, 6, NULL, 18.00, 2.30,   0.00),
-(7, 7, 1,     0.50, 8.00, 270.00),
-(8, 7, 2,     0.50, 9.00, 270.00),
-(9, 7, 3,     1.50, 8.00, 270.00)
-ON CONFLICT (trans_coord_id) DO UPDATE SET
-    zone_id = EXCLUDED.zone_id,
-    chg_loc_id = EXCLUDED.chg_loc_id,
-    x = EXCLUDED.x,
-    y = EXCLUDED.y,
-    theta = EXCLUDED.theta;
-
-UPDATE chg_loc_stat SET trans_coord_id = 7 WHERE loc_id = 1;
-UPDATE chg_loc_stat SET trans_coord_id = 8 WHERE loc_id = 2;
-UPDATE chg_loc_stat SET trans_coord_id = 9 WHERE loc_id = 3;
-
-INSERT INTO strg_loc_stat (loc_id, zone_id, item_stat_id, loc_row, loc_col, status, stored_at)
+INSERT INTO strg_location_stat (loc_id, zone_id, item_id, loc_row, loc_col, status, stored_at)
 SELECT
     ((r - 1) * 6 + c) AS loc_id,
     4 AS zone_id,
-    NULL::INT AS item_stat_id,
+    NULL::INT AS item_id,
     r AS loc_row,
     c AS loc_col,
     'empty' AS status,
@@ -250,17 +199,17 @@ FROM generate_series(1, 3) AS r,
      generate_series(1, 6) AS c
 ON CONFLICT (loc_id) DO UPDATE SET
     zone_id = EXCLUDED.zone_id,
-    item_stat_id = EXCLUDED.item_stat_id,
+    item_id = EXCLUDED.item_id,
     loc_row = EXCLUDED.loc_row,
     loc_col = EXCLUDED.loc_col,
     status = EXCLUDED.status;
 
-INSERT INTO ship_loc_stat (loc_id, zone_id, ord_id, item_stat_id, loc_row, loc_col, status, stored_at)
+INSERT INTO ship_location_stat (loc_id, zone_id, ord_id, item_id, loc_row, loc_col, status, stored_at)
 SELECT
     c AS loc_id,
     6 AS zone_id,
     NULL::INT AS ord_id,
-    NULL::INT AS item_stat_id,
+    NULL::INT AS item_id,
     1 AS loc_row,
     c AS loc_col,
     'empty' AS status,
@@ -269,7 +218,7 @@ FROM generate_series(1, 5) AS c
 ON CONFLICT (loc_id) DO UPDATE SET
     zone_id = EXCLUDED.zone_id,
     ord_id = EXCLUDED.ord_id,
-    item_stat_id = EXCLUDED.item_stat_id,
+    item_id = EXCLUDED.item_id,
     loc_row = EXCLUDED.loc_row,
     loc_col = EXCLUDED.loc_col,
     status = EXCLUDED.status;
@@ -278,13 +227,12 @@ ON CONFLICT (loc_id) DO UPDATE SET
 -- TRANSPORT MASTER
 -- =====================
 
-INSERT INTO trans (res_id, slot_count, max_load_kg, home_coord_id) VALUES
-('AMR1', 1, 30.0, 7),
-('AMR2', 1, 30.0, 9)
+INSERT INTO trans (res_id, slot_count, max_load_kg) VALUES
+('AMR1', 1, 30.0),
+('AMR2', 1, 30.0)
 ON CONFLICT (res_id) DO UPDATE SET
     slot_count = EXCLUDED.slot_count,
-    max_load_kg = EXCLUDED.max_load_kg,
-    home_coord_id = EXCLUDED.home_coord_id;
+    max_load_kg = EXCLUDED.max_load_kg;
 
 INSERT INTO trans_task_bat_threshold (res_id, task_type, bat_low_threshold) VALUES
 ('AMR1', 'ToPP',   20),
@@ -316,7 +264,6 @@ ON CONFLICT (model_id) DO UPDATE SET
 -- =====================
 -- RA MOTION MASTER
 -- =====================
--- Minimal reusable motion programs for FMS tests.
 
 INSERT INTO ra_motion_step
     (step_id, task_type, pattern_no, loc_id, pose_nm, step_ord, command_type,
@@ -384,37 +331,35 @@ ON CONFLICT (step_id) DO UPDATE SET
 -- RESET SEQUENCES
 -- =====================
 
-SELECT setval('user_account_user_id_seq',   (SELECT MAX(user_id) FROM user_account));
-SELECT setval('product_prod_id_seq',        (SELECT MAX(prod_id) FROM product));
-SELECT setval('product_option_prod_opt_id_seq', (SELECT MAX(prod_opt_id) FROM product_option));
-SELECT setval('pp_options_pp_id_seq',       (SELECT MAX(pp_id) FROM pp_options));
-SELECT setval('zone_zone_id_seq',           (SELECT MAX(zone_id) FROM zone));
-SELECT setval('equip_load_spec_load_spec_id_seq', (SELECT MAX(load_spec_id) FROM equip_load_spec));
-SELECT setval('chg_loc_stat_loc_id_seq',    (SELECT MAX(loc_id) FROM chg_loc_stat));
-SELECT setval('trans_coord_trans_coord_id_seq', (SELECT MAX(trans_coord_id) FROM trans_coord));
-SELECT setval('strg_loc_stat_loc_id_seq',   (SELECT MAX(loc_id) FROM strg_loc_stat));
-SELECT setval('ship_loc_stat_loc_id_seq',   (SELECT MAX(loc_id) FROM ship_loc_stat));
-SELECT setval('ai_model_model_id_seq',      (SELECT MAX(model_id) FROM ai_model));
-SELECT setval('ra_motion_step_step_id_seq', (SELECT MAX(step_id) FROM ra_motion_step));
+SELECT setval('user_account_user_id_seq',        (SELECT MAX(user_id)      FROM user_account));
+SELECT setval('product_prod_id_seq',             (SELECT MAX(prod_id)      FROM product));
+SELECT setval('product_option_prod_opt_id_seq',  (SELECT MAX(prod_opt_id)  FROM product_option));
+SELECT setval('pp_options_pp_id_seq',            (SELECT MAX(pp_id)        FROM pp_options));
+SELECT setval('zone_zone_id_seq',                (SELECT MAX(zone_id)      FROM zone));
+SELECT setval('equip_load_spec_load_spec_id_seq',(SELECT MAX(load_spec_id) FROM equip_load_spec));
+SELECT setval('chg_location_stat_loc_id_seq',    (SELECT MAX(loc_id)       FROM chg_location_stat));
+SELECT setval('strg_location_stat_loc_id_seq',   (SELECT MAX(loc_id)       FROM strg_location_stat));
+SELECT setval('ship_location_stat_loc_id_seq',   (SELECT MAX(loc_id)       FROM ship_location_stat));
+SELECT setval('ai_model_model_id_seq',           (SELECT MAX(model_id)     FROM ai_model));
+SELECT setval('ra_motion_step_step_id_seq',      (SELECT MAX(step_id)      FROM ra_motion_step));
 
 COMMIT;
 
--- Verification summary.
-SELECT 'user_account' AS table_name, COUNT(*) AS row_count FROM user_account
-UNION ALL SELECT 'category', COUNT(*) FROM category
-UNION ALL SELECT 'product', COUNT(*) FROM product
-UNION ALL SELECT 'product_option', COUNT(*) FROM product_option
-UNION ALL SELECT 'pp_options', COUNT(*) FROM pp_options
-UNION ALL SELECT 'zone', COUNT(*) FROM zone
-UNION ALL SELECT 'res', COUNT(*) FROM res
-UNION ALL SELECT 'equip', COUNT(*) FROM equip
-UNION ALL SELECT 'equip_load_spec', COUNT(*) FROM equip_load_spec
-UNION ALL SELECT 'chg_loc_stat', COUNT(*) FROM chg_loc_stat
-UNION ALL SELECT 'trans_coord', COUNT(*) FROM trans_coord
-UNION ALL SELECT 'strg_loc_stat', COUNT(*) FROM strg_loc_stat
-UNION ALL SELECT 'ship_loc_stat', COUNT(*) FROM ship_loc_stat
-UNION ALL SELECT 'trans', COUNT(*) FROM trans
+-- Verification summary
+SELECT 'user_account'             AS table_name, COUNT(*) AS row_count FROM user_account
+UNION ALL SELECT 'category',             COUNT(*) FROM category
+UNION ALL SELECT 'product',              COUNT(*) FROM product
+UNION ALL SELECT 'product_option',       COUNT(*) FROM product_option
+UNION ALL SELECT 'pp_options',           COUNT(*) FROM pp_options
+UNION ALL SELECT 'zone',                 COUNT(*) FROM zone
+UNION ALL SELECT 'res',                  COUNT(*) FROM res
+UNION ALL SELECT 'equip',               COUNT(*) FROM equip
+UNION ALL SELECT 'equip_load_spec',      COUNT(*) FROM equip_load_spec
+UNION ALL SELECT 'chg_location_stat',    COUNT(*) FROM chg_location_stat
+UNION ALL SELECT 'strg_location_stat',   COUNT(*) FROM strg_location_stat
+UNION ALL SELECT 'ship_location_stat',   COUNT(*) FROM ship_location_stat
+UNION ALL SELECT 'trans',                COUNT(*) FROM trans
 UNION ALL SELECT 'trans_task_bat_threshold', COUNT(*) FROM trans_task_bat_threshold
-UNION ALL SELECT 'ai_model', COUNT(*) FROM ai_model
-UNION ALL SELECT 'ra_motion_step', COUNT(*) FROM ra_motion_step
+UNION ALL SELECT 'ai_model',             COUNT(*) FROM ai_model
+UNION ALL SELECT 'ra_motion_step',       COUNT(*) FROM ra_motion_step
 ORDER BY table_name;

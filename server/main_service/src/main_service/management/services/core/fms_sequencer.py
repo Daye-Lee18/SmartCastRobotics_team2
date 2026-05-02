@@ -36,13 +36,13 @@ from app.constants.workflow import (
 )
 from smart_cast_db.database import SessionLocal
 from smart_cast_db.models import (
-    EquipErrLog,
     EquipStat,
     EquipTaskTxn,
     Item,
+    LogErrEquip,
+    LogErrTrans,
     OrdStat,
     Res,
-    TransErrLog,
     TransStat,
     TransTaskTxn,
 )
@@ -256,7 +256,7 @@ def _process_equip_tasks(db: Session) -> None:
                 )
             )
             db.add(
-                EquipErrLog(
+                LogErrEquip(
                     res_id=t.res_id,
                     task_txn_id=t.txn_id,
                     failed_stat=cur or "START",
@@ -336,7 +336,7 @@ def _process_trans_tasks(db: Session) -> None:
             stat.cur_stat = "FAIL"
             stat.updated_at = datetime.now()
             db.add(
-                TransErrLog(
+                LogErrTrans(
                     res_id=t.trans_id,
                     task_txn_id=t.trans_task_txn_id,
                     failed_stat=stat.cur_stat,

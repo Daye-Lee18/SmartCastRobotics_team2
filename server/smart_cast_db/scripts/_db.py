@@ -1,4 +1,4 @@
-"""Shared DB connection helper for FMS test scripts."""
+"""Shared DB connection helper for smart_cast_db scripts."""
 from __future__ import annotations
 
 import os
@@ -8,15 +8,15 @@ import sys
 import psycopg
 from psycopg.rows import dict_row
 
-_FMS_ROOT = pathlib.Path(__file__).parent.parent
-_DEFAULT_PEM = _FMS_ROOT.parent / "global-bundle.pem"
+_DB_ROOT = pathlib.Path(__file__).parent.parent
+_DEFAULT_PEM = _DB_ROOT.parent.parent / "global-bundle.pem"
 
 
 def load_env() -> None:
     try:
         from dotenv import load_dotenv  # type: ignore[import-untyped]
 
-        load_dotenv(_FMS_ROOT / ".env")
+        load_dotenv(_DB_ROOT / ".env")
     except ImportError:
         pass
 
@@ -25,7 +25,7 @@ def connect(**extra_params) -> psycopg.Connection:
     url = os.environ.get("DATABASE_URL")
     if not url:
         print("ERROR: DATABASE_URL is not set.", file=sys.stderr)
-        print("  Copy FMS_test/.env.example to FMS_test/.env and fill in the values.", file=sys.stderr)
+        print("  Copy server/smart_cast_db/.env.example to server/smart_cast_db/.env and fill in the values.", file=sys.stderr)
         sys.exit(1)
 
     params: dict = {"row_factory": dict_row}

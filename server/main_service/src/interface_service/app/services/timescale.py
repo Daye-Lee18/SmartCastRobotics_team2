@@ -7,7 +7,7 @@ DB 서버에 timescaledb extension 이 있으면 hypertable 기반 time_bucket()
 설치/제거 시 backend 재시작 필요.
 
 2026-04-27 schema-aware 패치:
-  이전: 모든 쿼리가 'smartcast.item', 'smartcast.equip_err_log' 등 하드코딩.
+  이전: 모든 쿼리가 'smartcast.item', 'smartcast.log_err_equip' 등 하드코딩.
   현재 개발 DB(public 스키마) 에서는 테이블 미존재 → 500 발생.
   → app.models.models.SCHEMA 환경변수와 동일한 SCHEMA prefix 사용 + 테이블
     미존재 시 빈 배열 반환 (UndefinedTable 예외 swallow).
@@ -133,9 +133,9 @@ def weekly_item_production(db: Session, weeks: int = 8) -> list[dict]:
 
 
 def err_log_trend(db: Session, hours: int = 24) -> list[dict]:
-    """equip + trans err_log 시간대별 발생 카운트.
+    """log_err_equip + log_err_trans 시간대별 발생 카운트.
 
-    err_log 테이블이 없으면 빈 배열. 두 테이블 중 하나만 있어도 부분 결과 반환.
+    테이블이 없으면 빈 배열. 두 테이블 중 하나만 있어도 부분 결과 반환.
     """
     since = datetime.now() - timedelta(hours=hours)
     schema = _schema()
@@ -144,7 +144,7 @@ def err_log_trend(db: Session, hours: int = 24) -> list[dict]:
         db,
         f"""
             SELECT date_trunc('hour', occured_at) AS bucket, COUNT(*) AS count
-            FROM {schema}.equip_err_log
+            FROM {schema}.log_err_equip
             WHERE occured_at >= :since
             GROUP BY bucket
             ORDER BY bucket
@@ -156,7 +156,7 @@ def err_log_trend(db: Session, hours: int = 24) -> list[dict]:
         db,
         f"""
             SELECT date_trunc('hour', occured_at) AS bucket, COUNT(*) AS count
-            FROM {schema}.trans_err_log
+            FROM {schema}.log_err_trans
             WHERE occured_at >= :since
             GROUP BY bucket
             ORDER BY bucket

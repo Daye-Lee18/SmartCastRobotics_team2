@@ -20,8 +20,8 @@ MASTER_TABLES = [
     "zone",
     "res",
     "equip",
-    "strg_loc_stat",
-    "ship_loc_stat",
+    "strg_location_stat",
+    "ship_location_stat",
     "trans",
 ]
 
@@ -32,7 +32,7 @@ def main() -> int:
     try:
         with _db.connect() as conn:
             cur = conn.cursor()
-            print("FMS_test DB connection OK")
+            print("SmartCast DB connection OK")
             for table_name in MASTER_TABLES:
                 cur.execute(f"SELECT COUNT(*) AS row_count FROM {table_name}")
                 row = cur.fetchone()

@@ -7,7 +7,7 @@
 1. 백엔드 + 웹 실행
        ./scripts/run-backend.sh   # FastAPI :8000
        ./scripts/run-web.sh       # Next.js  :3001
-cf) 원격접속해서 실험하는 경우, 
+cf) 원격접속해서 실험하는 경우,
 ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
 와 같은 포워드명령 사용하여, 로컬에서 http://localhost:3001 접속 가능하도록 설정
 
@@ -41,16 +41,16 @@ ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
 5. 주문 제출 → 화면에 표시된 ord_id 메모
 
 6. DB 반영 확인
-       python python/06_query_order_and_items.py --ord-id <ord_id>
+       python scripts/06_query_order_and_items.py --ord-id <ord_id>
 
 7. 다음 단계
-       python python/04_admin_approve_order.py --ord-id <ord_id>
+       python scripts/04_admin_approve_order.py --ord-id <ord_id>
 
 -----------------------------------------------------------------------
 [방법 B] 이 스크립트로 직접 INSERT (웹 없이 빠른 테스트용)
 -----------------------------------------------------------------------
 
-실행:  python python/03_create_customer_order.py [옵션]
+실행:  python scripts/03_create_customer_order.py [옵션]
 
 기본값: 이민준(user_id=4) / R-D450(prod_id=1) / 수량 3 /
         표면연마+방청코팅(pp_ids=1,2) / 납기 2026-05-15
@@ -168,8 +168,8 @@ def main() -> int:
             )
 
             cur.execute(
-                "INSERT INTO ord_stat (ord_id, user_id, ord_stat, gp_qty, dp_qty) VALUES (%s, %s, 'RCVD', 0, 0)",
-                (args.user_id, args.user_id),
+                "INSERT INTO ord_stat (ord_id, user_id, ord_stat) VALUES (%s, %s, 'RCVD')",
+                (ord_id, args.user_id),
             )
 
             cur.execute(
@@ -195,7 +195,7 @@ def main() -> int:
         print(f"  상태         : RCVD")
         print(f"  생성 시각    : {created_at}")
         print()
-        print(f"  다음 단계: python 04_admin_approve_order.py --ord-id {ord_id} --admin-id 1")
+        print(f"  다음 단계: python scripts/04_admin_approve_order.py --ord-id {ord_id} --admin-id 1")
 
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

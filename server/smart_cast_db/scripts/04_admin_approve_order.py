@@ -22,16 +22,16 @@ cf) 원격접속의 경우:
 6. 우측 상세 패널에서 [승인] 버튼 클릭 → RCVD → APPR 전환
 
 7. DB 반영 확인
-       python python/06_query_order_and_items.py --ord-id <ord_id>
+       python scripts/06_query_order_and_items.py --ord-id <ord_id>
 
 8. 다음 단계
-       python python/05_operator_start_production.py --ord-id <ord_id>
+       python scripts/05_operator_start_production.py --ord-id <ord_id>
 
 -----------------------------------------------------------------------
 [방법 B] 이 스크립트로 직접 UPDATE (웹 없이 빠른 테스트용)
 -----------------------------------------------------------------------
 
-실행:  python python/04_admin_approve_order.py --ord-id <ord_id>
+실행:  python scripts/04_admin_approve_order.py --ord-id <ord_id>
 
 기본값: admin_id=1 (관리자)
 
@@ -137,7 +137,7 @@ def main() -> int:
         print(f"  상태     : RCVD  ->  APPR")
         print(f"  처리 시각: {logged_at}")
         print()
-        print(f"  다음 단계: python 05_operator_start_production.py --ord-id {args.ord_id} --operator-id 2")
+        print(f"  다음 단계: python scripts/05_operator_start_production.py --ord-id {args.ord_id} --operator-id 2")
 
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

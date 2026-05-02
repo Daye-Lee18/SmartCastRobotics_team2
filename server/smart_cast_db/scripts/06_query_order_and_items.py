@@ -1,7 +1,7 @@
 """Query: Display full order + item state snapshot.
 
 Input  : --ord-id (required)
-DB     : SELECT ord, ord_detail, ord_stat, ord_log, item_stat
+DB     : SELECT ord, ord_detail, ord_stat, ord_log, item
 Output : Human-readable summary
 """
 
@@ -27,19 +27,20 @@ def main() -> int:
         with _db.connect() as conn:
             cur = conn.cursor()
 
-            # Order header
+            # Order header (LEFT JOIN product — prod_id may be NULL for web-created orders)
             cur.execute(
                 """
                 SELECT
                     o.ord_id, o.created_at,
                     u.user_nm, u.co_nm,
                     od.qty, od.final_price, od.due_date, od.ship_addr,
+                    od.diameter, od.thickness, od.material, od.load_class,
                     p.prod_id, p.cate_cd, p.base_price,
-                    os.ord_stat, os.gp_qty, os.dp_qty, os.updated_at AS stat_updated
+                    os.ord_stat, os.updated_at AS stat_updated
                 FROM ord o
                 JOIN user_account u  ON u.user_id  = o.user_id
                 JOIN ord_detail od   ON od.ord_id   = o.ord_id
-                JOIN product p       ON p.prod_id   = od.prod_id
+                LEFT JOIN product p  ON p.prod_id   = od.prod_id
                 JOIN ord_stat os     ON os.ord_id   = o.ord_id
                 WHERE o.ord_id = %s
                 """,
@@ -76,13 +77,14 @@ def main() -> int:
             )
             log_rows = cur.fetchall()
 
-            # Item stats
+            # Items
             cur.execute(
                 """
-                SELECT item_stat_id, flow_stat, result, updated_at
-                  FROM item_stat
+                SELECT item_id, cur_stat, equip_task_type, trans_task_type,
+                       cur_res, is_defective, updated_at
+                  FROM item
                  WHERE ord_id = %s
-                 ORDER BY item_stat_id
+                 ORDER BY item_id
                 """,
                 (args.ord_id,),
             )
@@ -100,12 +102,23 @@ def main() -> int:
         if pp_rows
         else "(없음)"
     )
+    prod_str = (
+        f"prod_id={hdr['prod_id']}  {hdr['cate_cd']}  기본가={int(hdr['base_price']):,}원"
+        if hdr["prod_id"]
+        else "(미등록)"
+    )
+    spec_str = (
+        f"{hdr['material']} / {hdr['diameter']}x{hdr['thickness']} / {hdr['load_class']}"
+        if hdr["material"]
+        else "(없음)"
+    )
 
     print("=" * 60)
     print(f"  주문 #{hdr['ord_id']}  [{hdr['ord_stat']}]")
     print("=" * 60)
     print(f"  고객         : {hdr['user_nm']} ({hdr['co_nm']})")
-    print(f"  제품         : prod_id={hdr['prod_id']}  {hdr['cate_cd']}  기본가={int(hdr['base_price']):,}원")
+    print(f"  제품         : {prod_str}")
+    print(f"  사양         : {spec_str}")
     print(f"  수량         : {hdr['qty']}")
     print(f"  최종 금액    : {int(hdr['final_price']):,}원")
     print(f"  납기일       : {hdr['due_date']}")
@@ -113,7 +126,6 @@ def main() -> int:
     print(f"  후처리       : {pp_str}")
     print(f"  주문 생성    : {hdr['created_at']}")
     print(f"  상태 갱신    : {hdr['stat_updated']}")
-    print(f"  GP qty       : {hdr['gp_qty']}  /  DP qty: {hdr['dp_qty']}")
 
     print()
     print("--- 상태 이력 ---")
@@ -129,12 +141,15 @@ def main() -> int:
     if not items:
         print("  (생성 전)")
     else:
-        for item in items:
-            result_str = "GP" if item["result"] is True else ("DP" if item["result"] is False else "-")
+        for it in items:
+            defect_str = (
+                "GP" if it["is_defective"] is False
+                else ("DP" if it["is_defective"] is True else "-")
+            )
             print(
-                f"  item_stat_id={item['item_stat_id']:4d}  "
-                f"flow={item['flow_stat']:15s}  "
-                f"result={result_str}  updated={item['updated_at']}"
+                f"  item_id={it['item_id']:4d}  "
+                f"cur_stat={str(it['cur_stat']):12s}  "
+                f"defective={defect_str}  updated={it['updated_at']}"
             )
 
     return 0

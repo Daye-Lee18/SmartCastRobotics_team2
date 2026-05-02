@@ -1,10 +1,10 @@
 """Phase 2: Operator starts production.
 
 Input  : --ord-id (required), --operator-id
-DB     : INSERT item_stat x qty (flow_stat=CREATED),
+DB     : INSERT item x qty (cur_stat='CREATED'),
          UPDATE ord_stat APPR->MFG,
          INSERT ord_log
-Output : ord_id + item_stat_ids created
+Output : ord_id + item_ids created
 """
 
 from __future__ import annotations
@@ -41,13 +41,13 @@ def main() -> int:
                 print(f"ERROR: user_id {args.operator_id} is not an operator (role={role}).", file=sys.stderr)
                 return 1
 
-            # Validate order state
+            # Validate order state (LEFT JOIN product — prod_id may be NULL for web-created orders)
             cur.execute(
                 """
                 SELECT os.ord_stat, od.qty, p.cate_cd
                   FROM ord_stat os
                   JOIN ord_detail od ON od.ord_id = os.ord_id
-                  JOIN product p ON p.prod_id = od.prod_id
+                  LEFT JOIN product p ON p.prod_id = od.prod_id
                  WHERE os.ord_id = %s
                 """,
                 (args.ord_id,),
@@ -64,16 +64,16 @@ def main() -> int:
                 return 1
 
             qty = row["qty"]
-            cate_cd = row["cate_cd"]
+            cate_cd = row["cate_cd"] or "(unknown)"
 
             # --- writes ---
             item_ids: list[int] = []
             for _ in range(qty):
                 cur.execute(
-                    "INSERT INTO item_stat (ord_id, flow_stat) VALUES (%s, 'CREATED') RETURNING item_stat_id",
+                    "INSERT INTO item (ord_id, cur_stat) VALUES (%s, 'CREATED') RETURNING item_id",
                     (args.ord_id,),
                 )
-                item_ids.append(cur.fetchone()["item_stat_id"])
+                item_ids.append(cur.fetchone()["item_id"])
 
             cur.execute(
                 """
@@ -107,11 +107,11 @@ def main() -> int:
         print(f"  상태          : APPR  ->  MFG")
         print(f"  처리 시각     : {logged_at}")
         print()
-        print(f"  생성된 item_stat ({len(item_ids)}개):")
+        print(f"  생성된 item ({len(item_ids)}개):")
         for i, iid in enumerate(item_ids, 1):
-            print(f"    item #{i}: item_stat_id={iid}  flow_stat=CREATED")
+            print(f"    item #{i}: item_id={iid}  cur_stat=CREATED")
         print()
-        print(f"  다음 단계: python 06_query_order_and_items.py --ord-id {args.ord_id}")
+        print(f"  다음 단계: python scripts/06_query_order_and_items.py --ord-id {args.ord_id}")
 
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

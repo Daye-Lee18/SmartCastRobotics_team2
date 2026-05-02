@@ -14,13 +14,13 @@ from sqlalchemy.orm import Session
 
 from smart_cast_db.database import get_db
 from smart_cast_db.models import (
-    EquipErrLog,
     InspTaskTxn,
     Item,
+    LogErrEquip,
+    LogErrTrans,
     Ord,
     OrdStat,
     Res,
-    TransErrLog,
 )
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -55,14 +55,14 @@ def dashboard_stats(db: Session = Depends(get_db)) -> dict:
 
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     err_today = (
-        db.query(func.count(EquipErrLog.err_id))
-        .filter(EquipErrLog.occured_at >= today_start)
+        db.query(func.count(LogErrEquip.err_id))
+        .filter(LogErrEquip.occured_at >= today_start)
         .scalar()
         or 0
     )
     trans_err_today = (
-        db.query(func.count(TransErrLog.err_id))
-        .filter(TransErrLog.occured_at >= today_start)
+        db.query(func.count(LogErrTrans.err_id))
+        .filter(LogErrTrans.occured_at >= today_start)
         .scalar()
         or 0
     )

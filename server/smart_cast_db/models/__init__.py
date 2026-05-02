@@ -14,15 +14,15 @@ Alert/RfidScanLog 은 public 에 유지.
     master.py       Category, Product, ProductOption, PpOption, Zone, Pattern,
                     Res, Equip, EquipLoadSpec, Trans (마스터 데이터)
     item.py         Item + ChgLocationStat, StrgLocationStat, ShipLocationStat
-    equipment.py    EquipTaskTxn, EquipStat, EquipErrLog (생산 설비 트랜잭션)
-    transport.py    TransTaskTxn, TransStat, TransErrLog (이송 트랜잭션)
+    equipment.py    EquipTaskTxn, EquipStat, LogErrEquip (생산 설비 트랜잭션)
+    transport.py    TransTaskTxn, TransStat, LogErrTrans (이송 트랜잭션)
     inspection.py   PpTaskTxn, InspTaskTxn (후처리/검사 트랜잭션)
 
 공용 import 경로: `from smart_cast_db.models import Ord, Item, ...`.
 """
 
 from smart_cast_db.models._base import SCHEMA
-from smart_cast_db.models.equipment import EquipErrLog, EquipStat, EquipTaskTxn
+from smart_cast_db.models.equipment import EquipStat, EquipTaskTxn, LogErrEquip
 from smart_cast_db.models.inspection import InspTaskTxn, PpTaskTxn
 from smart_cast_db.models.item import (
     ChgLocationStat,
@@ -58,7 +58,7 @@ from smart_cast_db.models.order import (
     OrdStat,
     OrdTxn,
 )
-from smart_cast_db.models.transport import TransErrLog, TransStat, TransTaskTxn
+from smart_cast_db.models.transport import LogErrTrans, TransStat, TransTaskTxn
 from smart_cast_db.models.user import UserAccount
 
 __all__ = [
@@ -66,7 +66,7 @@ __all__ = [
     "Category",
     "ChgLocationStat",
     "Equip",
-    "EquipErrLog",
+    "LogErrEquip",
     "EquipLoadSpec",
     "EquipStat",
     "EquipTaskTxn",
@@ -87,7 +87,7 @@ __all__ = [
     "ShipLocationStat",
     "StrgLocationStat",
     "Trans",
-    "TransErrLog",
+    "LogErrTrans",
     "TransStat",
     "TransTaskTxn",
     "UserAccount",

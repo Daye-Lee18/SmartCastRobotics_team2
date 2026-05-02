@@ -1,4 +1,4 @@
-"""Transport 트랜잭션 모델 — TransTaskTxn, TransStat, TransErrLog.
+"""Transport 트랜잭션 모델 — TransTaskTxn, TransStat, LogErrTrans.
 
 AMR 이송 작업 + 실시간 상태 (배터리 포함) + 에러 로그.
 생산 설비 (RA/CONV) 는 equipment.py 에 별도.
@@ -60,10 +60,10 @@ class TransStat(Base):
     updated_at = Column(DateTime, server_default=func.now())
 
 
-class TransErrLog(Base):
+class LogErrTrans(Base):
     """AMR 에러 로그 (배터리 포함)."""
 
-    __tablename__ = "trans_err_log"
+    __tablename__ = "log_err_trans"
     __table_args__ = ({"schema": SCHEMA},)
 
     err_id = Column(Integer, primary_key=True, autoincrement=True)

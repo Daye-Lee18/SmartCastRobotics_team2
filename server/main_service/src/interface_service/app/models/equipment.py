@@ -1,4 +1,4 @@
-"""Equipment 트랜잭션 모델 — EquipTaskTxn, EquipStat, EquipErrLog.
+"""Equipment 트랜잭션 모델 — EquipTaskTxn, EquipStat, LogErrEquip.
 
 생산 설비 (RA, CONV) 의 작업지시 + 실시간 상태 + 에러 로그.
 이송 (AMR) 은 transport.py 에 별도.
@@ -55,10 +55,10 @@ class EquipStat(Base):
     err_msg = Column(String)
 
 
-class EquipErrLog(Base):
+class LogErrEquip(Base):
     """생산 설비 에러 로그."""
 
-    __tablename__ = "equip_err_log"
+    __tablename__ = "log_err_equip"
     __table_args__ = ({"schema": SCHEMA},)
 
     err_id = Column(Integer, primary_key=True, autoincrement=True)
