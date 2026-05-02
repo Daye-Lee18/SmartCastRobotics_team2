@@ -22,10 +22,10 @@ from sqlalchemy.orm import Session
 
 from app.clients.management import ManagementClient, ManagementUnavailable
 from smart_cast_db.database import get_db
-from smart_cast_db.models import EquipStat, EquipTaskTxn, Item, Ord, OrdStat, Pattern
+from smart_cast_db.models import EquipStat, EquipTaskTxn, Item, Ord, OrdPattern, OrdStat
 from app.schemas.schemas import ProductionStartRequest
 
-from ._helpers import _PROXY_START_PRODUCTION, _auto_progress_after_idle
+from ._helpers import _PROXY_START_PRODUCTION, _auto_progress_after_idle, _latest_ord_stat
 
 router = APIRouter(prefix="/api/production", tags=["production"])
 
@@ -40,7 +40,13 @@ def _start_production_legacy(payload: ProductionStartRequest, db: Session) -> di
     ord_obj = db.get(Ord, payload.ord_id)
     if not ord_obj:
         raise HTTPException(404, f"ord_id={payload.ord_id} not found")
-    if not db.get(Pattern, payload.ord_id):
+    latest_stat = _latest_ord_stat(db, payload.ord_id)
+    if latest_stat not in {"APPR", "MFG"}:
+        raise HTTPException(
+            400,
+            f"ord_id={payload.ord_id} must be APPR/MFG before production start; current={latest_stat}",
+        )
+    if not db.get(OrdPattern, payload.ord_id):
         raise HTTPException(
             400,
             f"pattern for ord_id={payload.ord_id} not registered. "
@@ -52,12 +58,12 @@ def _start_production_legacy(payload: ProductionStartRequest, db: Session) -> di
         equip_task_type="MM",
         trans_task_type=None,
         cur_stat="QUE",
-        cur_res="RA1",
+        cur_res="PAT",
     )
     db.add(new_item)
     db.flush()
     txn = EquipTaskTxn(
-        res_id="RA1",
+        res_id="PAT",
         task_type="MM",
         txn_stat="QUE",
         item_id=new_item.item_id,
@@ -70,7 +76,7 @@ def _start_production_legacy(payload: ProductionStartRequest, db: Session) -> di
         "ord_id": payload.ord_id,
         "item_id": new_item.item_id,
         "equip_task_txn_id": txn.txn_id,
-        "message": "Production started: RA1/MM task queued.",
+        "message": "Production started: PAT/MM task queued.",
     }
 
 
@@ -103,6 +109,12 @@ def start_production(payload: ProductionStartRequest, db: Session = Depends(get_
 
     선행 조건: pattern 등록 완료 (Pink GUI #3, 또는 자동 매핑).
     """
+    latest_stat = _latest_ord_stat(db, payload.ord_id)
+    if latest_stat not in {"APPR", "MFG"}:
+        raise HTTPException(
+            400,
+            f"ord_id={payload.ord_id} must be APPR/MFG before production start; current={latest_stat}",
+        )
     if _PROXY_START_PRODUCTION:
         return _start_production_proxy(payload)
     return _start_production_legacy(payload, db)

@@ -2,8 +2,8 @@
 
 DB: seed/seed_master.sql 실행
     - user_account, product, product_option, pp_options
-    - zone, res, equip, chg_location_stat, strg_location_stat, ship_location_stat
-    - trans, trans_task_bat_threshold, ra_motion_step, ai_model 등
+    - pattern_master, zone, res, equip, chg_location_stat, strg_location_stat, ship_location_stat
+    - trans, trans_task_bat_threshold, tat_nav_pose_master, ra_motion_step, ai_model 등
 """
 
 from __future__ import annotations
@@ -27,10 +27,11 @@ def main() -> int:
 
             tables = [
                 "user_account", "category", "product", "product_option",
-                "pp_options", "zone", "res", "equip",
+                "pp_options", "pattern_master", "zone", "res", "equip",
                 "equip_load_spec", "chg_location_stat",
                 "strg_location_stat", "ship_location_stat", "trans",
-                "trans_task_bat_threshold", "ra_motion_step", "ai_model",
+                "trans_task_bat_threshold", "tat_nav_pose_master",
+                "ra_motion_step", "ai_model",
             ]
             print()
             print("--- 시드 결과 ---")

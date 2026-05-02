@@ -1,4 +1,4 @@
-"""Order 도메인 모델 — Ord, OrdDetail, OrdPpMap, OrdTxn, OrdStat, OrdLog."""
+"""Order 도메인 모델 — Ord, OrdDetail, OrdPpMap, OrdPattern, OrdTxn, OrdStat, OrdLog."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from ._base import (
     func,
     relationship,
 )
+from .master import PatternMaster
 
 
 class Ord(Base):
@@ -31,6 +32,9 @@ class Ord(Base):
     user = relationship("UserAccount")
     detail = relationship(
         "OrdDetail", uselist=False, back_populates="ord", cascade="all, delete-orphan"
+    )
+    pattern = relationship(
+        "OrdPattern", uselist=False, back_populates="ord", cascade="all, delete-orphan"
     )
     pp_maps = relationship("OrdPpMap", back_populates="ord", cascade="all, delete-orphan")
     txns = relationship("OrdTxn", back_populates="ord", cascade="all, delete-orphan")
@@ -71,6 +75,20 @@ class OrdPpMap(Base):
 
     ord = relationship("Ord", back_populates="pp_maps")
     pp_option = relationship("PpOption")
+
+
+class OrdPattern(Base):
+    """발주↔패턴 1:1 매핑."""
+
+    __tablename__ = "ord_pattern"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
+    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"), nullable=False)
+    assigned_at = Column(DateTime, server_default=func.now())
+
+    ord = relationship("Ord", back_populates="pattern")
+    pattern_master = relationship(PatternMaster)
 
 
 class OrdTxn(Base):

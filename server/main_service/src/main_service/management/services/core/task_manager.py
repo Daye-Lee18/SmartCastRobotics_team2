@@ -12,8 +12,8 @@ canonical 아키텍처: Interface POST /api/production/start 가 Management gRPC
 - order_ids 비어있지 않음 → 각 원소를 int 로 변환해 smartcast v2 로직 반복
 
 smartcast v2 트랜잭션 (Interface production.py:94 와 동일 경계):
-    OrdStat(MFG) + Item(cur_stat='QUE', cur_res='RA1', equip_task_type='MM')
-    + EquipTaskTxn(res_id='RA1', task_type='MM', txn_stat='QUE')
+    OrdStat(MFG) + Item(cur_stat='QUE', cur_res='PAT', equip_task_type='MM')
+    + EquipTaskTxn(res_id='PAT', task_type='MM', txn_stat='QUE')
     단일 `db.commit()` 으로 atomic.
 
 @MX:ANCHOR: SPEC-C2 Phase C-2 산출물. Management write 경로의 단일 진입점.
@@ -63,8 +63,8 @@ class TaskManager:
             - `pattern` 테이블에 ord_id 키의 패턴 등록됨
         효과 (atomic):
             - OrdStat INSERT (ord_stat='MFG')
-            - Item INSERT (cur_stat='QUE', cur_res='RA1', equip_task_type='MM')
-            - EquipTaskTxn INSERT (res_id='RA1', task_type='MM', txn_stat='QUE')
+            - Item INSERT (cur_stat='QUE', cur_res='PAT', equip_task_type='MM')
+            - EquipTaskTxn INSERT (res_id='PAT', task_type='MM', txn_stat='QUE')
         """
         if not ord_id or ord_id <= 0:
             raise TaskManagerError(f"invalid ord_id: {ord_id}")
@@ -85,13 +85,13 @@ class TaskManager:
                 equip_task_type="MM",
                 trans_task_type=None,
                 cur_stat="QUE",
-                cur_res="RA1",
+                cur_res="PAT",
             )
             db.add(new_item)
             db.flush()  # new_item.item_id 확보
 
             txn = EquipTaskTxn(
-                res_id="RA1",
+                res_id="PAT",
                 task_type="MM",
                 txn_stat="QUE",
                 item_id=new_item.item_id,
@@ -106,7 +106,7 @@ class TaskManager:
                 ord_id=ord_id,
                 item_id=new_item.item_id,
                 equip_task_txn_id=txn.txn_id,
-                message="Production started: RA1/MM task queued.",
+                message="Production started: PAT/MM task queued.",
             )
             logger.info(
                 "start_production_single: ord_id=%d item=%d txn=%d",

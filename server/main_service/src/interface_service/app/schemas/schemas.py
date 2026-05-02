@@ -1,7 +1,6 @@
 """Pydantic v2 스키마 — smartcast schema (Confluence 32342045 v59 기준).
 
 신규 27 테이블에 대응하는 Request/Response 모델.
-Legacy 모델은 backend/app/schemas/schemas_legacy.py 에 보관.
 """
 
 from __future__ import annotations
@@ -172,20 +171,20 @@ class TransOut(_ORM):
 
 
 # =====================
-# PATTERN (핑크 GUI #3)
+# ORD PATTERN (핑크 GUI #3)
 # =====================
 
 
-class PatternIn(BaseModel):
-    """패턴 등록 — 발주 1:1, 위치 1-6."""
+class OrdPatternIn(BaseModel):
+    """발주↔패턴 1:1 등록 요청."""
 
-    ptn_id: int  # = ord_id
-    ptn_loc: int = Field(ge=1, le=6)
+    ord_id: int
+    ptn_id: int = Field(ge=1, le=3)
 
 
-class PatternOut(_ORM):
+class OrdPatternOut(_ORM):
+    ord_id: int
     ptn_id: int
-    ptn_loc: int
 
 
 # =====================
@@ -250,7 +249,7 @@ class TransStatOut(_ORM):
     item_id: int | None = None
     cur_stat: str | None = None
     battery_pct: int | None = None
-    cur_zone_type: str | None = None
+    cur_zone_type: int | None = None
     updated_at: datetime | None = None
 
 

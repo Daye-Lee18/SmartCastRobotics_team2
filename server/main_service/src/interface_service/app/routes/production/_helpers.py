@@ -30,7 +30,7 @@ from smart_cast_db.models import (
     Item,
     Ord,
     OrdStat,
-    Pattern,
+    OrdPattern,
     Trans,
     TransStat,
     TransTaskTxn,
@@ -286,7 +286,7 @@ def _priority_result(db: Session, ord_obj: Ord, rank: int = 1) -> dict[str, Any]
     customer_score = 10.0 if amount >= 1_000_000 else 7.0 if amount >= 500_000 else 5.0
     delay_score = 15.0 if days_left <= 7 else 10.0 if days_left <= 14 else 7.0
     setup_score = 5.0
-    has_pattern = db.get(Pattern, ord_obj.ord_id) is not None
+    has_pattern = db.get(OrdPattern, ord_obj.ord_id) is not None
     ready_score = 20.0 if has_pattern else 8.0
     blocking = (
         []

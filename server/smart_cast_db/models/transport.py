@@ -1,4 +1,5 @@
-"""Transport 트랜잭션 모델 — TransTaskTxn, TransStat, LogErrTrans.
+"""Transport 도메인 모델 — TransTaskTxn, TransStat, LogErrTrans, TatNavPoseMaster,
+TransportTask, HandoffAck.
 
 AMR 이송 작업 + 실시간 상태 (배터리 포함) + 에러 로그.
 생산 설비 (RA/CONV) 는 equipment.py 에 별도.
@@ -6,17 +7,24 @@ AMR 이송 작업 + 실시간 상태 (배터리 포함) + 에러 로그.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from ._base import (
     SCHEMA,
     Base,
+    Boolean,
     CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
+    Numeric,
     Integer,
     String,
+    relationship,
     func,
 )
+from sqlalchemy import BigInteger, text
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class TransTaskTxn(Base):
@@ -73,3 +81,82 @@ class LogErrTrans(Base):
     err_msg = Column(String)
     battery_pct = Column(Integer)
     occured_at = Column(DateTime, server_default=func.now())
+
+
+class TransportTask(Base):
+    """이송 작업 (smartcast.transport_tasks)."""
+
+    __tablename__ = "transport_tasks"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    id = Column(String, primary_key=True, index=True)
+    from_name = Column(String, nullable=False)
+    from_coord = Column(String, nullable=True, default="")
+    to_name = Column(String, nullable=False)
+    to_coord = Column(String, nullable=True, default="")
+    item_id = Column(String, nullable=True, default="")
+    item_name = Column(String, nullable=True, default="")
+    quantity = Column(Integer, nullable=False, default=1)
+    priority = Column(String, nullable=False, default="medium")
+    status = Column(String, nullable=False, default="unassigned")
+    assigned_robot_id = Column(String, nullable=True, default="")
+    requested_at = Column(String, nullable=False)
+    completed_at = Column(String, nullable=True)
+
+
+class HandoffAck(Base):
+    """후처리존 인수인계 확인 이벤트 (smartcast.handoff_acks)."""
+
+    __tablename__ = "handoff_acks"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    ack_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), index=True)
+    task_id = Column(
+        String,
+        ForeignKey(f"{SCHEMA}.transport_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    zone = Column(String, nullable=False, index=True)
+    amr_id = Column(String, nullable=True)
+    ack_source = Column(
+        String, nullable=False
+    )  # 'esp32_button' | 'debug_endpoint' | 'gui_override'
+    operator_id = Column(String, nullable=True)
+    button_device_id = Column(String, nullable=True)
+    orphan_ack = Column(Boolean, nullable=False, default=False)
+    idempotency_key = Column(String, nullable=True)
+    extra = Column("metadata", JSONB, nullable=True)  # 'metadata' 충돌 회피
+
+
+class TatNavPoseMaster(Base):
+    """TAT 네비게이션 목적지 마스터.
+
+    nav2_params.yaml 의 실제 운용 포즈만 저장하고, *_WAIT 포즈는 제외한다.
+    """
+
+    __tablename__ = "tat_nav_pose_master"
+    __table_args__ = (
+        CheckConstraint(
+            "pose_nm IN ('ToINSP', 'ToSHIP', 'ToCAST', 'ToCHG1', 'ToCHG2', 'ToCHG3', 'ToSTRG', 'ToPICK', 'ToPP')",
+            name="chk_tat_nav_pose_nm",
+        ),
+        CheckConstraint(
+            "(pose_nm LIKE 'ToCHG%' AND loc_id IS NOT NULL) OR (pose_nm NOT LIKE 'ToCHG%' AND loc_id IS NULL)",
+            name="chk_tat_nav_pose_loc",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    pose_id = Column(Integer, primary_key=True, autoincrement=True)
+    pose_nm = Column(String, nullable=False, unique=True)
+    zone_id = Column(Integer, ForeignKey(f"{SCHEMA}.zone.zone_id"), nullable=False)
+    loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.chg_location_stat.loc_id"))
+    pose_x = Column(Numeric, nullable=False)
+    pose_y = Column(Numeric, nullable=False)
+    pose_theta = Column(Numeric, nullable=False)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
+
+    zone = relationship("Zone")
+    chg_location = relationship("ChgLocationStat")

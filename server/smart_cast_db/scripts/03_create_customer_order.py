@@ -58,8 +58,8 @@ ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
 웹과 DB 결과는 동일합니다.
 =======================================================================
 
-Input  : --user-id, --prod-id, --qty, --due-date, --ship-addr, [--pp-ids ...]
-DB     : INSERT ord, ord_detail, ord_pp_map, ord_txn, ord_stat, ord_log
+Input  : --user-id, --prod-id, --qty, --due-date, --ship-addr, [--pp-ids ...], [--ptn-id]
+DB     : INSERT ord, ord_pattern, ord_detail, ord_pp_map, ord_txn, ord_stat, ord_log
 Output : 생성된 ord_id + 상태 요약
 """
 
@@ -88,6 +88,10 @@ def parse_args() -> argparse.Namespace:
                    help="배송지")
     p.add_argument("--pp-ids",    type=int, nargs="*", default=[1, 2],
                    help="후처리 옵션 ID 목록 (기본: 1=표면연마 2=방청코팅)")
+    p.add_argument("--ptn-id",    type=int, default=1,
+                   help="모션 패턴 ID (1~3, 기본: 1)")
+    p.add_argument("--ptn-loc",   type=int, dest="ptn_id",
+                   help=argparse.SUPPRESS)
     return p.parse_args()
 
 
@@ -110,6 +114,22 @@ def main() -> int:
                 return 1
             if user["role"] != "customer":
                 print(f"ERROR: user_id {args.user_id} role={user['role']} is not a customer.", file=sys.stderr)
+                return 1
+
+            if args.ptn_id not in (1, 2, 3):
+                print(f"ERROR: ptn_id {args.ptn_id} is invalid. Use 1, 2, or 3.", file=sys.stderr)
+                return 1
+
+            cur.execute(
+                "SELECT ptn_id, ptn_nm, is_active FROM pattern_master WHERE ptn_id = %s",
+                (args.ptn_id,),
+            )
+            pattern = cur.fetchone()
+            if not pattern:
+                print(f"ERROR: ptn_id {args.ptn_id} not found in pattern_master.", file=sys.stderr)
+                return 1
+            if not pattern["is_active"]:
+                print(f"ERROR: ptn_id {args.ptn_id} is inactive.", file=sys.stderr)
                 return 1
 
             # 제품 검증
@@ -147,6 +167,11 @@ def main() -> int:
             ord_row = cur.fetchone()
             ord_id = ord_row["ord_id"]
             created_at = ord_row["created_at"]
+
+            cur.execute(
+                "INSERT INTO ord_pattern (ord_id, ptn_id) VALUES (%s, %s)",
+                (ord_id, args.ptn_id),
+            )
 
             cur.execute(
                 """
@@ -187,6 +212,7 @@ def main() -> int:
         print(f"  ord_id      : {ord_id}")
         print(f"  고객         : {user['user_nm']} (user_id={args.user_id})")
         print(f"  제품         : prod_id={args.prod_id}  ({prod['cate_cd']})")
+        print(f"  패턴         : ptn_id={args.ptn_id} ({pattern['ptn_nm']})")
         print(f"  수량         : {args.qty}")
         print(f"  최종 금액    : {final_price:,}원")
         print(f"  납기일       : {args.due_date}")

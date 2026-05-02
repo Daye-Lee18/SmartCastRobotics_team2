@@ -122,6 +122,16 @@ ON CONFLICT (pp_id) DO UPDATE SET
     pp_nm = EXCLUDED.pp_nm,
     extra_cost = EXCLUDED.extra_cost;
 
+INSERT INTO pattern_master (ptn_id, ptn_nm, task_type, description, is_active) VALUES
+(1, 'MM pattern 1', 'MM', 'pattern_1(mc) 기준 모션 시퀀스', TRUE),
+(2, 'MM pattern 2', 'MM', 'pattern_2(mc) 기준 모션 시퀀스', TRUE),
+(3, 'MM pattern 3', 'MM', 'pattern_3(mc) 기준 모션 시퀀스', TRUE)
+ON CONFLICT (ptn_id) DO UPDATE SET
+    ptn_nm = EXCLUDED.ptn_nm,
+    task_type = EXCLUDED.task_type,
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active;
+
 -- =====================
 -- ZONE / RESOURCE MASTER
 -- =====================
@@ -137,24 +147,24 @@ INSERT INTO zone (zone_id, zone_nm) VALUES
 ON CONFLICT (zone_id) DO UPDATE SET
     zone_nm = EXCLUDED.zone_nm;
 
+-- PAT: RA for Putaway (in STRG zone) (putaway arm tool)
+-- MAT: RA for manufacturing (manufacturing arm tool)
+-- TAT: TAT for transport (transport TAT tool)
 INSERT INTO res (res_id, res_type, model_nm) VALUES
-('RA1',   'RA',   'JetCobot 280 CAST'),
-('RA2',   'RA',   'JetCobot 280 PICK'),
-('RA3',   'RA',   'JetCobot 280 SHIP'),
+('PAT',   'RA',   'JetCobot 280 CAST'),
+('MAT',   'RA',   'JetCobot 280 STRG'),
 ('CONV1', 'CONV', 'ESP32 Conveyor v5 INSP'),
-('CONV2', 'CONV', 'ESP32 Conveyor v5 AUX'),
-('AMR1',  'AMR',  'TurtleBot3 Burger'),
-('AMR2',  'AMR',  'TurtleBot3 Burger')
+('TAT1',  'TAT',  'PinkyPro'),
+('TAT2',  'TAT',  'PinkyPro'),
+('TAT3',  'TAT',  'PinkyPro')
 ON CONFLICT (res_id) DO UPDATE SET
     res_type = EXCLUDED.res_type,
     model_nm = EXCLUDED.model_nm;
 
 INSERT INTO equip (res_id, zone_id) VALUES
-('RA1',   1),
-('RA2',   5),
-('RA3',   6),
-('CONV1', 3),
-('CONV2', 3)
+('PAT',   1),
+('MAT',   4),
+('CONV1', 3)
 ON CONFLICT (res_id) DO UPDATE SET
     zone_id = EXCLUDED.zone_id;
 
@@ -176,9 +186,9 @@ ON CONFLICT (load_spec_id) DO UPDATE SET
 -- =====================
 
 INSERT INTO chg_location_stat (loc_id, zone_id, res_id, loc_row, loc_col, status, stored_at) VALUES
-(1, 7, 'AMR1', 1, 1, 'occupied', now()),
-(2, 7, NULL,   1, 2, 'empty',    now()),
-(3, 7, 'AMR2', 1, 3, 'occupied', now())
+(1, 7, 'TAT1', 1, 1, 'occupied', now()),
+(2, 7, 'TAT2', 1, 2, 'occupied', now()),
+(3, 7, 'TAT3', 1, 3, 'occupied', now())
 ON CONFLICT (loc_id) DO UPDATE SET
     zone_id = EXCLUDED.zone_id,
     res_id = EXCLUDED.res_id,
@@ -228,30 +238,56 @@ ON CONFLICT (loc_id) DO UPDATE SET
 -- =====================
 
 INSERT INTO trans (res_id, slot_count, max_load_kg) VALUES
-('AMR1', 1, 30.0),
-('AMR2', 1, 30.0)
+('TAT1', 1, 30.0),
+('TAT2', 1, 30.0),
+('TAT3', 1, 30.0)
 ON CONFLICT (res_id) DO UPDATE SET
     slot_count = EXCLUDED.slot_count,
     max_load_kg = EXCLUDED.max_load_kg;
 
 INSERT INTO trans_task_bat_threshold (res_id, task_type, bat_low_threshold) VALUES
-('AMR1', 'ToPP',   20),
-('AMR1', 'ToSTRG', 25),
-('AMR1', 'ToSHIP', 20),
-('AMR1', 'ToCHG',  15),
-('AMR2', 'ToPP',   20),
-('AMR2', 'ToSTRG', 25),
-('AMR2', 'ToSHIP', 20),
-('AMR2', 'ToCHG',  15)
+('TAT1', 'ToPP',   20),
+('TAT1', 'ToSTRG', 25),
+('TAT1', 'ToSHIP', 20),
+('TAT1', 'ToCHG',  15),
+('TAT2', 'ToPP',   20),
+('TAT2', 'ToSTRG', 25),
+('TAT2', 'ToSHIP', 20),
+('TAT2', 'ToCHG',  15),
+('TAT3', 'ToPP',   20),
+('TAT3', 'ToSTRG', 25),
+('TAT3', 'ToSHIP', 20),
+('TAT3', 'ToCHG',  15)
 ON CONFLICT (res_id, task_type) DO UPDATE SET
     bat_low_threshold = EXCLUDED.bat_low_threshold;
+
+INSERT INTO tat_nav_pose_master
+    (pose_id, pose_nm, zone_id, loc_id, pose_x, pose_y, pose_theta, is_active)
+VALUES
+(1, 'ToINSP', 3, NULL, -0.67,  -0.10, -1.57, TRUE),
+(2, 'ToSHIP', 6, NULL, -0.67,   0.45,  1.57, TRUE),
+(3, 'ToCAST', 1, NULL, -0.256,  0.20,  1.57, TRUE),
+(4, 'ToCHG1', 7, 1,     0.044,  0.095,  0.00, TRUE),
+(5, 'ToCHG2', 7, 2,     0.044, -0.027,  0.00, TRUE),
+(6, 'ToCHG3', 7, 3,     0.044, -0.179,  0.00, TRUE),
+(7, 'ToSTRG', 4, NULL, -0.10,  -0.465, -1.57, TRUE),
+(8, 'ToPICK', 5, NULL, -0.223, -0.465, -1.57, TRUE),
+(9, 'ToPP',   2, NULL, -0.447, -1.05,   3.14, TRUE)
+ON CONFLICT (pose_id) DO UPDATE SET
+    pose_nm = EXCLUDED.pose_nm,
+    zone_id = EXCLUDED.zone_id,
+    loc_id = EXCLUDED.loc_id,
+    pose_x = EXCLUDED.pose_x,
+    pose_y = EXCLUDED.pose_y,
+    pose_theta = EXCLUDED.pose_theta,
+    is_active = EXCLUDED.is_active;
 
 -- =====================
 -- AI MODEL MASTER
 -- =====================
 
 INSERT INTO ai_model (model_id, model_nm, model_type, target_cls, is_active, created_at) VALUES
-(1, 'YOLOv8-SmartCast-v1', 'YOLO',      NULL,  TRUE, now()),
+(1, 'YOLOv26_nano', 'YOLO',      NULL,  TRUE, now()),
 (2, 'PatchCore-CMH-v1',    'PATCHCORE', 'CMH', TRUE, now()),
 (3, 'PatchCore-RMH-v1',    'PATCHCORE', 'RMH', TRUE, now()),
 (4, 'PatchCore-EMH-v1',    'PATCHCORE', 'EMH', TRUE, now())
@@ -261,55 +297,142 @@ ON CONFLICT (model_id) DO UPDATE SET
     target_cls = EXCLUDED.target_cls,
     is_active = EXCLUDED.is_active;
 
--- =====================
--- RA MOTION MASTER
--- =====================
-
 INSERT INTO ra_motion_step
     (step_id, task_type, pattern_no, loc_id, pose_nm, step_ord, command_type,
-     j1, j2, j3, j4, j5, j6, delta_z, speed, delay_sec)
+     j1, j2, j3, j4, j5, j6, speed, delay_sec, delta_z)
 VALUES
 -- MM pattern 1
-(1,  'MM', 1, NULL, NULL, 1, 'MOVE_ANGLES',  0.0, -30.0,  60.0, 0.0, 30.0, 0.0, NULL, 50, NULL),
-(2,  'MM', 1, NULL, NULL, 2, 'MOVE_Z',       NULL, NULL, NULL, NULL, NULL, NULL, -50.0, 30, NULL),
-(3,  'MM', 1, NULL, NULL, 3, 'GRIP_CLOSE',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.5),
-(4,  'MM', 1, NULL, NULL, 4, 'MOVE_Z',       NULL, NULL, NULL, NULL, NULL, NULL,  50.0, 30, NULL),
-(5,  'MM', 1, NULL, NULL, 5, 'MOVE_ANGLES',  0.0,   0.0,   0.0, 0.0,  0.0, 0.0, NULL, 50, NULL),
+(1, 'MM', 1, NULL, NULL, 1, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(2, 'MM', 1, NULL, NULL, 2, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(3, 'MM', 1, NULL, NULL, 3, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(4, 'MM', 1, NULL, NULL, 4, 'MOVE_ANGLES', 90, 17.5, -144.8, 38, 0, 45, 50, 3, NULL),
+(5, 'MM', 1, NULL, NULL, 5, 'GRIP_CLOSE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(6, 'MM', 1, NULL, NULL, 6, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, 50),
+(7, 'MM', 1, NULL, NULL, 7, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(8, 'MM', 1, NULL, NULL, 8, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(9, 'MM', 1, NULL, NULL, 9, 'MOVE_ANGLES', 0, 0, 0, -17.31, 0, -45, 50, 1, NULL),
+(10, 'MM', 1, NULL, NULL, 10, 'MOVE_ANGLES', 0, -76.6, 0, -17.31, 0, -45, 100, 1, NULL),
+(11, 'MM', 1, NULL, NULL, 11, 'MOVE_ANGLES', 0, 0, 0, 0, 0, -45, 50, 1, NULL),
+(12, 'MM', 1, NULL, NULL, 12, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(13, 'MM', 1, NULL, NULL, 13, 'MOVE_ANGLES', 90, 25.2, -111.5, -7, 0, 45, 50, 1, NULL),
+(14, 'MM', 1, NULL, NULL, 14, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, -60),
+(15, 'MM', 1, NULL, NULL, 15, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(16, 'MM', 1, NULL, NULL, 16, 'MOVE_ANGLES', 90, 25.2, -111.5, -7, 0, 45, 50, 1, NULL),
+(17, 'MM', 1, NULL, NULL, 17, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
 -- MM pattern 2
-(6,  'MM', 2, NULL, NULL, 1, 'MOVE_ANGLES', 30.0, -30.0,  60.0, 0.0, 30.0, 0.0, NULL, 50, NULL),
-(7,  'MM', 2, NULL, NULL, 2, 'MOVE_Z',       NULL, NULL, NULL, NULL, NULL, NULL, -50.0, 30, NULL),
-(8,  'MM', 2, NULL, NULL, 3, 'GRIP_CLOSE',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.5),
-(9,  'MM', 2, NULL, NULL, 4, 'MOVE_Z',       NULL, NULL, NULL, NULL, NULL, NULL,  50.0, 30, NULL),
-(10, 'MM', 2, NULL, NULL, 5, 'MOVE_ANGLES',  0.0,   0.0,   0.0, 0.0,  0.0, 0.0, NULL, 50, NULL),
+-- pattern_2(mc)
+(18, 'MM', 2, NULL, NULL, 1, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(19, 'MM', 2, NULL, NULL, 2, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(20, 'MM', 2, NULL, NULL, 3, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(21, 'MM', 2, NULL, NULL, 4, 'MOVE_ANGLES', 90, -16, -114, 42, 0, 45, 50, 1, NULL),
+(22, 'MM', 2, NULL, NULL, 5, 'GRIP_CLOSE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(23, 'MM', 2, NULL, NULL, 6, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, 50),
+(24, 'MM', 2, NULL, NULL, 7, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(25, 'MM', 2, NULL, NULL, 8, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(26, 'MM', 2, NULL, NULL, 9, 'MOVE_ANGLES', 0, 0, 0, -17.31, 0, -45, 50, 1, NULL),
+(27, 'MM', 2, NULL, NULL, 10, 'MOVE_ANGLES', 0, -76.6, 0, -17.31, 0, -45, 100, 1, NULL),
+(28, 'MM', 2, NULL, NULL, 11, 'MOVE_ANGLES', 0, 0, 0, 0, 0, -45, 50, 1, NULL),
+(29, 'MM', 2, NULL, NULL, 12, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(30, 'MM', 2, NULL, NULL, 13, 'MOVE_ANGLES', 90, -10, -63, -17, 0, 45, 50, 1, NULL),
+(31, 'MM', 2, NULL, NULL, 14, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, -70),
+(32, 'MM', 2, NULL, NULL, 15, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(33, 'MM', 2, NULL, NULL, 16, 'MOVE_ANGLES', 90, -11.2, -63.3, -22.5, 0, 45, 50, 1, NULL),
+(34, 'MM', 2, NULL, NULL, 17, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+-- MM pattern 3
+-- pattern_3(mc)
+(35, 'MM', 3, NULL, NULL, 1, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(36, 'MM', 3, NULL, NULL, 2, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(37, 'MM', 3, NULL, NULL, 3, 'MOVE_ANGLES', 90, 0, 0, -90, 0, 45, 50, 1, NULL),
+(38, 'MM', 3, NULL, NULL, 4, 'MOVE_ANGLES', 90, -43, -69, 23, 0, 45, 50, 1, NULL),
+(39, 'MM', 3, NULL, NULL, 5, 'GRIP_CLOSE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(40, 'MM', 3, NULL, NULL, 6, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, 50),
+(41, 'MM', 3, NULL, NULL, 7, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(42, 'MM', 3, NULL, NULL, 8, 'MOVE_ANGLES', 0, 0, 0, -17.31, 0, -45, 50, 1, NULL),
+(43, 'MM', 3, NULL, NULL, 9, 'MOVE_ANGLES', 0, -76.6, 0, -17.31, 0, -45, 100, 1, NULL),
+(44, 'MM', 3, NULL, NULL, 10, 'MOVE_ANGLES', 0, 0, 0, 0, 0, -45, 50, 1, NULL),
+(45, 'MM', 3, NULL, NULL, 11, 'MOVE_ANGLES', 90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(46, 'MM', 3, NULL, NULL, 12, 'MOVE_ANGLES', 90, 0, 0, -90, 0, 45, 50, 1, NULL),
+(47, 'MM', 3, NULL, NULL, 13, 'MOVE_ANGLES', 90, -36.12, -63.28, 9.05, 0, 45, 50, 1, NULL),
+(48, 'MM', 3, NULL, NULL, 14, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, -10),
+(49, 'MM', 3, NULL, NULL, 15, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(50, 'MM', 3, NULL, NULL, 16, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, 60),
+(51, 'MM', 3, NULL, NULL, 17, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
 -- POUR
-(11, 'POUR', NULL, NULL, NULL, 1, 'MOVE_ANGLES', 45.0, -45.0, 90.0, 0.0, 45.0, 0.0, NULL, 40, NULL),
-(12, 'POUR', NULL, NULL, NULL, 2, 'WAIT',         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 5.0),
-(13, 'POUR', NULL, NULL, NULL, 3, 'MOVE_ANGLES',  0.0,   0.0,  0.0, 0.0,  0.0, 0.0, NULL, 40, NULL),
--- DM
-(14, 'DM', NULL, NULL, NULL, 1, 'MOVE_ANGLES', 0.0, -20.0, 45.0, 0.0, 20.0, 0.0, NULL, 50, NULL),
-(15, 'DM', NULL, NULL, NULL, 2, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL, -40.0, 30, NULL),
-(16, 'DM', NULL, NULL, NULL, 3, 'GRIP_OPEN',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.3),
-(17, 'DM', NULL, NULL, NULL, 4, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL,  40.0, 30, NULL),
+(52, 'POUR', NULL, NULL, NULL, 1, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(53, 'POUR', NULL, NULL, NULL, 2, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(54, 'POUR', NULL, NULL, NULL, 3, 'MOVE_ANGLES', -90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(55, 'POUR', NULL, NULL, NULL, 4, 'MOVE_ANGLES', -90, -86, 0, 90, 0, 45, 50, 1, NULL),
+(56, 'POUR', NULL, NULL, NULL, 5, 'GRIP_CLOSE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(57, 'POUR', NULL, NULL, NULL, 6, 'MOVE_ANGLES', -90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(58, 'POUR', NULL, NULL, NULL, 7, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(59, 'POUR', NULL, NULL, NULL, 8, 'MOVE_ANGLES', 0, 0, -142, 143, 1, 45, 50, 1, NULL),
+(60, 'POUR', NULL, NULL, NULL, 9, 'MOVE_ANGLES', 0, 0, -142, 143, 1, 125, 10, 10, NULL),
+(61, 'POUR', NULL, NULL, NULL, 10, 'MOVE_ANGLES', 0, 0, -142, 143, 1, 45, 50, 1, NULL),
+(62, 'POUR', NULL, NULL, NULL, 11, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(63, 'POUR', NULL, NULL, NULL, 12, 'MOVE_ANGLES', -90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(64, 'POUR', NULL, NULL, NULL, 13, 'MOVE_ANGLES', -90, -87, 0, 90, 0, 45, 50, 1, NULL),
+(65, 'POUR', NULL, NULL, NULL, 14, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(66, 'POUR', NULL, NULL, NULL, 15, 'MOVE_ANGLES', -90, 0, 0, 0, 0, 45, 50, 1, NULL),
+(67, 'POUR', NULL, NULL, NULL, 16, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+-- DEMOLDING
+(68, 'DM', NULL, NULL, NULL, 1, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(69, 'DM', NULL, NULL, NULL, 2, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(70, 'DM', NULL, NULL, NULL, 3, 'MOVE_ANGLES', 0, 0, 0, -17.31, 0, 45, 50, 1, NULL),
+(71, 'DM', NULL, NULL, NULL, 4, 'MOVE_ANGLES', 0, -76.6, 0, -17.31, 0, 45, 100, 1, NULL),
+(72, 'DM', NULL, NULL, NULL, 5, 'MOVE_Z', NULL, NULL, NULL, NULL, NULL, NULL, 30, 2, -10),
+(73, 'DM', NULL, NULL, NULL, 6, 'GRIP_CLOSE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0.5, NULL),
+(74, 'DM', NULL, NULL, NULL, 7, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
+(75, 'DM', NULL, NULL, NULL, 8, 'MOVE_ANGLES', -30.9, -60.3, 0, 24, 0, 45, 50, 1, NULL),
+(76, 'DM', NULL, NULL, NULL, 9, 'GRIP_OPEN', NULL, NULL, NULL, NULL, NULL, NULL, 100, 1, NULL),
+(77, 'DM', NULL, NULL, NULL, 10, 'MOVE_ANGLES', 0, 0, 0, 0, 0, 45, 50, 1, NULL),
 -- PA_GP to storage loc 1
-(18, 'PA_GP', NULL, 1, 'SLOT_PATH', 1, 'MOVE_ANGLES', 10.0, -40.0, 80.0, 0.0, 40.0, 0.0, NULL, 60, NULL),
-(19, 'PA_GP', NULL, 1, 'SLOT_PATH', 2, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL, -45.0, 30, NULL),
-(20, 'PA_GP', NULL, 1, 'SLOT_PATH', 3, 'GRIP_OPEN',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.3),
-(21, 'PA_GP', NULL, 1, 'SLOT_PATH', 4, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL,  45.0, 30, NULL),
--- PA_DP
-(22, 'PA_DP', NULL, NULL, 'DEFECT_DROP', 1, 'MOVE_ANGLES', -45.0, -30.0, 60.0, 0.0, 30.0, 0.0, NULL, 40, NULL),
-(23, 'PA_DP', NULL, NULL, 'DEFECT_DROP', 2, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL, -30.0, 30, NULL),
-(24, 'PA_DP', NULL, NULL, 'DEFECT_DROP', 3, 'GRIP_OPEN',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.3),
-(25, 'PA_DP', NULL, NULL, 'DEFECT_DROP', 4, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL,  30.0, 30, NULL),
+(78, 'PA_GP', NULL, NULL, 'HOME',         1, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(79, 'PA_GP', NULL, NULL, 'HOME',         2, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(80, 'PA_GP', NULL, NULL, 'TAT_HANDOFF',  3, 'MOVE_ANGLES',  90, -20.39, -36.56, -7.99, 0, 45, 30, 1, NULL),
+(81, 'PA_GP', NULL, NULL, 'TAT_HANDOFF',  4, 'GRIP_CLOSE',   NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(82, 'PA_GP', NULL, NULL, 'HOME',         5, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(83, 'PA_GP', NULL, 1, 'SLOT_PATH',        6, 'MOVE_ANGLES',   4, 0, 0, 0, 0, 45,  50, 2, NULL),
+(84, 'PA_GP', NULL, 1, 'SLOT_PATH',        7, 'MOVE_ANGLES',   4, 61.5, -150, 93.2, 0, 45, 30, 2, NULL),
+(85, 'PA_GP', NULL, 1, 'SLOT_PATH',        8, 'MOVE_ANGLES',   6, 61.5, -150, 70, 0, 45, 30, 2, NULL),
+(86, 'PA_GP', NULL, 1, 'SLOT_PATH',        9, 'MOVE_ANGLES',   6, 8.3, -127.3, 93, 0, 45, 30, 2, NULL),
+(87, 'PA_GP', NULL, 1, 'SLOT_PATH',       10, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(88, 'PA_GP', NULL, 1, 'SLOT_PATH',       11, 'MOVE_ANGLES',   6, 8.3, -127.3, 93, 0, 45, 30, 2, NULL),
+(89, 'PA_GP', NULL, 1, 'SLOT_PATH',       12, 'MOVE_ANGLES',   6, 61.5, -150, 70, 0, 45, 50, 2, NULL),
+(90, 'PA_GP', NULL, 1, 'SLOT_PATH',       13, 'MOVE_ANGLES',   4, 61.5, -150, 93.2, 0, 45, 50, 2, NULL),
+(91, 'PA_GP', NULL, 1, 'SLOT_PATH',       14, 'MOVE_ANGLES',   4, 0, 0, 0, 0, 45, 50, 2, NULL),
+(92, 'PA_GP', NULL, NULL, 'HOME',         15, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
 -- PICK from storage loc 1
-(26, 'PICK', NULL, 1, 'AMR_HANDOFF', 1, 'MOVE_ANGLES', 20.0, -50.0, 100.0, 0.0, 50.0, 0.0, NULL, 50, NULL),
-(27, 'PICK', NULL, 1, 'AMR_HANDOFF', 2, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL, -40.0, 30, NULL),
-(28, 'PICK', NULL, 1, 'AMR_HANDOFF', 3, 'GRIP_CLOSE',  NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.5),
-(29, 'PICK', NULL, 1, 'AMR_HANDOFF', 4, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL,  40.0, 30, NULL),
+(93, 'PICK', NULL, NULL, 'HOME',          1, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(94, 'PICK', NULL, NULL, 'HOME',          2, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(95, 'PICK', NULL, 1, 'SLOT_PATH',         3, 'MOVE_ANGLES',   4, 0, 0, 0, 0, 45,  50, 2, NULL),
+(96, 'PICK', NULL, 1, 'SLOT_PATH',         4, 'MOVE_ANGLES',   4, 61.5, -150, 93.2, 0, 45, 30, 2, NULL),
+(97, 'PICK', NULL, 1, 'SLOT_PATH',         5, 'MOVE_ANGLES',   6, 61.5, -150, 70, 0, 45, 30, 2, NULL),
+(98, 'PICK', NULL, 1, 'SLOT_PATH',         6, 'MOVE_ANGLES',   6, 8.3, -127.3, 93, 0, 45, 30, 2, NULL),
+(99, 'PICK', NULL, 1, 'SLOT_PATH',         7, 'GRIP_CLOSE',   NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(100, 'PICK', NULL, 1, 'SLOT_PATH',        8, 'MOVE_ANGLES',   6, 8.3, -127.3, 93, 0, 45, 30, 2, NULL),
+(101, 'PICK', NULL, 1, 'SLOT_PATH',        9, 'MOVE_ANGLES',   6, 61.5, -150, 70, 0, 45, 50, 2, NULL),
+(102, 'PICK', NULL, 1, 'SLOT_PATH',       10, 'MOVE_ANGLES',   4, 61.5, -150, 93.2, 0, 45, 50, 2, NULL),
+(103, 'PICK', NULL, 1, 'SLOT_PATH',       11, 'MOVE_ANGLES',   4, 0, 0, 0, 0, 45, 50, 2, NULL),
+(104, 'PICK', NULL, NULL, 'TAT_HANDOFF',  12, 'MOVE_ANGLES',  90, -20.39, -36.56, -7.99, 0, 45, 30, 2, NULL),
+(105, 'PICK', NULL, NULL, 'TAT_HANDOFF',  13, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(106, 'PICK', NULL, NULL, 'HOME',         14, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+-- PA_DP
+(107, 'PA_DP', NULL, NULL, 'HOME',         1, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(108, 'PA_DP', NULL, NULL, 'HOME',         2, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(109, 'PA_DP', NULL, NULL, 'TAT_HANDOFF',  3, 'MOVE_ANGLES',  90, -20.39, -36.56, -7.99, 0, 45, 30, 1, NULL),
+(110, 'PA_DP', NULL, NULL, 'TAT_HANDOFF',  4, 'GRIP_CLOSE',   NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(111, 'PA_DP', NULL, NULL, 'HOME',         5, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(112, 'PA_DP', NULL, NULL, 'DEFECT_HOVER', 6, 'MOVE_ANGLES', -110, 0, 0, 0, 0, 45, 50, 3, NULL),
+(113, 'PA_DP', NULL, NULL, 'DEFECT_DROP',  7, 'MOVE_ANGLES', -110, -70, 0, 0, 0, 45, 30, 1, NULL),
+(114, 'PA_DP', NULL, NULL, 'DEFECT_DROP',  8, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(115, 'PA_DP', NULL, NULL, 'DEFECT_HOVER', 9, 'MOVE_ANGLES', -110, 0, 0, 0, 0, 45, 50, 3, NULL),
+(116, 'PA_DP', NULL, NULL, 'HOME',        10, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
 -- SHIP handoff path
-(30, 'SHIP', NULL, 1, 'AMR_HANDOFF', 1, 'MOVE_ANGLES', 30.0, -60.0, 120.0, 0.0, 60.0, 0.0, NULL, 50, NULL),
-(31, 'SHIP', NULL, 1, 'AMR_HANDOFF', 2, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL, -40.0, 30, NULL),
-(32, 'SHIP', NULL, 1, 'AMR_HANDOFF', 3, 'GRIP_OPEN',   NULL, NULL, NULL, NULL, NULL, NULL,  NULL, NULL, 0.3),
-(33, 'SHIP', NULL, 1, 'AMR_HANDOFF', 4, 'MOVE_Z',      NULL, NULL, NULL, NULL, NULL, NULL,  40.0, 30, NULL)
+(117, 'SHIP', NULL, NULL, 'HOME',          1, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL),
+(118, 'SHIP', NULL, NULL, 'HOME',          2, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(119, 'SHIP', NULL, NULL, 'TAT_HANDOFF',   3, 'MOVE_ANGLES',  90, -20.39, -36.56, -7.99, 0, 45, 30, 2, NULL),
+(120, 'SHIP', NULL, NULL, 'TAT_HANDOFF',   4, 'GRIP_OPEN',    NULL, NULL, NULL, NULL, NULL, NULL, 50, 1, NULL),
+(121, 'SHIP', NULL, NULL, 'HOME',          5, 'MOVE_ANGLES',  90, 0, 0, 0, 0, 45,  50, 1, NULL)
 ON CONFLICT (step_id) DO UPDATE SET
     task_type = EXCLUDED.task_type,
     pattern_no = EXCLUDED.pattern_no,
@@ -327,6 +450,12 @@ ON CONFLICT (step_id) DO UPDATE SET
     speed = EXCLUDED.speed,
     delay_sec = EXCLUDED.delay_sec;
 
+UPDATE ra_motion_step
+SET tool_type = CASE
+    WHEN task_type IN ('PA_GP', 'PA_DP', 'PICK', 'SHIP') THEN 'PAT'
+    ELSE 'MAT'
+END;
+
 -- =====================
 -- RESET SEQUENCES
 -- =====================
@@ -340,6 +469,7 @@ SELECT setval('equip_load_spec_load_spec_id_seq',(SELECT MAX(load_spec_id) FROM 
 SELECT setval('chg_location_stat_loc_id_seq',    (SELECT MAX(loc_id)       FROM chg_location_stat));
 SELECT setval('strg_location_stat_loc_id_seq',   (SELECT MAX(loc_id)       FROM strg_location_stat));
 SELECT setval('ship_location_stat_loc_id_seq',   (SELECT MAX(loc_id)       FROM ship_location_stat));
+SELECT setval('tat_nav_pose_master_pose_id_seq', (SELECT MAX(pose_id)      FROM tat_nav_pose_master));
 SELECT setval('ai_model_model_id_seq',           (SELECT MAX(model_id)     FROM ai_model));
 SELECT setval('ra_motion_step_step_id_seq',      (SELECT MAX(step_id)      FROM ra_motion_step));
 
@@ -351,6 +481,7 @@ UNION ALL SELECT 'category',             COUNT(*) FROM category
 UNION ALL SELECT 'product',              COUNT(*) FROM product
 UNION ALL SELECT 'product_option',       COUNT(*) FROM product_option
 UNION ALL SELECT 'pp_options',           COUNT(*) FROM pp_options
+UNION ALL SELECT 'pattern_master',       COUNT(*) FROM pattern_master
 UNION ALL SELECT 'zone',                 COUNT(*) FROM zone
 UNION ALL SELECT 'res',                  COUNT(*) FROM res
 UNION ALL SELECT 'equip',               COUNT(*) FROM equip
@@ -360,6 +491,7 @@ UNION ALL SELECT 'strg_location_stat',   COUNT(*) FROM strg_location_stat
 UNION ALL SELECT 'ship_location_stat',   COUNT(*) FROM ship_location_stat
 UNION ALL SELECT 'trans',                COUNT(*) FROM trans
 UNION ALL SELECT 'trans_task_bat_threshold', COUNT(*) FROM trans_task_bat_threshold
+UNION ALL SELECT 'tat_nav_pose_master',   COUNT(*) FROM tat_nav_pose_master
 UNION ALL SELECT 'ai_model',             COUNT(*) FROM ai_model
 UNION ALL SELECT 'ra_motion_step',       COUNT(*) FROM ra_motion_step
 ORDER BY table_name;

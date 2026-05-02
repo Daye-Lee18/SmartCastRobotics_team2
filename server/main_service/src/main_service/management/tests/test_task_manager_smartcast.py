@@ -55,7 +55,7 @@ def test_start_production_single_happy(task_manager, postgresql_with_smartcast_s
     assert result.ord_id == ord_id
     assert result.item_id > 0
     assert result.equip_task_txn_id > 0
-    assert "RA1/MM" in result.message
+    assert "PAT/MM" in result.message
 
 
 def test_start_production_single_ord_not_found(task_manager, postgresql_smartcast_empty):

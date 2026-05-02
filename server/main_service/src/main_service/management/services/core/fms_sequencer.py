@@ -300,7 +300,7 @@ def _process_trans_tasks(db: Session) -> None:
     """
     for t in db.query(TransTaskTxn).filter(TransTaskTxn.txn_stat == "QUE").all():
         if not t.trans_id:
-            rid = _pick_res(db, "AMR")
+            rid = _pick_res(db, "TAT")
             if rid:
                 t.trans_id = rid
         if t.trans_id:
@@ -366,8 +366,8 @@ def _process_trans_tasks(db: Session) -> None:
                 )
             stat.cur_stat = nxt
             stat.updated_at = datetime.now()
-            # ROS2 publish — AMR 전용 토픽
-            publish_state("AMR", t.trans_id, nxt, t.task_type)
+            # ROS2 publish — TAT 전용 토픽
+            publish_state("TAT", t.trans_id, nxt, t.task_type)
         if stat.cur_stat == "SUCC":
             t.txn_stat = "SUCC"
             t.end_at = datetime.now()

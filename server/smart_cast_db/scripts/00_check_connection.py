@@ -17,12 +17,14 @@ MASTER_TABLES = [
     "product",
     "product_option",
     "pp_options",
+    "pattern_master",
     "zone",
     "res",
     "equip",
     "strg_location_stat",
     "ship_location_stat",
     "trans",
+    "tat_nav_pose_master",
 ]
 
 

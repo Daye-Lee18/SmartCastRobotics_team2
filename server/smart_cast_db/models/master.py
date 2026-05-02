@@ -1,5 +1,5 @@
 """Master 데이터 모델 — Category, Product, ProductOption, PpOption,
-Zone, Pattern, Res, Equip, EquipLoadSpec, Trans.
+Zone, PatternMaster, RaMotionStep, Res, Equip, EquipLoadSpec, Trans.
 
 마스터 데이터 = 트랜잭션이 참조하는 정적 정의. seed 로 채워지고 자주 바뀌지 않음.
 """
@@ -9,6 +9,7 @@ from __future__ import annotations
 from ._base import (
     SCHEMA,
     Base,
+    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -17,6 +18,7 @@ from ._base import (
     String,
     relationship,
 )
+from sqlalchemy import text
 
 # -----------------------------------------------------------------------------
 # 표준 제품 (Category / Product / ProductOption / PpOption)
@@ -77,7 +79,7 @@ class PpOption(Base):
 
 
 # -----------------------------------------------------------------------------
-# Operator (zone, pattern)
+# Operator (zone, pattern master)
 # -----------------------------------------------------------------------------
 
 
@@ -97,17 +99,21 @@ class Zone(Base):
     zone_nm = Column(String, unique=True)
 
 
-class Pattern(Base):
-    """패턴 위치 (1-6번, 발주 1:1)."""
+class PatternMaster(Base):
+    """모션 패턴 마스터 (MM pattern 1~3)."""
 
-    __tablename__ = "pattern"
+    __tablename__ = "pattern_master"
     __table_args__ = (
-        CheckConstraint("ptn_loc BETWEEN 1 AND 6", name="chk_ptn_loc_range"),
+        CheckConstraint("ptn_id BETWEEN 1 AND 3", name="chk_ptn_id_range"),
+        CheckConstraint("task_type IN ('MM')", name="chk_pattern_task_type"),
         {"schema": SCHEMA},
     )
 
-    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
-    ptn_loc = Column(Integer)
+    ptn_id = Column(Integer, primary_key=True)
+    ptn_nm = Column(String, nullable=False, unique=True)
+    task_type = Column(String, nullable=False)
+    description = Column(String)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
 
 
 # -----------------------------------------------------------------------------
@@ -116,11 +122,11 @@ class Pattern(Base):
 
 
 class Res(Base):
-    """전체 설비 마스터 (RA/CONV/AMR)."""
+    """전체 설비 마스터 (RA/CONV/TAT)."""
 
     __tablename__ = "res"
     __table_args__ = (
-        CheckConstraint("res_type IN ('RA', 'CONV', 'AMR')", name="chk_res_type"),
+        CheckConstraint("res_type IN ('RA', 'CONV', 'TAT')", name="chk_res_type"),
         {"schema": SCHEMA},
     )
 
@@ -156,7 +162,7 @@ class EquipLoadSpec(Base):
 
 
 class Trans(Base):
-    """이송 자원 (AMR)."""
+    """이송 자원 (TAT)."""
 
     __tablename__ = "trans"
     __table_args__ = ({"schema": SCHEMA},)
@@ -166,3 +172,46 @@ class Trans(Base):
     max_load_kg = Column(Numeric)
 
     res = relationship("Res")
+
+
+class RaMotionStep(Base):
+    """RA 모션 시퀀스 정의.
+
+    PAT/MAT 공통 테이블로 쓰되, tool_type 으로 실제 툴을 구분한다.
+    """
+
+    __tablename__ = "ra_motion_step"
+    __table_args__ = (
+        CheckConstraint(
+            "task_type IN ('MM', 'POUR', 'DM', 'PA_GP', 'PA_DP', 'PICK', 'SHIP')",
+            name="chk_ra_motion_task_type",
+        ),
+        CheckConstraint("tool_type IN ('PAT', 'MAT')", name="chk_ra_motion_tool_type"),
+        CheckConstraint(
+            "command_type IN ('MOVE_ANGLES', 'MOVE_Z', 'GRIP_OPEN', 'GRIP_CLOSE', 'WAIT')",
+            name="chk_ra_motion_command_type",
+        ),
+        CheckConstraint(
+            "pose_nm IN ('HOME', 'TAT_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH')",
+            name="chk_ra_motion_pose_nm",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    step_id = Column(Integer, primary_key=True, autoincrement=True)
+    task_type = Column(String, nullable=False)
+    tool_type = Column(String, nullable=False, server_default=text("'MAT'"))
+    pattern_no = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"))
+    loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_location_stat.loc_id"))
+    pose_nm = Column(String)
+    step_ord = Column(Integer, nullable=False)
+    command_type = Column(String, nullable=False)
+    j1 = Column(Numeric)
+    j2 = Column(Numeric)
+    j3 = Column(Numeric)
+    j4 = Column(Numeric)
+    j5 = Column(Numeric)
+    j6 = Column(Numeric)
+    delta_z = Column(Numeric)
+    speed = Column(Integer)
+    delay_sec = Column(Numeric)

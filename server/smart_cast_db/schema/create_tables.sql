@@ -55,7 +55,7 @@ CREATE TABLE pp_options (
 
 CREATE TABLE res (
     res_id    VARCHAR(10)  PRIMARY KEY,
-    res_type  VARCHAR      NOT NULL CHECK (res_type IN ('RA', 'CONV', 'AMR')),
+    res_type  VARCHAR      NOT NULL CHECK (res_type IN ('RA', 'CONV', 'TAT')),
     model_nm  VARCHAR      NOT NULL
 );
 
@@ -121,9 +121,18 @@ CREATE TABLE ord_pp_map (
     UNIQUE (ord_id, pp_id)
 );
 
-CREATE TABLE pattern (
-    ptn_id  INT  PRIMARY KEY REFERENCES ord(ord_id),
-    ptn_loc INT  CHECK (ptn_loc BETWEEN 1 AND 6)
+CREATE TABLE pattern_master (
+    ptn_id      INT  PRIMARY KEY CHECK (ptn_id BETWEEN 1 AND 3),
+    ptn_nm      VARCHAR NOT NULL UNIQUE,
+    task_type   VARCHAR NOT NULL CHECK (task_type IN ('MM')),
+    description VARCHAR,
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE ord_pattern (
+    ord_id      INT  PRIMARY KEY REFERENCES ord(ord_id),
+    ptn_id      INT  NOT NULL REFERENCES pattern_master(ptn_id),
+    assigned_at TIMESTAMP DEFAULT now()
 );
 
 CREATE TABLE ord_txn (
@@ -212,6 +221,23 @@ CREATE TABLE ship_location_stat (
     stored_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE tat_nav_pose_master (
+    pose_id     SERIAL       PRIMARY KEY,
+    pose_nm     VARCHAR      NOT NULL UNIQUE CHECK (pose_nm IN (
+        'ToINSP', 'ToSHIP', 'ToCAST', 'ToCHG1', 'ToCHG2', 'ToCHG3', 'ToSTRG', 'ToPICK', 'ToPP'
+    )),
+    zone_id     INT          NOT NULL REFERENCES zone(zone_id),
+    loc_id      INT          REFERENCES chg_location_stat(loc_id),
+    pose_x      DECIMAL      NOT NULL,
+    pose_y      DECIMAL      NOT NULL,
+    pose_theta  DECIMAL      NOT NULL,
+    is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
+    CONSTRAINT chk_tat_nav_pose_chg_loc CHECK (
+        (pose_nm LIKE 'ToCHG%' AND loc_id IS NOT NULL)
+        OR (pose_nm NOT LIKE 'ToCHG%' AND loc_id IS NULL)
+    )
+);
+
 -- =====================
 -- RA MOTION STEP
 -- =====================
@@ -221,10 +247,11 @@ CREATE TABLE ra_motion_step (
     task_type     VARCHAR  NOT NULL CHECK (task_type IN (
         'MM', 'POUR', 'DM', 'PA_GP', 'PA_DP', 'PICK', 'SHIP'
     )),
-    pattern_no    INT      CHECK (pattern_no BETWEEN 1 AND 6),
+    tool_type     VARCHAR  NOT NULL DEFAULT 'MAT' CHECK (tool_type IN ('PAT', 'MAT')),
+    pattern_no    INT      REFERENCES pattern_master(ptn_id),
     loc_id        INT      REFERENCES strg_location_stat(loc_id),
     pose_nm       VARCHAR  CHECK (pose_nm IN (
-        'HOME', 'AMR_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH'
+        'HOME', 'TAT_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH'
     )),
     step_ord      INT      NOT NULL,
     command_type  VARCHAR  NOT NULL CHECK (command_type IN (

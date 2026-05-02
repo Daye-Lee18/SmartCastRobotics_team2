@@ -65,7 +65,7 @@ def _truncate_all() -> None:
 
 
 def _seed_user_and_res() -> None:
-    """공통 시드: customer user_id=1 + RA1 res (Item.cur_res / EquipTaskTxn.res_id FK)."""
+    """공통 시드: customer user_id=1 + PAT res (Item.cur_res / EquipTaskTxn.res_id FK)."""
     from smart_cast_db.database import SessionLocal
     from smart_cast_db.models import Res, UserAccount
 
@@ -79,7 +79,7 @@ def _seed_user_and_res() -> None:
                 email="test@example.com",
             )
         )
-        db.add(Res(res_id="RA1", res_type="RA", model_nm="TEST-RA"))
+        db.add(Res(res_id="PAT", res_type="RA", model_nm="TEST-RA"))
         db.commit()
 
 

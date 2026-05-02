@@ -1,6 +1,6 @@
-"""Phase 0-1: 스키마 생성 + 테이블 생성 (처음 한 번만).
+"""Phase 0-1: 스키마 초기화 + 테이블 생성.
 
-DB: CREATE SCHEMA IF NOT EXISTS + schema/create_tables.sql 실행
+DB: DROP SCHEMA CASCADE + CREATE SCHEMA + schema/create_tables.sql 실행
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ import pathlib
 import sys
 
 import _db
+from psycopg import sql
 
 _SQL = pathlib.Path(__file__).parent.parent / "schema" / "create_tables.sql"
 
@@ -39,10 +40,13 @@ def main() -> int:
 
         with psycopg.connect(url, **connect_kwargs) as conn:
             cur = conn.cursor()
-            cur.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
-            print(f"스키마 '{schema}' 확인/생성 완료")
+            cur.execute(sql.SQL("DROP SCHEMA IF EXISTS {} CASCADE").format(sql.Identifier(schema)))
+            print(f"스키마 '{schema}' 기존 객체 삭제 완료")
 
-            cur.execute(f"SET search_path = {schema}")
+            cur.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
+            print(f"스키마 '{schema}' 생성 완료")
+
+            cur.execute(sql.SQL("SET search_path TO {}").format(sql.Identifier(schema)))
             cur.execute(_SQL.read_text())
             print(f"테이블 생성 완료  ({_SQL.name})")
 

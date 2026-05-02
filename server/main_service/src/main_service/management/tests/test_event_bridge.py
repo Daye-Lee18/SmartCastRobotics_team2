@@ -326,7 +326,7 @@ def test_event_payload_fields_passed_through(bridge):
         txn_id=42,
         ord_id=99,
         item_id=7,
-        resource_id="RA1",
+        resource_id="PAT",
         payload={"error_code": "E001", "reason": "grip_fail"},
     )
     bridge.publish(e)
@@ -335,7 +335,7 @@ def test_event_payload_fields_passed_through(bridge):
     assert captured["txn_id"] == 42
     assert captured["ord_id"] == 99
     assert captured["item_id"] == 7
-    assert captured["resource_id"] == "RA1"
+    assert captured["resource_id"] == "PAT"
     assert captured["payload"] == {"error_code": "E001", "reason": "grip_fail"}
 
 
