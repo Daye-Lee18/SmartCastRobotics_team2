@@ -1,6 +1,8 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from app.clients.management import ManagementClient, ManagementUnavailable
+from smart_cast_db.database import get_db
+from smart_cast_db.models import EquipStat, EquipTaskTxn, Item, Ord, OrdStat, Pattern
 from app.schemas.schemas import ProductionStartRequest
 
 router = APIRouter(prefix="/api/production", tags=["production"])

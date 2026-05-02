@@ -166,20 +166,20 @@ class TransOut(_ORM):
 
 
 # =====================
-# PATTERN (핑크 GUI #3)
+# ORD PATTERN (핑크 GUI #3)
 # =====================
 
 
-class PatternIn(BaseModel):
-    """패턴 등록 — 발주 1:1, 위치 1-6."""
+class OrdPatternIn(BaseModel):
+    """발주↔패턴 1:1 등록 요청."""
 
-    ptn_id: int  # = ord_id
-    ptn_loc: int = Field(ge=1, le=6)
+    ord_id: int
+    ptn_id: int = Field(ge=1, le=3)
 
 
-class PatternOut(_ORM):
+class OrdPatternOut(_ORM):
+    ord_id: int
     ptn_id: int
-    ptn_loc: int
 
 
 # =====================
@@ -190,9 +190,6 @@ class PatternOut(_ORM):
 class ItemOut(_ORM):
     item_id: int
     ord_id: int
-    flow_stat: str | None = None
-    zone_nm: str | None = None
-    result: bool | None = None
     equip_task_type: str | None = None
     trans_task_type: str | None = None
     cur_stat: str | None = None
@@ -230,8 +227,6 @@ class EquipStatOut(_ORM):
 
 
 class TransTaskTxnOut(_ORM):
-    txn_id: int | None = None
-    res_id: str | None = None
     trans_task_txn_id: int
     trans_id: str | None = None
     task_type: str | None = None
@@ -249,8 +244,7 @@ class TransStatOut(_ORM):
     item_id: int | None = None
     cur_stat: str | None = None
     battery_pct: int | None = None
-    cur_trans_coord_id: int | None = None
-    cur_zone_type: str | None = None
+    cur_zone_type: int | None = None
     updated_at: datetime | None = None
 
 

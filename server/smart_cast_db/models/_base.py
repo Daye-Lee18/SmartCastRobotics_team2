@@ -11,12 +11,14 @@ from __future__ import annotations
 import os as _os
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -42,10 +44,12 @@ __all__ = [
     "Date",
     "DateTime",
     "ForeignKey",
+    "Index",
     "Integer",
     "Numeric",
     "String",
     "UniqueConstraint",
     "func",
     "relationship",
+    "BigInteger",
 ]

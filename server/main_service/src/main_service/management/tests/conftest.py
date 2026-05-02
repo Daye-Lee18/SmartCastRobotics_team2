@@ -66,7 +66,7 @@ def _truncate_all() -> None:
 
 
 def _seed_user_and_res() -> None:
-    """공통 시드: customer user_id=1 + RA1 res (초기 equip_task_txn.res_id 참조용)."""
+    """공통 시드: customer user_id=1 + PAT res (Item.cur_res / EquipTaskTxn.res_id FK)."""
     from smart_cast_db.database import SessionLocal
     from smart_cast_db.models import Res, UserAccount
 
@@ -81,7 +81,7 @@ def _seed_user_and_res() -> None:
                 password="pw",
             )
         )
-        db.add(Res(res_id="RA1", res_type="RA", model_nm="TEST-RA"))
+        db.add(Res(res_id="PAT", res_type="RA", model_nm="TEST-RA"))
         db.commit()
 
 

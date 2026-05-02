@@ -31,12 +31,12 @@ def pattern_1(mc):
     grip_open(mc)
 
     move_angles(mc, [90,0,0,0,0,45])
-    move_angles(mc, [90,17.5,-144.8,38,0,45])
+    move_angles(mc, [90,17.5,-144.8,38,0,45]) # 4 
 
-    grip_close(mc)
-    move_z(mc, +50)
+    grip_close(mc) # 5 
+    move_z(mc, +50) # 6
 
-    move_angles(mc, [90,0,0,0,0,45])
+    move_angles(mc, [90,0,0,0,0,45]) # 7
     move_angles(mc, [0,0,0,0,0,45])
 
     move_angles(mc, [0,0,0,-17.31,0,-45])

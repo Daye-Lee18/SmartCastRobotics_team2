@@ -29,9 +29,9 @@ from smart_cast_db.models import (
     OrdDetail,
     OrdLog,
     OrdPpMap,
+    OrdPattern,
     OrdStat,
     OrdTxn,
-    Pattern,
     PpOption,
     Product,
     UserAccount,
@@ -267,28 +267,28 @@ _PP_ID_TO_NM: dict[str, str] = {
 }
 
 
-# 자동 패턴 위치 매핑 — frontend product_id 첫 글자 기준
-# CLAUDE.md (2026-04-27): 카테고리 → ptn_loc 자동 결정. 운영자 수동 입력 폐지.
-#   R-* (원형 round)   → ptn_loc=1
-#   S-* (사각 square)  → ptn_loc=2
-#   O-* (타원형 oval)  → ptn_loc=3
+# 자동 패턴 매핑 — frontend product_id 첫 글자 기준
+# CLAUDE.md (2026-04-27): 카테고리 → ptn_id 자동 결정. 운영자 수동 입력 폐지.
+#   R-* (원형 round)   → ptn_id=1
+#   S-* (사각 square)  → ptn_id=2
+#   O-* (타원형 oval)  → ptn_id=3
 # 4-6번 위치는 사용 안 함 (확장 여유).
-_CATEGORY_PREFIX_TO_PTN_LOC: dict[str, int] = {
+_CATEGORY_PREFIX_TO_PTN_ID: dict[str, int] = {
     "R": 1,  # Round
     "S": 2,  # Square
     "O": 3,  # Oval
 }
 
 
-def derive_ptn_loc(product_id: str | None) -> int | None:
-    """frontend product_id ('R-D450', 'S-400', 'O-500' 등) → ptn_loc (1/2/3).
+def derive_ptn_id(product_id: str | None) -> int | None:
+    """frontend product_id ('R-D450', 'S-400', 'O-500' 등) → ptn_id (1/2/3).
 
-    매핑 없는 ID 는 None 반환 → 호출자가 Pattern row 생성 스킵.
+    매핑 없는 ID 는 None 반환 → 호출자가 OrdPattern row 생성 스킵.
     """
     if not product_id:
         return None
     prefix = product_id.strip()[:1].upper()
-    return _CATEGORY_PREFIX_TO_PTN_LOC.get(prefix)
+    return _CATEGORY_PREFIX_TO_PTN_ID.get(prefix)
 
 
 @router.post("/customer", response_model=CustomerOrderResponse, status_code=201)
@@ -352,13 +352,13 @@ def create_customer_order(
         if pp:
             db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp.pp_id))
 
-    # 5. 자동 패턴 위치 등록 — 카테고리에서 ptn_loc 결정 (운영자 수동 입력 폐지).
+    # 5. 자동 패턴 등록 — 카테고리에서 ptn_id 결정 (운영자 수동 입력 폐지).
     # frontend product_id (예: 'R-D450') 첫 글자로 카테고리 판단:
-    #   R → ptn_loc 1 (원형), S → 2 (사각), O → 3 (타원형)
-    # 매핑 실패 시 Pattern row 생성 안 함 (Pattern 미등록 → 생산 시작 차단).
-    ptn_loc = derive_ptn_loc(d0.product_id)
-    if ptn_loc is not None:
-        db.add(Pattern(ptn_id=new_ord.ord_id, ptn_loc=ptn_loc))
+    #   R → ptn_id 1 (원형), S → 2 (사각), O → 3 (타원형)
+    # 매핑 실패 시 OrdPattern row 생성 안 함 (패턴 미등록 → 생산 시작 차단).
+    ptn_id = derive_ptn_id(d0.product_id)
+    if ptn_id is not None:
+        db.add(OrdPattern(ord_id=new_ord.ord_id, ptn_id=ptn_id))
 
     # 6. 초기 상태 RCVD
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))

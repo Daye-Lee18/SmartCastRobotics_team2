@@ -3,7 +3,6 @@
 본 파일은 backend/scripts/seed_masters_v2.sql 와 동일 효과를 SQLAlchemy ORM 으로 수행.
 lifespan 에서 매 부팅 시 호출되어도 ON CONFLICT 또는 존재 검사로 중복 방지.
 
-레거시 mock 데이터 (orders/items 200건 등) 는 backend/app/seed_legacy.py 로 이동.
 신규 schema 에서는 fresh start 정책 (사용자 결정 2026-04-19) — 트랜잭션 데이터 일체 미삽입.
 """
 
@@ -69,12 +68,12 @@ def _seed_zone(db: Session) -> None:
 
 def _seed_res(db: Session) -> None:
     rows = [
-        ("RA1", "RA", "JetCobot 280"),
-        ("RA2", "RA", "JetCobot 280"),
-        ("RA3", "RA", "JetCobot 280"),
-        ("CONV1", "CONV", "ESP32 Conveyor v5"),
-        ("AMR1", "AMR", "TurtleBot3 Burger"),
-        ("AMR2", "AMR", "TurtleBot3 Burger"),
+        ("PAT",   "RA",   "JetCobot 280 CAST"),
+        ("MAT",   "RA",   "JetCobot 280 STRG"),
+        ("CONV1", "CONV", "ESP32 Conveyor v5 INSP"),
+        ("TAT1",  "TAT",  "PinkyPro"),
+        ("TAT2",  "TAT",  "PinkyPro"),
+        ("TAT3",  "TAT",  "PinkyPro"),
     ]
     for rid, rtype, model in rows:
         if not db.get(Res, rid):
@@ -85,9 +84,8 @@ def _seed_equip(db: Session) -> None:
     db.flush()  # zone/res 가 db 에 보이도록
     by_zone = {z.zone_nm: z.zone_id for z in db.query(Zone).all()}
     rows = [
-        ("RA1", "CAST"),
-        ("RA2", "STRG"),
-        ("RA3", "SHIP"),
+        ("PAT",   "CAST"),
+        ("MAT",   "STRG"),
         ("CONV1", "INSP"),
     ]
     for rid, zname in rows:
@@ -97,8 +95,9 @@ def _seed_equip(db: Session) -> None:
 
 def _seed_trans(db: Session) -> None:
     rows = [
-        ("AMR1", 1, 30.0),
-        ("AMR2", 1, 30.0),
+        ("TAT1", 1, 30.0),
+        ("TAT2", 1, 30.0),
+        ("TAT3", 1, 30.0),
     ]
     for rid, slots, kg in rows:
         if not db.get(Trans, rid):

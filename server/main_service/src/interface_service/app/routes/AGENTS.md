@@ -20,18 +20,12 @@ FastAPI REST 라우트 핸들러 — smartcast v2 엔드포인트.
 | `websocket.py` | WebSocket 실시간 업데이트 |
 | `debug.py` | 개발 전용 디버그 엔드포인트 (APP_ENV=development) |
 
-## Subdirectories
-
-| Directory | Purpose |
-|-----------|---------|
-| `legacy/` | 레거시 엔드포인트 (하위 호환성 유지) |
-
 ## For AI Agents
 
 ### Working In This Directory
 - 각 파일이 FastAPI `APIRouter` 인스턴스
 - `main.py`에서 prefix와 함께 등록
-- smartcast v2 스키마 기반 (legacy/는 구 스키마)
+- smartcast v2 스키마 기반
 - 새 엔드포인트 추가 시 routes/ + schemas/ 동시 업데이트
 
 ### Common Patterns
