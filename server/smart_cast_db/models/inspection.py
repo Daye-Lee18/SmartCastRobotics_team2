@@ -1,9 +1,8 @@
-"""Inspection/post-process/pick models aligned to DB schema v21."""
+"""Inspection/post-process models aligned to create_tables.sql."""
 
 from __future__ import annotations
 
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import synonym
 
 from ._base import (
     SCHEMA,
@@ -18,6 +17,7 @@ from ._base import (
     String,
     UniqueConstraint,
     func,
+    synonym,
 )
 
 
@@ -30,7 +30,7 @@ class PpTaskTxn(Base):
 
     txn_id = Column(Integer, primary_key=True, autoincrement=True)
     ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), nullable=False)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"))
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     map_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord_pp_map.map_id"))
     pp_nm = Column(String, ForeignKey(f"{SCHEMA}.pp_options.pp_nm"))
     operator_id = Column(Integer, ForeignKey(f"{SCHEMA}.user_account.user_id"))
@@ -39,8 +39,7 @@ class PpTaskTxn(Base):
     start_at = Column(DateTime)
     end_at = Column(DateTime)
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")
 
 
 class AiModel(Base):
@@ -49,8 +48,9 @@ class AiModel(Base):
         CheckConstraint("model_type IN ('YOLO', 'PATCHCORE')", name="chk_ai_model_type"),
         CheckConstraint("target_cls IS NULL OR target_cls IN ('CMH', 'RMH', 'EMH')", name="chk_ai_target_cls"),
         CheckConstraint(
-            "(model_type = 'YOLO' AND target_cls IS NULL) OR (model_type = 'PATCHCORE' AND target_cls IS NOT NULL)",
-            name="chk_ai_model_target_cls",
+            "(model_type = 'YOLO' AND target_cls IS NULL) OR "
+            "(model_type = 'PATCHCORE' AND target_cls IS NOT NULL)",
+            name="chk_patchcore_target_class",
         ),
         UniqueConstraint("model_nm", "model_type", "target_cls", name="uq_ai_model_name_type_target"),
         {"schema": SCHEMA},
@@ -72,15 +72,15 @@ class InspTaskTxn(Base):
     )
 
     txn_id = Column(Integer, primary_key=True, autoincrement=True)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"), nullable=False)
-    txn_stat = Column(String(10), nullable=False)
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     res_id = Column(String(10), ForeignKey(f"{SCHEMA}.equip.res_id"))
+    txn_stat = Column(String(10), nullable=False)
+    result = Column(Boolean)
     req_at = Column(DateTime, server_default=func.now())
     start_at = Column(DateTime)
     end_at = Column(DateTime)
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")
 
 
 class AiInferenceTxn(Base):
@@ -113,7 +113,7 @@ class InspStat(Base):
     )
 
     insp_txn_id = Column(Integer, ForeignKey(f"{SCHEMA}.insp_task_txn.txn_id"), primary_key=True)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"), nullable=False)
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     yolo_inference_id = Column(Integer, ForeignKey(f"{SCHEMA}.ai_inference_txn.inference_id"))
     patchcore_inference_id = Column(Integer, ForeignKey(f"{SCHEMA}.ai_inference_txn.inference_id"))
     predicted_class = Column(String(5))
@@ -124,42 +124,4 @@ class InspStat(Base):
     result_json = Column(JSONB)
     updated_at = Column(DateTime, server_default=func.now())
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
-
-
-class PickTxn(Base):
-    __tablename__ = "pick_txn"
-    __table_args__ = (
-        CheckConstraint("txn_stat IN ('QUE', 'PROC', 'SUCC', 'FAIL')", name="chk_pick_txn_stat"),
-        CheckConstraint("req_qty > 0", name="chk_pick_req_qty_gt_zero"),
-        CheckConstraint("picked_qty >= 0", name="chk_pick_picked_qty_nonneg"),
-        CheckConstraint("picked_qty <= req_qty", name="chk_pick_picked_qty_le_req_qty"),
-        {"schema": SCHEMA},
-    )
-
-    txn_id = Column(Integer, primary_key=True, autoincrement=True)
-    ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), nullable=False)
-    txn_stat = Column(String(10), nullable=False)
-    req_qty = Column(Integer, nullable=False)
-    picked_qty = Column(Integer, nullable=False, server_default="0")
-    req_at = Column(DateTime, server_default=func.now())
-    start_at = Column(DateTime)
-    end_at = Column(DateTime)
-
-
-class PickItemMap(Base):
-    __tablename__ = "pick_item_map"
-    __table_args__ = (
-        CheckConstraint("pick_stat IN ('QUE', 'PROC', 'SUCC', 'FAIL')", name="chk_pick_item_map_stat"),
-        {"schema": SCHEMA},
-    )
-
-    pick_txn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pick_txn.txn_id"), primary_key=True)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"), primary_key=True)
-    equip_txn_id = Column(Integer, ForeignKey(f"{SCHEMA}.equip_task_txn.txn_id"))
-    pick_stat = Column(String(10), nullable=False)
-    mapped_at = Column(DateTime, server_default=func.now())
-
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")

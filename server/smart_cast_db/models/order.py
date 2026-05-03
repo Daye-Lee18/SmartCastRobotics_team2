@@ -1,4 +1,4 @@
-"""Order models aligned to DB schema v21."""
+"""Order domain models aligned to create_tables.sql."""
 
 from __future__ import annotations
 
@@ -29,10 +29,11 @@ class Ord(Base):
 
     user = relationship("UserAccount")
     detail = relationship("OrdDetail", uselist=False, back_populates="ord", cascade="all, delete-orphan")
+    pattern = relationship("OrdPattern", uselist=False, back_populates="ord", cascade="all, delete-orphan")
     pp_maps = relationship("OrdPpMap", back_populates="ord", cascade="all, delete-orphan")
     txns = relationship("OrdTxn", back_populates="ord", cascade="all, delete-orphan")
     stats = relationship("OrdStat", back_populates="ord", cascade="all, delete-orphan")
-    items = relationship("ItemStat", back_populates="ord", cascade="all, delete-orphan")
+    items = relationship("Item", back_populates="ord", cascade="all, delete-orphan")
 
 
 class OrdDetail(Base):
@@ -44,13 +45,17 @@ class OrdDetail(Base):
 
     ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
     prod_id = Column(Integer, ForeignKey(f"{SCHEMA}.product.prod_id"))
+    diameter = Column(Numeric)
+    thickness = Column(Numeric)
+    material = Column(String(30))
+    load_class = Column(String(20))
     qty = Column(Integer, nullable=False)
     final_price = Column(Numeric, nullable=False)
     due_date = Column(Date, nullable=False)
     ship_addr = Column(String, nullable=False)
 
     ord = relationship("Ord", back_populates="detail")
-    product = relationship("smart_cast_db.models.master.Product")
+    product = relationship("Product")
 
 
 class OrdPpMap(Base):
@@ -65,7 +70,19 @@ class OrdPpMap(Base):
     pp_id = Column(Integer, ForeignKey(f"{SCHEMA}.pp_options.pp_id"), nullable=False)
 
     ord = relationship("Ord", back_populates="pp_maps")
-    pp_option = relationship("smart_cast_db.models.master.PpOption")
+    pp_option = relationship("PpOption")
+
+
+class OrdPattern(Base):
+    __tablename__ = "ord_pattern"
+    __table_args__ = ({"schema": SCHEMA},)
+
+    ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
+    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"), nullable=False)
+    assigned_at = Column(DateTime, server_default=func.now())
+
+    ord = relationship("Ord", back_populates="pattern")
+    pattern_master = relationship("PatternMaster")
 
 
 class OrdTxn(Base):
@@ -111,11 +128,11 @@ class OrdLog(Base):
     __tablename__ = "ord_log"
     __table_args__ = (
         CheckConstraint(
-            "prev_stat IS NULL OR prev_stat IN ('RCVD', 'APPR', 'MFG', 'DONE', 'SHIPPING', 'COMP', 'REJT', 'CNCL')",
+            "prev_stat IS NULL OR prev_stat IN ('RCVD', 'APPR', 'MFG', 'DONE', 'SHIP', 'COMP', 'REJT', 'CNCL')",
             name="chk_ord_log_prev_stat",
         ),
         CheckConstraint(
-            "new_stat IN ('RCVD', 'APPR', 'MFG', 'DONE', 'SHIPPING', 'COMP', 'REJT', 'CNCL')",
+            "new_stat IN ('RCVD', 'APPR', 'MFG', 'DONE', 'SHIP', 'COMP', 'REJT', 'CNCL')",
             name="chk_ord_log_new_stat",
         ),
         {"schema": SCHEMA},

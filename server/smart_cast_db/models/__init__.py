@@ -1,65 +1,59 @@
-"""DB schema v21 model exports.
-
-This package now treats schema v21 as the canonical source of truth. A few
-legacy aliases remain exported to soften the transition in higher layers.
-"""
+"""smartcast schema model exports aligned to create_tables.sql."""
 
 from smart_cast_db.models._base import SCHEMA
+from smart_cast_db.models.alert import Alert, AlertsStat
 from smart_cast_db.models.equipment import EquipStat, EquipTaskTxn, LogDataEquip, LogErrEquip
-from smart_cast_db.models.inspection import (
-    AiInferenceTxn,
-    AiModel,
-    InspStat,
-    InspTaskTxn,
-    PickItemMap,
-    PickTxn,
-    PpTaskTxn,
-)
-from smart_cast_db.models.item import ChgLocStat, ItemStat, ShipLocStat, StrgLocStat
+from smart_cast_db.models.inspection import AiInferenceTxn, AiModel, InspStat, InspTaskTxn, PpTaskTxn
+from smart_cast_db.models.item import ChgLocationStat, Item, ShipLocationStat, StrgLocationStat
 from smart_cast_db.models.master import (
     Category,
     Equip,
     EquipLoadSpec,
-    PatternStat,
+    PatternMaster,
     PpOption,
     Product,
     ProductOption,
     RaMotionStep,
     Res,
     Trans,
-    TransCoord,
     TransTaskBatThreshold,
     Zone,
 )
 from smart_cast_db.models.models_mgmt import (
-    AlertsStat,
     LogActionAdmin,
     LogActionOperatorHandoffAcks,
     LogActionOperatorRfidScan,
     LogActionUser,
     LogEvent,
 )
-from smart_cast_db.models.order import Ord, OrdDetail, OrdLog, OrdPpMap, OrdStat, OrdTxn
-from smart_cast_db.models.transport import LogDataTrans, LogErrTrans, TransStat, TransTaskTxn
+from smart_cast_db.models.order import Ord, OrdDetail, OrdLog, OrdPattern, OrdPpMap, OrdStat, OrdTxn
+from smart_cast_db.models.rfid import RfidScanLog
+from smart_cast_db.models.transport import (
+    LogDataTrans,
+    LogErrTrans,
+    TatNavPoseMaster,
+    TransStat,
+    TransTaskTxn,
+)
 from smart_cast_db.models.user import UserAccount
 
-# Transitional aliases for legacy import paths.
-Item = ItemStat
-Pattern = PatternStat
-ChgLocationStat = ChgLocStat
-StrgLocationStat = StrgLocStat
-ShipLocationStat = ShipLocStat
+# Compatibility aliases for remaining v21 callers.
+ItemStat = Item
+Pattern = OrdPattern
+ChgLocStat = ChgLocationStat
+StrgLocStat = StrgLocationStat
+ShipLocStat = ShipLocationStat
+TransCoord = TatNavPoseMaster
 EquipErrLog = LogErrEquip
 TransErrLog = LogErrTrans
-Alert = AlertsStat
 HandoffAck = LogActionOperatorHandoffAcks
-RfidScanLog = LogActionOperatorRfidScan
 TransportTask = TransTaskTxn
 
 __all__ = [
     "SCHEMA",
     "AiInferenceTxn",
     "AiModel",
+    "Alert",
     "AlertsStat",
     "Category",
     "ChgLocStat",
@@ -86,13 +80,12 @@ __all__ = [
     "Ord",
     "OrdDetail",
     "OrdLog",
+    "OrdPattern",
     "OrdPpMap",
     "OrdStat",
     "OrdTxn",
     "Pattern",
-    "PatternStat",
-    "PickItemMap",
-    "PickTxn",
+    "PatternMaster",
     "PpOption",
     "PpTaskTxn",
     "Product",
@@ -104,6 +97,7 @@ __all__ = [
     "ShipLocationStat",
     "StrgLocStat",
     "StrgLocationStat",
+    "TatNavPoseMaster",
     "Trans",
     "TransCoord",
     "TransErrLog",
@@ -113,5 +107,4 @@ __all__ = [
     "TransportTask",
     "UserAccount",
     "Zone",
-    "Alert",
 ]

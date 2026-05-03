@@ -1,46 +1,24 @@
-"""Alert and action/log models aligned to DB schema v21."""
+"""Management/action log models aligned to create_tables.sql."""
 
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Index, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import synonym
 
-from smart_cast_db.database import Base
-from smart_cast_db.models._base import (
+from ._base import (
     SCHEMA,
-    Boolean,
+    Base,
     CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
     Integer,
     String,
+    Text,
     func,
+    synonym,
 )
-
-
-class AlertsStat(Base):
-    __tablename__ = "alerts_stat"
-    __table_args__ = (
-        CheckConstraint("severity IN ('info', 'warning', 'critical')", name="chk_alerts_severity"),
-        {"schema": SCHEMA},
-    )
-
-    id = Column(String, primary_key=True)
-    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.res.res_id"), nullable=False)
-    type = Column(String, nullable=False)
-    severity = Column(String, nullable=False, server_default="info")
-    error_code = Column(String, server_default="")
-    message = Column(String, nullable=False)
-    abnormal_value = Column(String, server_default="")
-    zone = Column(String)
-    timestamp = Column(String, nullable=False)
-    resolved_at = Column(String)
-    acknowledged = Column(Boolean, nullable=False, server_default="false")
-
-    # Legacy compatibility
-    equipment_id = synonym("res_id")
+from .alert import AlertsStat
+from .rfid import LogActionOperatorRfidScan
 
 
 class LogActionUser(Base):
@@ -61,43 +39,13 @@ class LogActionOperatorHandoffAcks(Base):
 
     log_id = Column(Integer, primary_key=True, autoincrement=True)
     operator_id = Column(Integer, ForeignKey(f"{SCHEMA}.user_account.user_id"), nullable=False)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"))
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     pp_task_txn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pp_task_txn.txn_id"))
     button_device_id = Column(String)
     idempotency_key = Column(String, unique=True)
     ack_at = Column(DateTime, server_default=func.now())
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
-
-
-class LogActionOperatorRfidScan(Base):
-    __tablename__ = "log_action_operator_rfid_scan"
-    __table_args__ = (
-        CheckConstraint("parse_status IN ('ok', 'bad_format', 'duplicate')", name="chk_rfid_parse_status"),
-        Index(
-            "uq_rfid_scan_idempotency_key",
-            "idempotency_key",
-            unique=True,
-            postgresql_where=text("idempotency_key IS NOT NULL"),
-        ),
-        {"schema": SCHEMA},
-    )
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    scanned_at = Column(DateTime(timezone=True), primary_key=True, nullable=False, server_default=func.now())
-    reader_id = Column(String, nullable=False)
-    zone = Column(String)
-    raw_payload = Column(String, nullable=False)
-    ord_id = Column(String)
-    item_key = Column(String)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"))
-    parse_status = Column(String, nullable=False)
-    idempotency_key = Column(String)
-    extra = Column("metadata", JSONB)
-
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")
 
 
 class LogActionAdmin(Base):
