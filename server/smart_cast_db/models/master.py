@@ -1,19 +1,20 @@
-"""Master/resource models aligned to DB schema v21."""
+"""Master/resource models aligned to create_tables.sql."""
 
 from __future__ import annotations
+
+from sqlalchemy import text
 
 from ._base import (
     SCHEMA,
     Base,
+    Boolean,
     CheckConstraint,
     Column,
-    DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
     UniqueConstraint,
-    func,
     relationship,
 )
 
@@ -38,12 +39,8 @@ class Product(Base):
     base_price = Column(Numeric, nullable=False)
     img_url = Column(String(400))
 
-    category = relationship("smart_cast_db.models.master.Category")
-    options = relationship(
-        "smart_cast_db.models.master.ProductOption",
-        back_populates="product",
-        cascade="all, delete-orphan",
-    )
+    category = relationship("Category")
+    options = relationship("ProductOption", back_populates="product", cascade="all, delete-orphan")
 
 
 class ProductOption(Base):
@@ -58,7 +55,7 @@ class ProductOption(Base):
     material = Column(String(30), nullable=False)
     load_class = Column(String(20), nullable=False)
 
-    product = relationship("smart_cast_db.models.master.Product", back_populates="options")
+    product = relationship("Product", back_populates="options")
 
 
 class PpOption(Base):
@@ -73,7 +70,7 @@ class PpOption(Base):
 class Res(Base):
     __tablename__ = "res"
     __table_args__ = (
-        CheckConstraint("res_type IN ('RA', 'CONV', 'AMR')", name="chk_res_type"),
+        CheckConstraint("res_type IN ('RA', 'CONV', 'TAT')", name="chk_res_type"),
         {"schema": SCHEMA},
     )
 
@@ -118,19 +115,6 @@ class EquipLoadSpec(Base):
     tol_val = Column(Numeric(5, 2))
 
 
-class PatternStat(Base):
-    __tablename__ = "pattern_stat"
-    __table_args__ = (
-        CheckConstraint("ptn_loc BETWEEN 1 AND 6", name="chk_ptn_loc_range"),
-        {"schema": SCHEMA},
-    )
-
-    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
-    ptn_loc = Column(Integer, nullable=False)
-    registered_by = Column(Integer, ForeignKey(f"{SCHEMA}.user_account.user_id"))
-    created_at = Column(DateTime, server_default=func.now())
-
-
 class Trans(Base):
     __tablename__ = "trans"
     __table_args__ = (
@@ -141,7 +125,6 @@ class Trans(Base):
     res_id = Column(String(10), ForeignKey(f"{SCHEMA}.res.res_id"), primary_key=True)
     slot_count = Column(Integer)
     max_load_kg = Column(Numeric)
-    home_coord_id = Column(Integer, ForeignKey(f"{SCHEMA}.trans_coord.trans_coord_id"))
 
     res = relationship("Res")
 
@@ -159,19 +142,19 @@ class TransTaskBatThreshold(Base):
     bat_low_threshold = Column(Integer)
 
 
-class TransCoord(Base):
-    __tablename__ = "trans_coord"
+class PatternMaster(Base):
+    __tablename__ = "pattern_master"
     __table_args__ = (
-        UniqueConstraint("zone_id", "chg_loc_id", name="uq_trans_coord_zone_chg_loc"),
+        CheckConstraint("ptn_id BETWEEN 1 AND 3", name="chk_ptn_id_range"),
+        CheckConstraint("task_type IN ('MM')", name="chk_pattern_task_type"),
         {"schema": SCHEMA},
     )
 
-    trans_coord_id = Column(Integer, primary_key=True, autoincrement=True)
-    zone_id = Column(Integer, ForeignKey(f"{SCHEMA}.zone.zone_id"), nullable=False)
-    chg_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.chg_loc_stat.loc_id"))
-    x = Column(Numeric, nullable=False)
-    y = Column(Numeric, nullable=False)
-    theta = Column(Numeric, nullable=False)
+    ptn_id = Column(Integer, primary_key=True)
+    ptn_nm = Column(String, nullable=False, unique=True)
+    task_type = Column(String, nullable=False)
+    description = Column(String)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
 
 
 class RaMotionStep(Base):
@@ -181,9 +164,9 @@ class RaMotionStep(Base):
             "task_type IN ('MM', 'POUR', 'DM', 'PA_GP', 'PA_DP', 'PICK', 'SHIP')",
             name="chk_ra_motion_task_type",
         ),
-        CheckConstraint("pattern_no BETWEEN 1 AND 6", name="chk_ra_motion_pattern_no"),
+        CheckConstraint("tool_type IN ('PAT', 'MAT')", name="chk_ra_motion_tool_type"),
         CheckConstraint(
-            "pose_nm IN ('HOME', 'AMR_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH')",
+            "pose_nm IS NULL OR pose_nm IN ('HOME', 'TAT_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH')",
             name="chk_ra_motion_pose_nm",
         ),
         CheckConstraint(
@@ -191,36 +174,20 @@ class RaMotionStep(Base):
             name="chk_ra_motion_command_type",
         ),
         CheckConstraint(
-            "command_type <> 'MOVE_ANGLES' OR ("
-            "j1 IS NOT NULL AND j2 IS NOT NULL AND j3 IS NOT NULL AND "
-            "j4 IS NOT NULL AND j5 IS NOT NULL AND j6 IS NOT NULL AND "
-            "delta_z IS NULL"
-            ")",
-            name="chk_ra_motion_move_angles_payload",
-        ),
-        CheckConstraint(
-            "command_type <> 'MOVE_Z' OR ("
-            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
-            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL AND "
-            "delta_z IS NOT NULL"
-            ")",
-            name="chk_ra_motion_move_z_payload",
-        ),
-        CheckConstraint(
-            "command_type NOT IN ('GRIP_OPEN', 'GRIP_CLOSE', 'WAIT') OR ("
-            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
-            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL AND "
-            "delta_z IS NULL"
-            ")",
-            name="chk_ra_motion_passive_payload",
-        ),
-        CheckConstraint(
             "("
-            "(task_type = 'MM' AND pattern_no IS NOT NULL AND loc_id IS NULL) OR "
-            "(task_type IN ('POUR', 'DM', 'PA_DP') AND pattern_no IS NULL) OR "
-            "(task_type IN ('PA_GP', 'PICK', 'SHIP') AND pattern_no IS NULL AND loc_id IS NOT NULL)"
+            "(command_type = 'MOVE_ANGLES' AND "
+            "j1 IS NOT NULL AND j2 IS NOT NULL AND j3 IS NOT NULL AND "
+            "j4 IS NOT NULL AND j5 IS NOT NULL AND j6 IS NOT NULL AND delta_z IS NULL) OR "
+            "(command_type = 'MOVE_Z' AND "
+            "delta_z IS NOT NULL AND "
+            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
+            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL) OR "
+            "(command_type IN ('GRIP_OPEN', 'GRIP_CLOSE', 'WAIT') AND "
+            "delta_z IS NULL AND "
+            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
+            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL)"
             ")",
-            name="chk_ra_motion_task_context",
+            name="chk_ra_step_payload",
         ),
         UniqueConstraint(
             "task_type",
@@ -230,17 +197,14 @@ class RaMotionStep(Base):
             "step_ord",
             name="uq_ra_motion_step_order",
         ),
-        # NOTE:
-        # DB schema v21 requires `UNIQUE NULLS NOT DISTINCT` here.
-        # SQLAlchemy's portable UniqueConstraint cannot express that exactly,
-        # so Alembic/raw DDL must manage the canonical unique index.
         {"schema": SCHEMA},
     )
 
     step_id = Column(Integer, primary_key=True, autoincrement=True)
     task_type = Column(String, nullable=False)
-    pattern_no = Column(Integer)
-    loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_loc_stat.loc_id"))
+    tool_type = Column(String, nullable=False, server_default=text("'MAT'"))
+    pattern_no = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"))
+    loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_location_stat.loc_id"))
     pose_nm = Column(String)
     step_ord = Column(Integer, nullable=False)
     command_type = Column(String, nullable=False)

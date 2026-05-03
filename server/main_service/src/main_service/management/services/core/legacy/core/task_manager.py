@@ -11,9 +11,9 @@ canonical 아키텍처: Interface POST /api/production/start 가 Management gRPC
 - ord_id > 0 → smartcast v2 로직 단건 처리
 - order_ids 비어있지 않음 → 각 원소를 int 로 변환해 smartcast v2 로직 반복
 
-v21 트랜잭션:
-    OrdStat(MFG) + ItemStat(flow_stat='CREATED', zone_nm='CAST')
-    + EquipTaskTxn(res_id='RA1', task_type='MM', txn_stat='QUE')
+v23 호환 트랜잭션:
+    OrdStat(MFG) + Item(cur_stat='CREATED', cur_res='PAT')
+    + EquipTaskTxn(res_id='PAT', task_type='MM', txn_stat='QUE')
     단일 `db.commit()` 으로 atomic.
 
 @MX:ANCHOR: SPEC-C2 Phase C-2 산출물. Management write 경로의 단일 진입점.
@@ -97,7 +97,7 @@ class TaskManager:
         효과 (atomic):
             - OrdStat INSERT (ord_stat='MFG')
             - ItemStat INSERT (flow_stat='CREATED', zone_nm='CAST')
-            - EquipTaskTxn INSERT (res_id='RA1', task_type='MM', txn_stat='QUE')
+            - EquipTaskTxn INSERT (res_id='PAT', task_type='MM', txn_stat='QUE')
         """
         if not ord_id or ord_id <= 0:
             raise TaskManagerError(f"invalid ord_id: {ord_id}")
@@ -121,15 +121,15 @@ class TaskManager:
 
             new_item = Item(
                 ord_id=ord_id,
-                flow_stat="CREATED",
-                zone_nm="CAST",
-                result=None,
+                cur_stat="CREATED",
+                cur_res="PAT",
+                is_defective=None,
             )
             db.add(new_item)
             db.flush()  # new_item.item_id 확보
 
             txn = EquipTaskTxn(
-                res_id="RA1",
+                res_id="PAT",
                 task_type="MM",
                 txn_stat="QUE",
                 item_id=new_item.item_id,
@@ -144,7 +144,7 @@ class TaskManager:
                 ord_id=ord_id,
                 item_id=new_item.item_id,
                 equip_task_txn_id=txn.txn_id,
-                message="Production started: RA1/MM task queued.",
+                message="Production started: PAT/MM task queued.",
             )
             logger.info(
                 "start_production_single: ord_id=%d item=%d txn=%d",
@@ -208,7 +208,7 @@ class TaskManager:
                     item_id=row.item_id,
                     ord_id=row.ord_id,
                     cur_stat=_legacy_stage_from_flow(row.flow_stat),
-                    cur_res=row.zone_nm or "",
+                    cur_res=row.cur_res or "",
                     updated_at=row.updated_at,
                 )
                 for row in rows

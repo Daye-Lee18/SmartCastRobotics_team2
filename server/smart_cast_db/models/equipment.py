@@ -1,8 +1,6 @@
-"""Equipment transaction/state/log models aligned to DB schema v21."""
+"""Equipment task/state/log models aligned to create_tables.sql."""
 
 from __future__ import annotations
-
-from sqlalchemy.orm import synonym
 
 from ._base import (
     SCHEMA,
@@ -15,6 +13,7 @@ from ._base import (
     Numeric,
     String,
     func,
+    synonym,
 )
 
 
@@ -30,20 +29,17 @@ class EquipTaskTxn(Base):
     )
 
     txn_id = Column(Integer, primary_key=True, autoincrement=True)
-    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.equip.res_id"))
+    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.res.res_id"))
     task_type = Column(String, nullable=False)
     txn_stat = Column(String, nullable=False)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"))
-    ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"))
-    strg_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_loc_stat.loc_id"))
-    ship_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.ship_loc_stat.loc_id"))
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
+    strg_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_location_stat.loc_id"))
+    ship_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.ship_location_stat.loc_id"))
     req_at = Column(DateTime, server_default=func.now())
     start_at = Column(DateTime)
     end_at = Column(DateTime)
-    pick_txn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pick_txn.txn_id"))
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")
 
 
 class EquipStat(Base):
@@ -57,15 +53,14 @@ class EquipStat(Base):
     )
 
     stat_id = Column(Integer, primary_key=True, autoincrement=True)
-    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.equip.res_id"), nullable=False, unique=True)
-    item_stat_id = Column(Integer, ForeignKey(f"{SCHEMA}.item_stat.item_stat_id"))
+    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.res.res_id"), nullable=False, unique=True)
+    item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     txn_type = Column(String)
     cur_stat = Column(String)
     updated_at = Column(DateTime, server_default=func.now())
     err_msg = Column(String)
 
-    # Legacy compatibility
-    item_id = synonym("item_stat_id")
+    item_stat_id = synonym("item_id")
 
 
 class LogDataEquip(Base):

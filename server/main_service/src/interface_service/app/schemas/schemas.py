@@ -166,20 +166,20 @@ class TransOut(_ORM):
 
 
 # =====================
-# PATTERN (핑크 GUI #3)
+# ORD PATTERN (핑크 GUI #3)
 # =====================
 
 
-class PatternIn(BaseModel):
-    """패턴 등록 — 발주 1:1, 위치 1-6."""
+class OrdPatternIn(BaseModel):
+    """발주↔패턴 1:1 등록 요청."""
 
-    ptn_id: int  # = ord_id
-    ptn_loc: int = Field(ge=1, le=6)
+    ord_id: int
+    ptn_id: int = Field(ge=1, le=3)
 
 
-class PatternOut(_ORM):
+class OrdPatternOut(_ORM):
+    ord_id: int
     ptn_id: int
-    ptn_loc: int
 
 
 # =====================

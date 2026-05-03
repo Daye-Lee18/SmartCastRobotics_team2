@@ -16,6 +16,7 @@ class OrdStat(str, Enum):
     MFG  = "MFG"
     DONE = "DONE"
     SHIP = "SHIP"
+    SHIPPING = "SHIPPING"
     COMP = "COMP"
     REJT = "REJT"
     CNCL = "CNCL"
@@ -32,6 +33,24 @@ class EquipTaskType(str, Enum):
     PA_DP  = "PA_DP"
     PICK   = "PICK"
     SHIP   = "SHIP"
+
+
+class ZoneNm(str, Enum):
+    CAST = "CAST"
+    PP   = "PP"
+    INSP = "INSP"
+    STRG = "STRG"
+    PICK = "PICK"
+    SHIP = "SHIP"
+    CHG  = "CHG"
+
+
+class PoseNm(str, Enum):
+    HOME         = "HOME"
+    TAT_HANDOFF  = "TAT_HANDOFF"
+    DEFECT_HOVER = "DEFECT_HOVER"
+    DEFECT_DROP  = "DEFECT_DROP"
+    SLOT_PATH    = "SLOT_PATH"
 
 
 class TransTaskType(str, Enum):

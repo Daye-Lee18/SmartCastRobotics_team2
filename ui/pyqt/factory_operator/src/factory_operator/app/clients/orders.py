@@ -24,12 +24,12 @@ class OrdersMixin:
 
         return self._get(f"/api/orders/lookup?email={quote(email)}", mock_value=[])
 
-    def register_pattern(self, ord_id: int, ptn_loc: int) -> dict[str, Any] | None:
-        """Pink GUI #3 — 패턴 위치 등록 (1-6).
+    def register_pattern(self, ord_id: int, ptn_id: int) -> dict[str, Any] | None:
+        """Pink GUI #3 — 발주↔패턴 등록 (1-3).
 
         2026-04-27: 자동 매핑 (R/S/O→1/2/3) 도입 후 운영자 수동 호출 빈도 ↓.
         """
-        return self._post("/api/production/patterns", {"ptn_id": ord_id, "ptn_loc": ptn_loc})
+        return self._post("/api/production/patterns", {"ord_id": ord_id, "ptn_id": ptn_id})
 
     def get_patterns(self) -> list[dict[str, Any]] | None:
         return self._get("/api/production/patterns", mock_value=[])

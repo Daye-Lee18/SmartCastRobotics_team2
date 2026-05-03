@@ -14,7 +14,7 @@ from smart_cast_db.models import (
     ItemStat,
     Ord,
     OrdStat,
-    Pattern,
+    OrdPattern,
 )
 
 logger = logging.getLogger("app.production")
@@ -77,7 +77,8 @@ def _is_schedule_queue_candidate(db: Session, ord_id: int) -> bool:
 
     has_equip_txn = (
         db.query(EquipTaskTxn.txn_id)
-        .filter(EquipTaskTxn.ord_id == ord_id)
+        .join(ItemStat, ItemStat.item_stat_id == EquipTaskTxn.item_id)
+        .filter(ItemStat.ord_id == ord_id)
         .first()
         is not None
     )
@@ -142,7 +143,7 @@ def _priority_result(db: Session, ord_obj: Ord, rank: int = 1) -> dict[str, Any]
     customer_score = 10.0 if amount >= 1_000_000 else 7.0 if amount >= 500_000 else 5.0
     delay_score = 15.0 if days_left <= 7 else 10.0 if days_left <= 14 else 7.0
     setup_score = 5.0
-    has_pattern = db.get(Pattern, ord_obj.ord_id) is not None
+    has_pattern = db.get(OrdPattern, ord_obj.ord_id) is not None
     ready_score = 20.0 if has_pattern else 8.0
     blocking = (
         []
@@ -193,13 +194,13 @@ def _priority_result(db: Session, ord_obj: Ord, rank: int = 1) -> dict[str, Any]
     delay_risk = "high" if days_left <= 3 else "medium" if days_left <= 7 else "low"
     product_summary = "주물 제품"
     if detail:
-        # v21 ord_detail 에는 material/load_class 가 없다.
-        # product relation 또는 prod_id 기준으로만 안전하게 요약한다.
-        product = getattr(detail, "product", None)
-        parts = [
-            getattr(product, "cate_cd", None) if product is not None else None,
-            f"prod:{detail.prod_id}" if getattr(detail, "prod_id", None) is not None else None,
-        ]
+        parts = [detail.material, detail.load_class]
+        if not any(parts):
+            product = getattr(detail, "product", None)
+            parts = [
+                getattr(product, "cate_cd", None) if product is not None else None,
+                f"prod:{detail.prod_id}" if getattr(detail, "prod_id", None) is not None else None,
+            ]
         product_summary = " / ".join(str(v) for v in parts if v) or product_summary
     return {
         "order_id": str(ord_obj.ord_id),

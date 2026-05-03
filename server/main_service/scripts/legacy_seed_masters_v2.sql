@@ -30,28 +30,28 @@ INSERT INTO smartcast.zone (zone_nm) VALUES
     ('CHG')
 ON CONFLICT (zone_nm) DO NOTHING;
 
--- ---------- res (자원 마스터: RA1-3, CONV1, AMR1-2) ----------
+-- ---------- res (자원 마스터: PAT, MAT, CONV1, TAT1-3) ----------
 INSERT INTO smartcast.res (res_id, res_type, model_nm) VALUES
-    ('RA1',   'RA',   'JetCobot 280'),
-    ('RA2',   'RA',   'JetCobot 280'),
-    ('RA3',   'RA',   'JetCobot 280'),
-    ('CONV1', 'CONV', 'ESP32 Conveyor v5'),
-    ('AMR1',  'AMR',  'TurtleBot3 Burger'),
-    ('AMR2',  'AMR',  'TurtleBot3 Burger')
+    ('PAT',   'RA',   'JetCobot 280 CAST'),
+    ('MAT',   'RA',   'JetCobot 280 STRG'),
+    ('CONV1', 'CONV', 'ESP32 Conveyor v5 INSP'),
+    ('TAT1',  'TAT',  'PinkyPro'),
+    ('TAT2',  'TAT',  'PinkyPro'),
+    ('TAT3',  'TAT',  'PinkyPro')
 ON CONFLICT (res_id) DO NOTHING;
 
--- ---------- equip (생산 설비: RA1-3, CONV1) ----------
+-- ---------- equip (생산 설비: PAT, MAT, CONV1) ----------
 INSERT INTO smartcast.equip (res_id, zone_id) VALUES
-    ('RA1',   (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'CAST')),
-    ('RA2',   (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'STRG')),
-    ('RA3',   (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'SHIP')),
+    ('PAT',   (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'CAST')),
+    ('MAT',   (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'STRG')),
     ('CONV1', (SELECT zone_id FROM smartcast.zone WHERE zone_nm = 'INSP'))
 ON CONFLICT (res_id) DO NOTHING;
 
--- ---------- trans (이송 자원: AMR1-2) ----------
+-- ---------- trans (이송 자원: TAT1-3) ----------
 INSERT INTO smartcast.trans (res_id, slot_count, max_load_kg) VALUES
-    ('AMR1', 1, 30.0),
-    ('AMR2', 1, 30.0)
+    ('TAT1', 1, 30.0),
+    ('TAT2', 1, 30.0),
+    ('TAT3', 1, 30.0)
 ON CONFLICT (res_id) DO NOTHING;
 
 -- ---------- chg_location_stat (1x3 충전 위치) ----------
