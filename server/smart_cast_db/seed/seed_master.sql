@@ -16,18 +16,17 @@ BEGIN;
 -- USER MASTER
 -- =====================
 
-INSERT INTO user_account (user_id, co_nm, user_nm, role, phone, email, password) VALUES
-(1, 'SmartCast Robotics', '관리자',      'admin',    '010-0000-0000', 'admin@smartcast.kr',    'admin1234'),
-(2, 'SmartCast Robotics', '운영자',      'operator', '010-0000-0001', 'operator@smartcast.kr', 'operator1234'),
-(3, 'SmartCast Robotics', 'FMS',         'fms',      NULL,            'fms@smartcast.kr',      'fms1234'),
-(4, 'TechBuild Inc.',     '이민준',      'customer', '010-3333-4444', 'minjun@techbuild.co',   'customer1234'),
-(5, 'BuildWorld Co.',     '정수연',      'customer', '010-9999-0000', 'sooyeon@buildworld.kr', 'customer1234')
-ON CONFLICT (user_id) DO UPDATE SET
+INSERT INTO user_account (co_nm, user_nm, role, phone, email, password) VALUES
+('SmartCast Robotics', '관리자',      'admin',    '010-0000-0000', 'admin@smartcast.kr',    'admin1234'),
+('SmartCast Robotics', '운영자',      'operator', '010-0000-0001', 'operator@smartcast.kr', 'operator1234'),
+('SmartCast Robotics', 'FMS',         'fms',      NULL,            'fms@smartcast.kr',      'fms1234'),
+('TechBuild Inc.',     '이민준',      'customer', '010-3333-4444', 'minjun@techbuild.co',   'customer1234'),
+('BuildWorld Co.',     '정수연',      'customer', '010-9999-0000', 'sooyeon@buildworld.kr', 'customer1234')
+ON CONFLICT (email) DO UPDATE SET
     co_nm = EXCLUDED.co_nm,
     user_nm = EXCLUDED.user_nm,
     role = EXCLUDED.role,
     phone = EXCLUDED.phone,
-    email = EXCLUDED.email,
     password = EXCLUDED.password;
 
 -- =====================
