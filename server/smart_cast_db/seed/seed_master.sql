@@ -112,6 +112,41 @@ ON CONFLICT (prod_opt_id) DO UPDATE SET
     material = EXCLUDED.material,
     load_class = EXCLUDED.load_class;
 
+WITH desired_product_option(prod_id, diameter, thickness_values, material_values, load_class_values) AS (
+    VALUES
+        (1, 450, ARRAY[25, 30, 35, 40], ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400']),
+        (2, 500, ARRAY[25, 30, 35, 40], ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400']),
+        (3, 550, ARRAY[30, 35, 40],     ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400']),
+        (4, 400, ARRAY[25, 30, 35],     ARRAY['FC200', 'FC250'],           ARRAY['A15', 'B125', 'C250']),
+        (5, 450, ARRAY[25, 30, 35, 40], ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400']),
+        (6, 500, ARRAY[30, 35, 40],     ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400']),
+        (7, 450, ARRAY[25, 30, 35],     ARRAY['FC200', 'FC250'],           ARRAY['A15', 'B125', 'C250']),
+        (8, 500, ARRAY[25, 30, 35],     ARRAY['FC200', 'FC250'],           ARRAY['A15', 'B125', 'C250']),
+        (9, 550, ARRAY[30, 35, 40],     ARRAY['FC200', 'FC250', 'GCD450'], ARRAY['B125', 'C250', 'D400'])
+)
+INSERT INTO product_option (prod_id, mat_type, diameter, thickness, material, load_class)
+SELECT
+    cfg.prod_id,
+    'CAST' AS mat_type,
+    cfg.diameter,
+    thickness.value::DECIMAL,
+    material.value::VARCHAR,
+    load_class.value::VARCHAR
+FROM desired_product_option cfg
+CROSS JOIN LATERAL unnest(cfg.thickness_values) AS thickness(value)
+CROSS JOIN LATERAL unnest(cfg.material_values) AS material(value)
+CROSS JOIN LATERAL unnest(cfg.load_class_values) AS load_class(value)
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM product_option po
+    WHERE po.prod_id = cfg.prod_id
+      AND po.mat_type = 'CAST'
+      AND po.diameter = cfg.diameter
+      AND po.thickness = thickness.value::DECIMAL
+      AND po.material = material.value::VARCHAR
+      AND po.load_class = load_class.value::VARCHAR
+);
+
 INSERT INTO pp_options (pp_id, pp_nm, extra_cost) VALUES
 (1, '표면 연마',       5000),
 (2, '방청 코팅',       3000),

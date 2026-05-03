@@ -324,7 +324,7 @@ export function OrderDetailPanel({
                   title="생산 대기열에 등록합니다. 실제 순위 계산과 착수는 PyQt5 생산 계획 페이지에서 수행됩니다."
                 >
                   {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Factory size={16} />}
-                  생산 승인
+                  주문 승인
                 </button>
               )}
               {order.status === "in_production" && (
