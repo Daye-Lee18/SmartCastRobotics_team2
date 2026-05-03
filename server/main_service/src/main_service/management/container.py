@@ -4,8 +4,8 @@ import os
 from services.adapters.sensors.rfid_service import RfidService
 from services.adapters.robotics.amr_battery import AmrBatteryService
 
-from services.core.legacy.execution_monitor import ExecutionMonitor
-from services.core.legacy.core.robot_executor import RobotExecutor
+from services.legacy.execution_monitor import ExecutionMonitor
+from services.legacy.robot_executor import RobotExecutor
 from services.core.task_allocator import TaskAllocator
 from services.core.task_manager import TaskManager
 from services.core.traffic_manager import TrafficManager

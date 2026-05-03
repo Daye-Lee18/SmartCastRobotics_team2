@@ -68,7 +68,7 @@ def _notify_handoff_ack(result, *, zone: str, ack_at_iso: str) -> None:
 
 
 def _build_rfid_ack_details(item_id: int) -> tuple[str, int, list[management_pb2.PpOptionView]]:
-    from services.core.legacy.handoff_pipeline import build_pp_options_view
+    from services.legacy.handoff_pipeline import build_pp_options_view
 
     from smart_cast_db.database import SessionLocal
     from smart_cast_db.models import ItemStat
@@ -93,7 +93,7 @@ class FieldEventRpcMixin:
     """Handoff, RFID, and conveyor event RPCs."""
 
     def ReportHandoffAck(self, request, context):
-        from services.core.legacy.handoff_pipeline import apply_handoff
+        from services.legacy.handoff_pipeline import apply_handoff
 
         from smart_cast_db.database import SessionLocal
         from smart_cast_db.models.models_legacy import HandoffAck
@@ -188,7 +188,7 @@ class FieldEventRpcMixin:
         )
 
     def ReportConveyorEvent(self, request, context):
-        from services.core.legacy.handoff_pipeline import apply_tof1, apply_tof2
+        from services.legacy.handoff_pipeline import apply_tof1, apply_tof2
 
         from smart_cast_db.database import SessionLocal
 

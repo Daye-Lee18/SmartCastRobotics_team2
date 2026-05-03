@@ -8,7 +8,7 @@ not the legacy path directly.
 
 from __future__ import annotations
 
-from services.core.legacy.core.task_manager import (
+from services.legacy.task_manager import (
     StartProductionResult,
     TaskManager as LegacyTaskManager,
     TaskManagerError,

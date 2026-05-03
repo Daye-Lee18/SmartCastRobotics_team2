@@ -19,7 +19,7 @@ import pytest
         "services.core.command_queue",
         "services.core.event_bridge",
         "services.core.execution_monitor",
-        "services.core.legacy.handoff_pipeline",
+        "services.legacy.handoff_pipeline",
         "services.adapters.vision.image_forwarder",
         "services.adapters.vision.image_sink",
         "services.adapters.sensors.rfid_service",
