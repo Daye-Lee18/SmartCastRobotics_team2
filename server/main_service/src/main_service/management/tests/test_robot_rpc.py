@@ -5,8 +5,11 @@ from dataclasses import dataclass
 import management_pb2  # type: ignore
 
 from rpc.robot_rpc import RobotRpcMixin
-from services.core.legacy.amr_state_machine import AmrStateMachine, TaskState
+import enum
 
+class TaskState(enum.Enum):
+    IDLE = 1
+    LOADING = 2
 
 @dataclass
 class _BatteryStatus:
@@ -32,7 +35,6 @@ class _BatteryService:
 class _Servicer(RobotRpcMixin):
     def __init__(self, statuses):
         self.amr_battery = _BatteryService(statuses)
-        self.amr_state_machine = AmrStateMachine()
 
 
 def test_get_robot_status_uses_telemetry_fields() -> None:

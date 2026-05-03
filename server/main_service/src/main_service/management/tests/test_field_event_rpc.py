@@ -29,17 +29,11 @@ class _RfidService:
         return self._result
 
 
-class _StateMachine:
-    def confirm_handoff(self, _robot_id: str):
-        return True, "released"
-
-
 class _Servicer(FieldEventRpcMixin):
     def __init__(self, *, rfid_result: RfidScanResult | None = None) -> None:
         self.rfid_service = _RfidService(
             rfid_result or RfidScanResult(True, 0, "ok", "parsed")
         )
-        self.amr_state_machine = _StateMachine()
 
 
 class _FakeSession:
@@ -99,7 +93,7 @@ def test_report_conveyor_event_tof1_projects_result_fields(monkeypatch) -> None:
 
     import rpc.field_event_rpc as field_event_rpc_module
     import smart_cast_db.database as database_module
-    import services.core.legacy.handoff_pipeline as handoff_pipeline_module
+    import services.legacy.handoff_pipeline as handoff_pipeline_module
 
     monkeypatch.setattr(database_module, "SessionLocal", lambda: fake_session)
     monkeypatch.setattr(handoff_pipeline_module, "apply_tof1", lambda *args, **kwargs: apply_result)

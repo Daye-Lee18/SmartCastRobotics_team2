@@ -82,7 +82,6 @@ class ManagementServicer(
         self.execution_monitor = container.execution_monitor
 
         self.amr_battery = container.amr_battery
-        self.amr_state_machine = container.amr_state_machine
         self.robot_executor = container.robot_executor
 
     def Health(self, request, context):

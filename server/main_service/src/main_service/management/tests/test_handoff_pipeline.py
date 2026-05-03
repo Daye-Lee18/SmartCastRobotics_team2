@@ -37,7 +37,7 @@ from smart_cast_db.models import (
 )
 from smart_cast_db.models.models_legacy import HandoffAck
 
-from services.core.legacy.handoff_pipeline import apply_handoff, apply_tof1, apply_tof2
+from services.legacy.handoff_pipeline import apply_handoff, apply_tof1, apply_tof2
 
 
 def _truncate_all() -> None:

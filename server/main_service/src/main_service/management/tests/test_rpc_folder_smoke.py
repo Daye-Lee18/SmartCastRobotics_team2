@@ -43,6 +43,15 @@ def test_image_publisher_servicer_exposes_publish_frames() -> None:
     assert callable(getattr(ImagePublisherServicer, "PublishFrames"))
 
 
+def test_management_servicer_wires_amr_battery() -> None:
+    from container import container
+    from server import ManagementServicer
+
+    servicer = ManagementServicer()
+
+    assert servicer.amr_battery is container.amr_battery
+
+
 def test_start_production_rpc_delegates_batch_to_orchestrator() -> None:
     from rpc.production_rpc import ProductionRpcMixin
 

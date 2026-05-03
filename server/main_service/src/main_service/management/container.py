@@ -3,9 +3,9 @@ import os
 
 from services.adapters.sensors.rfid_service import RfidService
 from services.adapters.robotics.amr_battery import AmrBatteryService
-from services.core.legacy.amr_state_machine import AmrStateMachine
-from services.core.legacy.execution_monitor import ExecutionMonitor
-from services.core.legacy.core.robot_executor import RobotExecutor
+
+from services.legacy.execution_monitor import ExecutionMonitor
+from services.legacy.robot_executor import RobotExecutor
 from services.core.task_allocator import TaskAllocator
 from services.core.task_manager import TaskManager
 from services.core.traffic_manager import TrafficManager
@@ -71,11 +71,7 @@ class Container:
         self.amr_battery = AmrBatteryService()
         self.amr_battery.start()
 
-        self.amr_state_machine = AmrStateMachine()
-        for s in self.amr_battery.get_all():
-            self.amr_state_machine.register(s.id)
-
-        self.robot_executor = RobotExecutor(state_machine=self.amr_state_machine)
+        self.robot_executor = RobotExecutor()
 
 # Singleton Container Instance
 container = Container()
