@@ -95,7 +95,9 @@ type SmartcastOrdFull = {
 };
 
 function adaptOrdToLegacy(o: SmartcastOrdFull): Order {
-  const legacyStatus: OrderStatus = ORD_STAT_TO_LEGACY[o.latestStat ?? "RCVD"] ?? "pending";
+  const legacyStatus: OrderStatus = o.latestStat
+    ? (ORD_STAT_TO_LEGACY[o.latestStat] ?? "submitted")
+    : "submitted";
   return {
     id: `ord_${o.ordId}`,
     customerId: String(o.userId),
@@ -287,7 +289,7 @@ export async function fetchOrderDetails(orderId: string): Promise<OrderDetail[]>
 }
 
 /** 신규 API 는 POST /api/orders/{id}/status?new_stat=...&user_id=... — legacy OrderStatus → ord_stat 매핑 */
-const LEGACY_TO_ORD_STAT: Record<OrderStatus, string> = {
+const LEGACY_TO_ORD_STAT: Partial<Record<OrderStatus, string>> = {
   pending: "RCVD",
   approved: "APPR",
   in_production: "MFG",
@@ -303,6 +305,9 @@ export async function updateOrderStatus(
 ): Promise<Order> {
   const numericId = orderId.replace(/^ord_/, "");
   const newStat = LEGACY_TO_ORD_STAT[status];
+  if (!newStat) {
+    throw new Error(`상태 전환을 지원하지 않는 주문 상태입니다: ${status}`);
+  }
   const res = await fetch(
     `${API_BASE}/api/orders/${numericId}/status?new_stat=${newStat}`,
     { method: "POST" },

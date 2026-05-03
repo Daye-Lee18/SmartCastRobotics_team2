@@ -1,11 +1,11 @@
 """Orders router — smartcast schema.
 
 엔드포인트:
-  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map + RCVD txn/stat)
+  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map)
   GET    /api/orders                    발주 목록 (관리자 조회)
   GET    /api/orders/{ord_id}           발주 단건 (detail + pp_options + latest_stat)
   GET    /api/orders/lookup?email=...   고객 발주 조회 (핑크 GUI #1)
-  POST   /api/orders/{ord_id}/status    발주 상태 전이 (RCVD→APPR→...)
+  POST   /api/orders/{ord_id}/status    발주 상태 전이 (없음→RCVD→APPR→...)
 
   GET    /api/products                  표준 제품 목록 (카테고리/옵션 join)
   GET    /api/categories                카테고리 마스터
@@ -91,7 +91,7 @@ def _to_full(db: Session, ord_obj: Ord) -> OrdFull:
         created_at=ord_obj.created_at,
         detail=ord_obj.detail,
         pp_options=[PpOptionOut.model_validate(p) for p in pp_options],
-        latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+        latest_stat=latest_stat.ord_stat if latest_stat else None,
         stats=[OrdStatOut.model_validate(s) for s in stats_rows],
         user_co_nm=user.co_nm if user else None,
         user_nm=user.user_nm if user else None,
@@ -301,16 +301,6 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     )
     db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
-    # 초기 상태 RCVD (txn + stat 동시 INSERT)
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=payload.user_id, ord_stat="RCVD"))
-    _append_ord_log(
-        db,
-        ord_id=new_ord.ord_id,
-        prev_stat=None,
-        new_stat="RCVD",
-        changed_by=payload.user_id,
-    )
     db.commit()
     db.refresh(new_ord)
     return _to_full(db, new_ord)
@@ -357,7 +347,7 @@ def list_orders(db: Session = Depends(get_db)) -> list[OrdFull]:
             created_at=o.created_at,
             detail=o.detail,
             pp_options=[PpOptionOut.model_validate(p) for p in pp_by_ord.get(o.ord_id, [])],
-            latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+            latest_stat=latest_stat.ord_stat if latest_stat else None,
             stats=[OrdStatOut.model_validate(s) for s in stats_rows],
             user_co_nm=user.co_nm if user else None,
             user_nm=user.user_nm if user else None,
@@ -463,16 +453,6 @@ def create_customer_order(
     )
     db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
-    # 6. 초기 상태 RCVD
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=user.user_id, ord_stat="RCVD"))
-    _append_ord_log(
-        db,
-        ord_id=new_ord.ord_id,
-        prev_stat=None,
-        new_stat="RCVD",
-        changed_by=user.user_id,
-    )
     db.commit()
     db.refresh(new_ord)
 

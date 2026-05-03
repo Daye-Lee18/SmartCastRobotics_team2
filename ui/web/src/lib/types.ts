@@ -8,7 +8,8 @@
 // ────────────────────────────────────────
 
 export type OrderStatus =
-  | "pending"              // 접수
+  | "submitted"            // 신규 주문 (아직 ord_stat 없음)
+  | "pending"              // 접수 (RCVD)
   | "approved"             // 승인
   | "in_production"        // 생산 (공정 진행 중)
   | "production_completed" // 생산 완료 (DB 에서만 전환, PyQt5 생산 시스템이 기록)
