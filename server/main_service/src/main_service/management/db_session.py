@@ -18,11 +18,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-# backend/ 디렉터리를 sys.path 에 추가 (smart_cast_db import 용)
-_THIS_DIR = Path(__file__).resolve().parent
-_BACKEND_DIR = _THIS_DIR.parent
-if str(_BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(_BACKEND_DIR))
+# `server/` 디렉터리를 sys.path 에 추가 (smart_cast_db import 용)
+_THIS_DIR = Path(__file__).resolve()
+_SERVER_DIR = next(
+    (parent for parent in _THIS_DIR.parents if (parent / "smart_cast_db").exists()),
+    None,
+)
+if _SERVER_DIR is None:
+    raise RuntimeError("Management Service: smart_cast_db package root를 찾을 수 없습니다.")
+if str(_SERVER_DIR) not in sys.path:
+    sys.path.insert(0, str(_SERVER_DIR))
 
 from smart_cast_db.database import _load_env_local  # noqa: E402
 
@@ -38,6 +43,8 @@ if DATABASE_URL.startswith("sqlite"):
 def _build_engine(url: str) -> Engine:
     return create_engine(
         url,
+        # 관리 서비스도 주문/상태 시간대를 KST 로 통일한다.
+        connect_args={"options": "-c timezone=Asia/Seoul"},
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,

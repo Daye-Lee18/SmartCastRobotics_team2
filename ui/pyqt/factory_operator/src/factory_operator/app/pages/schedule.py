@@ -633,28 +633,38 @@ class SchedulePage(QWidget):
         self._start_thread = StartProductionThread(worker)
         self._start_thread.start()
 
-    def _on_start_succeeded(self, wos: list) -> None:
-        if not wos:
+    def _on_start_succeeded(self, order_acks: list) -> None:
+        if not order_acks:
             QMessageBox.warning(
                 self,
-                "생성된 WorkOrder 없음",
+                "작업 생성 결과 없음",
                 "Management Service 가 빈 결과를 반환했습니다.\n"
-                "선택한 주문이 'approved' 상태가 아니거나 이미 work_order 가 있을 수 있습니다.",
+                "선택한 주문이 승인 대상이 아니거나 모두 반려되었을 수 있습니다.",
             )
             return
-        lines = [
-            f"  • WO #{wo.id} ← 주문 {wo.order_id} "
-            f"(qty={wo.qty}, status={wo.status}, "
-            f"시작: {wo.plan_start_iso[:19].replace('T', ' ') if wo.plan_start_iso else '-'})"
-            for wo in wos
-        ]
-        total_items = sum(wo.qty for wo in wos)
+
+        accepted = [ack for ack in order_acks if getattr(ack, "accepted", False)]
+        rejected = [ack for ack in order_acks if not getattr(ack, "accepted", False)]
+
+        lines = []
+        for ack in accepted:
+            lines.append(
+                f"  • 주문 {ack.ord_id} 승인"
+                f" (item={ack.item_id or '-'}, txn={ack.equip_task_txn_id or '-'})"
+            )
+        for ack in rejected:
+            ord_label = ack.ord_id if ack.ord_id else "?"
+            lines.append(
+                f"  • 주문 {ord_label} 반려"
+                f" ({ack.reason or 'rejected'})"
+            )
+
         QMessageBox.information(
             self,
-            "큐 등록 완료",
-            f"{len(wos)} 건의 WorkOrder 가 큐에 등록되었습니다 (총 {total_items} items).\n\n"
+            "작업 생성 완료",
+            f"요청 {len(order_acks)}건 중 승인 {len(accepted)}건, 반려 {len(rejected)}건.\n\n"
             + "\n".join(lines)
-            + "\n\n다음 단계: [실시간 운영 모니터링] 페이지에서 단건씩 라인 투입.",
+            + "\n\n다음 단계: 백그라운드 오케스트레이터가 후속 흐름을 이어갑니다.",
         )
         self.refresh()
 

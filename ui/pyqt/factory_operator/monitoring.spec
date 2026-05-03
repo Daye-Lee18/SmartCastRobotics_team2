@@ -40,7 +40,6 @@ hiddenimports = [
     "app.pages.storage",
     "app.widgets.alert_widgets",
     "app.widgets.amr_card",
-    "app.widgets.camera_view",
     "app.widgets.charts",
     "app.widgets.conveyor_card",
     "app.widgets.defect_panels",

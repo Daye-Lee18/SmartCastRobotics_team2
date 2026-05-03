@@ -51,3 +51,6 @@ log/
 
 # OMC plugin runtime (oh-my-claudecode local state)
 .omc/
+
+# Study / local analysis notes
+/study/

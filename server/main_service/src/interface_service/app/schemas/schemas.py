@@ -1,15 +1,9 @@
-"""Pydantic v2 스키마 — smartcast schema (Confluence 32342045 v59 기준).
-
-신규 27 테이블에 대응하는 Request/Response 모델.
-Legacy 모델은 backend/app/schemas/schemas_legacy.py 에 보관.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 # =====================
 # Common
@@ -172,20 +166,25 @@ class TransOut(_ORM):
 
 
 # =====================
-# PATTERN (핑크 GUI #3)
+# ORD PATTERN (핑크 GUI #3)
 # =====================
 
 
-class PatternIn(BaseModel):
-    """패턴 등록 — 발주 1:1, 위치 1-6."""
+class OrdPatternIn(BaseModel):
+    """발주↔패턴 1:1 등록 요청."""
 
-    ptn_id: int  # = ord_id
-    ptn_loc: int = Field(ge=1, le=6)
+    ord_id: int
+    ptn_loc_id: int = Field(
+        ge=1,
+        le=3,
+        validation_alias=AliasChoices("ptn_loc_id", "ptn_id"),
+    )
 
 
-class PatternOut(_ORM):
-    ptn_id: int
-    ptn_loc: int
+class OrdPatternOut(_ORM):
+    ord_id: int
+    pattern_id: int | None = None
+    ptn_loc_id: int | None = None
 
 
 # =====================
@@ -196,6 +195,9 @@ class PatternOut(_ORM):
 class ItemOut(_ORM):
     item_id: int
     ord_id: int
+    flow_stat: str | None = None
+    zone_nm: str | None = None
+    result: bool | None = None
     equip_task_type: str | None = None
     trans_task_type: str | None = None
     cur_stat: str | None = None
@@ -233,6 +235,8 @@ class EquipStatOut(_ORM):
 
 
 class TransTaskTxnOut(_ORM):
+    txn_id: int | None = None
+    res_id: str | None = None
     trans_task_txn_id: int
     trans_id: str | None = None
     task_type: str | None = None
@@ -250,6 +254,7 @@ class TransStatOut(_ORM):
     item_id: int | None = None
     cur_stat: str | None = None
     battery_pct: int | None = None
+    cur_trans_coord_id: int | None = None
     cur_zone_type: str | None = None
     updated_at: datetime | None = None
 

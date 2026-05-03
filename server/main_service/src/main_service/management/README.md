@@ -81,7 +81,6 @@ pytest tests/ --cov=services --cov-report=term-missing
 | `MGMT_IMAGE_BATCH_MAX` | `50` | 1회 flush 최대 파일 수 |
 | `MGMT_IMAGE_SPOOL_MAX_FILES` | `5000` | 스풀 보관 한도 (초과 시 oldest drop) |
 | `MGMT_IP_CAMERA_ID` | `CAM-INSP-01` | IP 진입 시 스냅샷 대상 카메라 ID |
-| `FMS_AUTOPLAY` | `0` | **★ V6 Phase B (2026-04-20 Interface→Management 이관):** 1 이면 자동 진행 시퀀서 daemon thread 기동. 실기 연동 시 0 권장 |
 | `FMS_ERROR_RATE` | `0.0` | 시퀀서 오류 주입 확률 (0.0~1.0). 데모 시나리오용 |
 | `FMS_ROS2` | `0` | **Deprecated** — `MGMT_ROS2_ENABLED` 로 대체됨 (하위 호환 유지) |
 
@@ -153,7 +152,7 @@ Phase 2 (추후): AI Server 추론 gRPC 엔드포인트 확정 후 별도 client
 
 ## Jetson Orin NX (Image Publishing Service) 접속
 
-V6 아키텍처에서 Jetson Orin NX 16GB 가 검사 카메라 프레임을 gRPC client streaming(`ImagePublisherService/PublishFrames`)으로 Management Server(:50051)에 push 한다. 서버가 클라이언트가 아니므로 **런타임에 Jetson 으로 호출할 일은 없음**. 아래 SSH 변수는 다음 용도에만 사용된다:
+V6 아키텍처에서 Jetson Orin NX 16GB 가 검사 카메라 프레임을 gRPC client streaming(`ImagePublisherService/PublishFrames`)으로 Management Server(:50051)에 push 한다. 서버가 클라이언트가 아니므로 **런타임에 Jetson 으로 호출할 일은 없음**. 현재 `WatchCameraFrames` UI 라이브 스트리밍은 비활성화되어 있고, 수신 프레임은 AI 스냅샷 경로에서만 사용된다. 아래 SSH 변수는 다음 용도에만 사용된다:
 
 - 원격 배포 (scp, rsync 로 publisher 코드/설정 업데이트)
 - 헬스체크·로그 수집

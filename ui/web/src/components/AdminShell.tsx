@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import DevHandoffAckButton from "@/components/DevHandoffAckButton";
 
 /**
  * 관리자 Shell 래퍼.
@@ -25,10 +24,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   if (isPublic) {
     return (
-      <>
-        {children}
-        <DevHandoffAckButton />
-      </>
+      <>{children}</>
     );
   }
 
@@ -39,7 +35,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <Header />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
-      <DevHandoffAckButton />
     </>
   );
 }
