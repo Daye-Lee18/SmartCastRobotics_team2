@@ -64,6 +64,17 @@ def main() -> int:
             )
             pp_rows = cur.fetchall()
 
+            cur.execute(
+                """
+                SELECT op.pattern_id, popm.pattern_nm, op.ptn_loc_id, op.assigned_at
+                  FROM ord_pattern op
+                  LEFT JOIN product_order_pattern_master popm ON popm.pattern_id = op.pattern_id
+                 WHERE op.ord_id = %s
+                """,
+                (args.ord_id,),
+            )
+            pattern_row = cur.fetchone()
+
             # Status history
             cur.execute(
                 """
@@ -124,6 +135,14 @@ def main() -> int:
     print(f"  납기일       : {hdr['due_date']}")
     print(f"  배송지       : {hdr['ship_addr']}")
     print(f"  후처리       : {pp_str}")
+    if pattern_row:
+        print(
+            "  패턴         : "
+            f"pattern_id={pattern_row['pattern_id']} ({pattern_row['pattern_nm']}), "
+            f"ptn_loc_id={pattern_row['ptn_loc_id'] or '(위치 미등록)'}"
+        )
+    else:
+        print("  패턴         : (미매핑)")
     print(f"  주문 생성    : {hdr['created_at']}")
     print(f"  상태 갱신    : {hdr['stat_updated']}")
 

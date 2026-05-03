@@ -19,6 +19,7 @@ ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
        연락처     : 010-3333-4444
        이메일     : minjun@techbuild.co
        비밀번호   : customer1234
+       배송지 주소: 서울특별시 강남구 테헤란로 123
 
        [고객 B]
        회사명     : BuildWorld Co.
@@ -26,6 +27,7 @@ ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
        연락처     : 010-9999-0000
        이메일     : sooyeon@buildworld.kr
        비밀번호   : customer1234
+       배송지 주소: 부산광역시 해운대구 센텀동로 456
 
 3. 제품 선택
        카테고리:  CMH(원형) / RMH(사각) / EMH(타원형)
@@ -58,8 +60,8 @@ ssh -L 3001:localhost:3001 -L 8000:localhost:8000 addinedu@<HOST> -N
 웹과 DB 결과는 동일합니다.
 =======================================================================
 
-Input  : --user-id, --prod-id, --qty, --due-date, --ship-addr, [--pp-ids ...], [--ptn-id]
-DB     : INSERT ord, ord_pattern, ord_detail, ord_pp_map, ord_txn, ord_stat, ord_log
+Input  : --user-id, --prod-id, --qty, --due-date, --ship-addr, [--pp-ids ...]
+DB     : INSERT ord, ord_detail, ord_pp_map, ord_pattern(pattern_id), ord_txn, ord_stat, ord_log
 Output : 생성된 ord_id + 상태 요약
 """
 
@@ -88,10 +90,6 @@ def parse_args() -> argparse.Namespace:
                    help="배송지")
     p.add_argument("--pp-ids",    type=int, nargs="*", default=[1, 2],
                    help="후처리 옵션 ID 목록 (기본: 1=표면연마 2=방청코팅)")
-    p.add_argument("--ptn-id",    type=int, default=1,
-                   help="모션 패턴 ID (1~3, 기본: 1)")
-    p.add_argument("--ptn-loc",   type=int, dest="ptn_id",
-                   help=argparse.SUPPRESS)
     return p.parse_args()
 
 
@@ -116,22 +114,6 @@ def main() -> int:
                 print(f"ERROR: user_id {args.user_id} role={user['role']} is not a customer.", file=sys.stderr)
                 return 1
 
-            if args.ptn_id not in (1, 2, 3):
-                print(f"ERROR: ptn_id {args.ptn_id} is invalid. Use 1, 2, or 3.", file=sys.stderr)
-                return 1
-
-            cur.execute(
-                "SELECT ptn_id, ptn_nm, is_active FROM pattern_master WHERE ptn_id = %s",
-                (args.ptn_id,),
-            )
-            pattern = cur.fetchone()
-            if not pattern:
-                print(f"ERROR: ptn_id {args.ptn_id} not found in pattern_master.", file=sys.stderr)
-                return 1
-            if not pattern["is_active"]:
-                print(f"ERROR: ptn_id {args.ptn_id} is inactive.", file=sys.stderr)
-                return 1
-
             # 제품 검증
             cur.execute(
                 "SELECT prod_id, cate_cd, base_price FROM product WHERE prod_id = %s",
@@ -142,10 +124,28 @@ def main() -> int:
                 print(f"ERROR: prod_id {args.prod_id} not found.", file=sys.stderr)
                 return 1
 
+            cur.execute(
+                """
+                SELECT prod_opt_id, diameter, thickness, material, load_class
+                  FROM product_option
+                 WHERE prod_id = %s
+                 ORDER BY prod_opt_id
+                 LIMIT 1
+                """,
+                (args.prod_id,),
+            )
+            prod_opt = cur.fetchone()
+            if not prod_opt:
+                print(f"ERROR: product_option for prod_id {args.prod_id} not found.", file=sys.stderr)
+                return 1
+
             # 후처리 옵션 검증 + 추가 비용 합산
             pp_extra = 0
             valid_pp: list[dict] = []
+            seen_pp_ids: set[int] = set()
             for pp_id in (args.pp_ids or []):
+                if pp_id in seen_pp_ids:
+                    continue
                 cur.execute(
                     "SELECT pp_id, pp_nm, extra_cost FROM pp_options WHERE pp_id = %s",
                     (pp_id,),
@@ -154,10 +154,38 @@ def main() -> int:
                 if not pp:
                     print(f"ERROR: pp_id {pp_id} not found.", file=sys.stderr)
                     return 1
+                seen_pp_ids.add(pp_id)
                 pp_extra += int(pp["extra_cost"])
                 valid_pp.append(pp)
 
             final_price = (int(prod["base_price"]) + pp_extra) * args.qty
+            pp_mask = sum(1 << (int(pp["pp_id"]) - 1) for pp in valid_pp)
+
+            cur.execute(
+                """
+                SELECT pattern_id, pattern_nm
+                  FROM product_order_pattern_master
+                 WHERE prod_id = %s
+                   AND diameter = %s
+                   AND thickness = %s
+                   AND material = %s
+                   AND load_class = %s
+                   AND pp_mask = %s
+                   AND is_active = TRUE
+                """,
+                (
+                    args.prod_id,
+                    prod_opt["diameter"],
+                    prod_opt["thickness"],
+                    prod_opt["material"],
+                    prod_opt["load_class"],
+                    pp_mask,
+                ),
+            )
+            product_pattern = cur.fetchone()
+            if not product_pattern:
+                print("ERROR: matching product_order_pattern_master row not found.", file=sys.stderr)
+                return 1
 
             # --- DB INSERT ---
             cur.execute(
@@ -169,16 +197,23 @@ def main() -> int:
             created_at = ord_row["created_at"]
 
             cur.execute(
-                "INSERT INTO ord_pattern (ord_id, ptn_id) VALUES (%s, %s)",
-                (ord_id, args.ptn_id),
-            )
-
-            cur.execute(
                 """
-                INSERT INTO ord_detail (ord_id, prod_id, qty, final_price, due_date, ship_addr)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO ord_detail
+                    (ord_id, prod_id, diameter, thickness, material, load_class, qty, final_price, due_date, ship_addr)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (ord_id, args.prod_id, args.qty, final_price, args.due_date, args.ship_addr),
+                (
+                    ord_id,
+                    args.prod_id,
+                    prod_opt["diameter"],
+                    prod_opt["thickness"],
+                    prod_opt["material"],
+                    prod_opt["load_class"],
+                    args.qty,
+                    final_price,
+                    args.due_date,
+                    args.ship_addr,
+                ),
             )
 
             for pp in valid_pp:
@@ -186,6 +221,11 @@ def main() -> int:
                     "INSERT INTO ord_pp_map (ord_id, pp_id) VALUES (%s, %s)",
                     (ord_id, pp["pp_id"]),
                 )
+
+            cur.execute(
+                "INSERT INTO ord_pattern (ord_id, pattern_id) VALUES (%s, %s)",
+                (ord_id, product_pattern["pattern_id"]),
+            )
 
             cur.execute(
                 "INSERT INTO ord_txn (ord_id, txn_type) VALUES (%s, 'RCVD')",
@@ -212,7 +252,12 @@ def main() -> int:
         print(f"  ord_id      : {ord_id}")
         print(f"  고객         : {user['user_nm']} (user_id={args.user_id})")
         print(f"  제품         : prod_id={args.prod_id}  ({prod['cate_cd']})")
-        print(f"  패턴         : ptn_id={args.ptn_id} ({pattern['ptn_nm']})")
+        print(
+            "  제품 옵션    : "
+            f"diameter={prod_opt['diameter']}, thickness={prod_opt['thickness']}, "
+            f"material={prod_opt['material']}, load_class={prod_opt['load_class']}"
+        )
+        print(f"  패턴 매핑    : pattern_id={product_pattern['pattern_id']} ({product_pattern['pattern_nm']})")
         print(f"  수량         : {args.qty}")
         print(f"  최종 금액    : {final_price:,}원")
         print(f"  납기일       : {args.due_date}")

@@ -1,7 +1,7 @@
 """Phase 0-2: 마스터 데이터 시드 (테이블 생성 후 한 번만).
 
 DB: seed/seed_master.sql 실행
-    - user_account, product, product_option, pp_options
+    - user_account, product, product_option, pp_options, product_order_pattern_master
     - pattern_master, zone, res, equip, chg_location_stat, strg_location_stat, ship_location_stat
     - trans, trans_task_bat_threshold, tat_nav_pose_master, ra_motion_step, ai_model 등
 """
@@ -27,7 +27,7 @@ def main() -> int:
 
             tables = [
                 "user_account", "category", "product", "product_option",
-                "pp_options", "pattern_master", "zone", "res", "equip",
+                "pp_options", "product_order_pattern_master", "pattern_master", "zone", "res", "equip",
                 "equip_load_spec", "chg_location_stat",
                 "strg_location_stat", "ship_location_stat", "trans",
                 "trans_task_bat_threshold", "tat_nav_pose_master",

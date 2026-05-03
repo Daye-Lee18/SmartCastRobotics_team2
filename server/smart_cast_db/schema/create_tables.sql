@@ -49,6 +49,19 @@ CREATE TABLE pp_options (
     extra_cost  DECIMAL  DEFAULT 0
 );
 
+CREATE TABLE product_order_pattern_master (
+    pattern_id   SERIAL       PRIMARY KEY,
+    prod_id      INT          NOT NULL REFERENCES product(prod_id),
+    diameter     DECIMAL      NOT NULL,
+    thickness    DECIMAL      NOT NULL,
+    material     VARCHAR(30)  NOT NULL,
+    load_class   VARCHAR(20)  NOT NULL,
+    pp_mask      INT          NOT NULL DEFAULT 0 CHECK (pp_mask >= 0),
+    pattern_nm   VARCHAR      NOT NULL UNIQUE,
+    is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
+    UNIQUE (prod_id, diameter, thickness, material, load_class, pp_mask)
+);
+
 -- =====================
 -- MASTER: RESOURCE
 -- =====================
@@ -120,7 +133,7 @@ CREATE TABLE ord_pp_map (
     pp_id   INT     NOT NULL REFERENCES pp_options(pp_id),
     UNIQUE (ord_id, pp_id)
 );
-
+-- pattern loc master 
 CREATE TABLE pattern_master (
     ptn_id      INT  PRIMARY KEY CHECK (ptn_id BETWEEN 1 AND 3),
     ptn_nm      VARCHAR NOT NULL UNIQUE,
@@ -131,7 +144,8 @@ CREATE TABLE pattern_master (
 
 CREATE TABLE ord_pattern (
     ord_id      INT  PRIMARY KEY REFERENCES ord(ord_id),
-    ptn_id      INT  NOT NULL REFERENCES pattern_master(ptn_id),
+    pattern_id  INT  REFERENCES product_order_pattern_master(pattern_id),
+    ptn_loc_id  INT  REFERENCES pattern_master(ptn_id),
     assigned_at TIMESTAMP DEFAULT now()
 );
 

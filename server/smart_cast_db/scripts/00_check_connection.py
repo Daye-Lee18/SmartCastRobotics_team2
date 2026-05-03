@@ -17,6 +17,7 @@ MASTER_TABLES = [
     "product",
     "product_option",
     "pp_options",
+    "product_order_pattern_master",
     "pattern_master",
     "zone",
     "res",

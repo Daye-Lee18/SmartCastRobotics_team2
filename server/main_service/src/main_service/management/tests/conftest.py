@@ -97,7 +97,7 @@ def postgresql_smartcast_empty(_smartcast_schema):
 
 @pytest.fixture
 def postgresql_with_smartcast_seed(_smartcast_schema):
-    """ord_id=42 + OrdPattern(42, ptn_id=1) 시드 (happy path)."""
+    """ord_id=42 + OrdPattern(42, ptn_loc_id=1) 시드 (happy path)."""
     from smart_cast_db.database import SessionLocal
     from smart_cast_db.models import Ord, OrdPattern
 
@@ -106,7 +106,7 @@ def postgresql_with_smartcast_seed(_smartcast_schema):
     with SessionLocal() as db:
         db.add(Ord(ord_id=42, user_id=1))
         db.flush()
-        db.add(OrdPattern(ord_id=42, ptn_id=1))
+        db.add(OrdPattern(ord_id=42, ptn_loc_id=1))
         db.commit()
     yield
 
