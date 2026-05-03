@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle, Factory } from "lucide-react";
-import { LOAD_CLASSES, MATERIALS, POST_PROCESSING_OPTIONS } from "../data/products";
+import { POST_PROCESSING_OPTIONS } from "../data/products";
 import { formatCurrency } from "../lib/format";
 import type { FormData, Product } from "../lib/types";
 
@@ -89,7 +89,7 @@ export function Step2SpecInput({ formData, product, onChange, errors }: Step2Spe
             }`}
           >
             <option value="">선택하세요</option>
-            {LOAD_CLASSES.map((cls) => (
+            {product.loadClasses.map((cls) => (
               <option key={cls} value={cls}>{cls}</option>
             ))}
           </select>
@@ -109,7 +109,7 @@ export function Step2SpecInput({ formData, product, onChange, errors }: Step2Spe
             }`}
           >
             <option value="">선택하세요</option>
-            {MATERIALS.map((mat) => (
+            {product.materials.map((mat) => (
               <option key={mat} value={mat}>{mat}</option>
             ))}
           </select>

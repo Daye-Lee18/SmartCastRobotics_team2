@@ -18,6 +18,7 @@ export interface Product {
   diameterOptions: string[];
   thicknessOptions: string[];
   materials: string[];
+  loadClasses: string[];
   loadClassRange: string;
 }
 

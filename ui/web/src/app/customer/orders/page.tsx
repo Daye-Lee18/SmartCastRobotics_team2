@@ -206,6 +206,11 @@ function OrderDetailPanel({
           <Clock className="w-4 h-4 text-blue-600" />
           진행 상태
         </h3>
+        {order.status === "submitted" && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            주문이 등록되었습니다. 담당자 검토 후 접수 상태로 변경됩니다.
+          </div>
+        )}
         <OrderStatusTimeline status={order.status} />
       </div>
 

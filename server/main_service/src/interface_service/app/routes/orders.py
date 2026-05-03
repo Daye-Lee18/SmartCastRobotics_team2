@@ -1,11 +1,11 @@
 """Orders router — smartcast schema.
 
 엔드포인트:
-  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map + RCVD txn/stat)
+  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map)
   GET    /api/orders                    발주 목록 (관리자 조회)
   GET    /api/orders/{ord_id}           발주 단건 (detail + pp_options + latest_stat)
   GET    /api/orders/lookup?email=...   고객 발주 조회 (핑크 GUI #1)
-  POST   /api/orders/{ord_id}/status    발주 상태 전이 (RCVD→APPR→...)
+  POST   /api/orders/{ord_id}/status    발주 상태 전이 (없음→RCVD→APPR→...)
 
   GET    /api/products                  표준 제품 목록 (카테고리/옵션 join)
   GET    /api/categories                카테고리 마스터
@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc
@@ -53,6 +54,18 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 products_router = APIRouter(prefix="/api", tags=["products"])
 load_classes_router = APIRouter(prefix="/api", tags=["load-classes"])
 
+_PRODUCT_CODE_TO_PROD_ID: dict[str, int] = {
+    "R-D450": 1,
+    "R-D500": 2,
+    "R-D550": 3,
+    "S-400": 4,
+    "S-450": 5,
+    "S-500": 6,
+    "O-450": 7,
+    "O-500": 8,
+    "O-550": 9,
+}
+
 
 # -------------------------------------------------------------------------
 # helpers
@@ -78,7 +91,7 @@ def _to_full(db: Session, ord_obj: Ord) -> OrdFull:
         created_at=ord_obj.created_at,
         detail=ord_obj.detail,
         pp_options=[PpOptionOut.model_validate(p) for p in pp_options],
-        latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+        latest_stat=latest_stat.ord_stat if latest_stat else None,
         stats=[OrdStatOut.model_validate(s) for s in stats_rows],
         user_co_nm=user.co_nm if user else None,
         user_nm=user.user_nm if user else None,
@@ -93,6 +106,10 @@ def _resolve_product_id(db: Session, raw_product_id: str | None) -> int | None:
         return None
 
     text = raw_product_id.strip()
+    exact = _PRODUCT_CODE_TO_PROD_ID.get(text.upper())
+    if exact is not None:
+        return exact if db.get(Product, exact) is not None else None
+
     if text.isdigit():
         candidate = int(text)
         return candidate if db.get(Product, candidate) is not None else None
@@ -114,13 +131,33 @@ def _parse_decimal_or_none(raw_value: str | int | float | Decimal | None) -> Dec
     text = str(raw_value).strip()
     if not text:
         return None
-    filtered = "".join(ch for ch in text if ch.isdigit() or ch in {".", "-"})
-    if not filtered or filtered in {".", "-", "-."}:
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if match is None:
         return None
     try:
-        return Decimal(filtered)
+        return Decimal(match.group(0))
     except InvalidOperation:
         return None
+
+
+def _normalize_load_class(raw_value: str | None) -> str | None:
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip().upper()
+    if not text:
+        return None
+    match = re.search(r"([A-Z]\d{2,3})$", text)
+    return match.group(1) if match else text
+
+
+def _normalize_material(raw_value: str | None) -> str | None:
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip().upper()
+    if not text:
+        return None
+    match = re.match(r"([A-Z]+\d+)", text)
+    return match.group(1) if match else text
 
 
 def _pp_mask_from_ids(pp_ids: set[int]) -> int:
@@ -232,13 +269,16 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     db.add(new_ord)
     db.flush()  # ord_id 확보
 
+    normalized_material = _normalize_material(payload.detail.material)
+    normalized_load_class = _normalize_load_class(payload.detail.load_class)
+
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=payload.detail.prod_id,
         diameter=payload.detail.diameter,
         thickness=payload.detail.thickness,
-        material=payload.detail.material,
-        load_class=payload.detail.load_class,
+        material=normalized_material,
+        load_class=normalized_load_class,
         qty=payload.detail.qty,
         final_price=payload.detail.final_price,
         due_date=payload.detail.due_date,
@@ -255,22 +295,12 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
         prod_id=payload.detail.prod_id,
         diameter=payload.detail.diameter,
         thickness=payload.detail.thickness,
-        material=payload.detail.material,
-        load_class=payload.detail.load_class,
+        material=normalized_material,
+        load_class=normalized_load_class,
         pp_ids=selected_pp_ids,
     )
     db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
-    # 초기 상태 RCVD (txn + stat 동시 INSERT)
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=payload.user_id, ord_stat="RCVD"))
-    _append_ord_log(
-        db,
-        ord_id=new_ord.ord_id,
-        prev_stat=None,
-        new_stat="RCVD",
-        changed_by=payload.user_id,
-    )
     db.commit()
     db.refresh(new_ord)
     return _to_full(db, new_ord)
@@ -317,7 +347,7 @@ def list_orders(db: Session = Depends(get_db)) -> list[OrdFull]:
             created_at=o.created_at,
             detail=o.detail,
             pp_options=[PpOptionOut.model_validate(p) for p in pp_by_ord.get(o.ord_id, [])],
-            latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+            latest_stat=latest_stat.ord_stat if latest_stat else None,
             stats=[OrdStatOut.model_validate(s) for s in stats_rows],
             user_co_nm=user.co_nm if user else None,
             user_nm=user.user_nm if user else None,
@@ -383,14 +413,16 @@ def create_customer_order(
     safe_prod_id = _resolve_product_id(db, d0.product_id)
     diameter = _parse_decimal_or_none(d0.diameter)
     thickness = _parse_decimal_or_none(d0.thickness)
+    material = _normalize_material(d0.material)
+    load_class = _normalize_load_class(d0.load_class)
 
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=safe_prod_id,
         diameter=diameter,
         thickness=thickness,
-        material=d0.material,
-        load_class=d0.load_class,
+        material=material,
+        load_class=load_class,
         qty=d0.quantity,
         final_price=payload.total_amount,
         due_date=due_date,
@@ -415,22 +447,12 @@ def create_customer_order(
         prod_id=safe_prod_id,
         diameter=diameter,
         thickness=thickness,
-        material=d0.material,
-        load_class=d0.load_class,
+        material=material,
+        load_class=load_class,
         pp_ids=selected_pp_ids,
     )
     db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
-    # 6. 초기 상태 RCVD
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=user.user_id, ord_stat="RCVD"))
-    _append_ord_log(
-        db,
-        ord_id=new_ord.ord_id,
-        prev_stat=None,
-        new_stat="RCVD",
-        changed_by=user.user_id,
-    )
     db.commit()
     db.refresh(new_ord)
 

@@ -22,17 +22,15 @@ interface OrderDetailPanelProps {
   order: Order;
   details: OrderDetail[];
   onStatusChange: (orderId: string, status: OrderStatus) => void;
-  onApproveProduction: (orderId: string) => void;
   actionLoading: boolean;
 }
 
 // 우측 메인 영역 — 주문 상세 + 상태 스텝퍼 + 액션 버튼.
-// 액션 버튼은 status 별로 다르게 렌더링 (pending→승인/반려, approved→생산 승인, ...).
+// 액션 버튼은 status 별로 다르게 렌더링 (submitted→접수, pending→승인, ...).
 export function OrderDetailPanel({
   order,
   details,
   onStatusChange,
-  onApproveProduction,
   actionLoading,
 }: OrderDetailPanelProps) {
   const statusInfo = orderStatusMap[order.status];
@@ -260,9 +258,9 @@ export function OrderDetailPanel({
             <div className="flex items-center gap-3 text-base">
               <div className="w-3 h-3 rounded-full bg-blue-500 shrink-0 ring-4 ring-blue-100" />
               <span className="text-gray-500 w-32 shrink-0">{formatDate(order.createdAt)}</span>
-              <span className="text-gray-900 font-medium">주문 접수</span>
+              <span className="text-gray-900 font-medium">주문 등록</span>
             </div>
-            {order.status !== "pending" && (
+            {order.status !== "submitted" && (
               <div className="flex items-center gap-3 text-base">
                 <div className="w-3 h-3 rounded-full bg-yellow-500 shrink-0 ring-4 ring-yellow-100" />
                 <span className="text-gray-500 w-32 shrink-0">{formatDate(order.updatedAt)}</span>
@@ -286,23 +284,46 @@ export function OrderDetailPanel({
       </div>
 
       {/* 하단 액션 버튼 */}
-      {(order.status === "pending" ||
+      {(order.status === "submitted" ||
+        order.status === "pending" ||
         order.status === "approved" ||
         order.status === "in_production" ||
         order.status === "production_completed" ||
         order.status === "shipping_ready") && (
           <div className="px-6 py-4 border-t border-gray-200 bg-white sticky bottom-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex gap-3">
+              {order.status === "submitted" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "pending")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-base hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
+                    주문 접수
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading}
+                    onClick={() => onStatusChange(order.id, "rejected")}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-red-600 text-white rounded-lg font-semibold text-base hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsDown size={16} />}
+                    반려
+                  </button>
+                </>
+              )}
               {order.status === "pending" && (
                 <>
                   <button
                     type="button"
                     disabled={actionLoading}
                     onClick={() => onStatusChange(order.id, "approved")}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-base hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
                   >
                     {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <ThumbsUp size={16} />}
-                    승인
+                    주문 승인
                   </button>
                   <button
                     type="button"
@@ -316,22 +337,23 @@ export function OrderDetailPanel({
                 </>
               )}
               {order.status === "approved" && (
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => onApproveProduction(order.id)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-                  title="생산 대기열에 등록합니다. 실제 순위 계산과 착수는 PyQt5 생산 계획 페이지에서 수행됩니다."
+                <div
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg font-medium text-sm"
+                  title="승인된 주문은 PyQt 패턴 위치 조작 및 생산 시작 화면에서 생산을 진행합니다."
                 >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Factory size={16} />}
-                  생산 승인
-                </button>
+                  <Factory size={16} className="text-blue-600" />
+                  주문 승인 완료 — 생산 시작은 PyQt 화면에서 진행합니다
+                </div>
               )}
               {order.status === "in_production" && (
-                <div className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg font-medium text-sm">
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg font-medium text-sm disabled:opacity-100"
+                >
                   <Factory size={16} className="text-yellow-600" />
                   생산 진행 중 — 생산 완료는 공정 시스템(PyQt5)이 DB에 기록합니다
-                </div>
+                </button>
               )}
               {order.status === "production_completed" && (
                 <button
