@@ -19,8 +19,6 @@ Management Service 테스트 스위트 — 14개 테스트 파일.
 | `test_event_bridge.py` | Event Bridge 이벤트 전파 테스트 |
 | `test_image_forwarder.py` | 이미지 포워딩 테스트 |
 | `test_ai_client.py` | AI Server 클라이언트 테스트 |
-| `test_order_manager.py` | Order Manager 컨트랙트 테스트 |
-| `test_ordering_service.py` | Ordering Service 컨트랙트 테스트 |
 | `test_order_pipeline_4seq.py` | 4-시퀀스 오더 파이프라인 통합 테스트 |
 | `test_interface_service_client.py` | Interface Service HTTP 클라이언트 테스트 |
 | `test_management_service_client.py` | Management gRPC 클라이언트 테스트 |

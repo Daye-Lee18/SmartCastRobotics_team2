@@ -23,8 +23,6 @@ import pytest
         "services.core.legacy.handoff_pipeline",
         "services.adapters.vision.image_forwarder",
         "services.adapters.vision.image_sink",
-        "services.core.order_manager",
-        "services.core.ordering_service",
         "services.adapters.sensors.rfid_service",
         "services.core.robot_executor",
         "services.adapters.robotics.ros2_publisher",
