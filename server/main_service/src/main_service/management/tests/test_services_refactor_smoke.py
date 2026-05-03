@@ -16,7 +16,6 @@ import pytest
     [
         "services.adapters.vision.ai_client",
         "services.adapters.robotics.amr_battery",
-        "services.core.amr_state_machine",
         "services.core.command_queue",
         "services.core.event_bridge",
         "services.core.execution_monitor",

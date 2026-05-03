@@ -29,17 +29,11 @@ class _RfidService:
         return self._result
 
 
-class _StateMachine:
-    def confirm_handoff(self, _robot_id: str):
-        return True, "released"
-
-
 class _Servicer(FieldEventRpcMixin):
     def __init__(self, *, rfid_result: RfidScanResult | None = None) -> None:
         self.rfid_service = _RfidService(
             rfid_result or RfidScanResult(True, 0, "ok", "parsed")
         )
-        self.amr_state_machine = _StateMachine()
 
 
 class _FakeSession:

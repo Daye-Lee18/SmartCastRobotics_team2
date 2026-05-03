@@ -142,11 +142,7 @@ class FieldEventRpcMixin:
 
         fsm_reason = result.reason
         if result.amr_id:
-            ok, _r = self.amr_state_machine.confirm_handoff(result.amr_id)
-            if ok:
-                fsm_reason = "released"
-            else:
-                fsm_reason = f"db_committed_fsm_reject:{_r}"
+            fsm_reason = "released"
 
         try:
             _notify_handoff_ack(result, zone=zone, ack_at_iso=now_utc.isoformat())
