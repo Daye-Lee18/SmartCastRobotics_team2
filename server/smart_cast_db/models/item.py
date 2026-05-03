@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from sqlalchemy import case
+from sqlalchemy.ext.hybrid import hybrid_property
+
 from ._base import (
     SCHEMA,
     Base,
@@ -38,8 +41,35 @@ class Item(Base):
     # Compatibility for older v21 callers.
     item_stat_id = synonym("item_id")
     flow_stat = synonym("cur_stat")
+    zone_nm = synonym("cur_res")
 
     ord = relationship("Ord", back_populates="items")
+
+    @hybrid_property
+    def result(self) -> bool | None:
+        """Legacy v21 inspection result compatibility.
+
+        v21:  True=GP, False=DP, None=pending
+        v23:  is_defective False=GP, True=DP, None=pending
+        """
+        if self.is_defective is None:
+            return None
+        return not self.is_defective
+
+    @result.setter
+    def result(self, value: bool | None) -> None:
+        if value is None:
+            self.is_defective = None
+        else:
+            self.is_defective = not bool(value)
+
+    @result.expression
+    def result(cls):
+        return case(
+            (cls.is_defective.is_(None), None),
+            (cls.is_defective.is_(True), False),
+            else_=True,
+        )
 
 
 class ChgLocationStat(Base):

@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from enums import (
+from .enums import (
     AdminActionType,
     AlertSeverity,
     EquipStat,
@@ -14,6 +14,7 @@ from enums import (
     LocStatus,
     OrdStat,
     OrdTxnType,
+    PoseNm,
     RfidParseStatus,
     TransStat,
     TransTaskType,
@@ -39,7 +40,7 @@ class CreateOrdDetailInput(BaseModel):
     diameter: Optional[Decimal] = None
     thickness: Optional[Decimal] = None
     material: Optional[str] = None
-    load: Optional[str] = None
+    load_class: Optional[str] = None
     qty: Optional[int] = Field(default=None, gt=0)
     final_price: Optional[Decimal] = None
     due_date: Optional[date] = None
@@ -54,7 +55,7 @@ class OrdDetailRecord(BaseModel):
     diameter: Optional[Decimal] = None
     thickness: Optional[Decimal] = None
     material: Optional[str] = None
-    load: Optional[str] = None
+    load_class: Optional[str] = None
     qty: Optional[int] = None
     final_price: Optional[Decimal] = None
     due_date: Optional[date] = None

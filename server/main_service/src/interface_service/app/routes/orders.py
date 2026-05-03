@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc
@@ -28,10 +29,10 @@ from smart_cast_db.models import (
     Ord,
     OrdDetail,
     OrdLog,
+    OrdPattern,
     OrdPpMap,
     OrdStat,
     OrdTxn,
-    Pattern,
     PpOption,
     Product,
     UserAccount,
@@ -96,12 +97,52 @@ def _resolve_product_id(db: Session, raw_product_id: str | None) -> int | None:
         return candidate if db.get(Product, candidate) is not None else None
 
     prefix = text[:1].upper()
-    cate_cd = {"R": "RMH", "S": "CMH", "O": "EMH"}.get(prefix)
+    cate_cd = {"R": "CMH", "S": "RMH", "O": "EMH"}.get(prefix)
     if cate_cd is None:
         return None
 
     row = db.query(Product).filter(Product.cate_cd == cate_cd).order_by(Product.prod_id.asc()).first()
     return row.prod_id if row is not None else None
+
+
+def _parse_decimal_or_none(raw_value: str | int | float | Decimal | None) -> Decimal | None:
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, Decimal):
+        return raw_value
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    filtered = "".join(ch for ch in text if ch.isdigit() or ch in {".", "-"})
+    if not filtered or filtered in {".", "-", "-."}:
+        return None
+    try:
+        return Decimal(filtered)
+    except InvalidOperation:
+        return None
+
+
+def _pattern_id_from_prefix(prefix: str | None) -> int | None:
+    if not prefix:
+        return None
+    return {"R": 1, "S": 2, "O": 3}.get(prefix[:1].upper())
+
+
+def _resolve_pattern_id(
+    db: Session,
+    *,
+    raw_product_id: str | None = None,
+    prod_id: int | None = None,
+) -> int | None:
+    pattern_id = _pattern_id_from_prefix((raw_product_id or "").strip())
+    if pattern_id is not None:
+        return pattern_id
+    if prod_id is None:
+        return None
+    product = db.get(Product, prod_id)
+    if product is None:
+        return None
+    return {"CMH": 1, "RMH": 2, "EMH": 3}.get(product.cate_cd)
 
 
 def _parse_due_date_or_400(raw_due_date: str | None) -> date:
@@ -178,12 +219,20 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=payload.detail.prod_id,
+        diameter=payload.detail.diameter,
+        thickness=payload.detail.thickness,
+        material=payload.detail.material,
+        load_class=payload.detail.load_class,
         qty=payload.detail.qty,
         final_price=payload.detail.final_price,
         due_date=payload.detail.due_date,
         ship_addr=payload.detail.ship_addr,
     )
     db.add(detail)
+
+    pattern_id = _resolve_pattern_id(db, prod_id=payload.detail.prod_id)
+    if pattern_id is not None:
+        db.add(OrdPattern(ord_id=new_ord.ord_id, ptn_id=pattern_id))
 
     for pp_id in payload.pp_ids:
         db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp_id))
@@ -260,35 +309,11 @@ def list_orders(db: Session = Depends(get_db)) -> list[OrdFull]:
 
 # 폼의 post-processing id 와 pp_options.pp_nm 매핑 (id 가 영문 코드, DB 는 한글명)
 _PP_ID_TO_NM: dict[str, str] = {
-    "polish": "표면연마",
-    "coat": "방청코팅",
-    "zinc": "아연도금",
-    "logo": "로고문구삽입",
+    "polish": "표면 연마",
+    "rustProof": "방청 코팅",
+    "zinc": "아연 도금",
+    "logo": "로고/문구 삽입",
 }
-
-
-# 자동 패턴 위치 매핑 — frontend product_id 첫 글자 기준
-# CLAUDE.md (2026-04-27): 카테고리 → ptn_loc 자동 결정. 운영자 수동 입력 폐지.
-#   R-* (원형 round)   → ptn_loc=1
-#   S-* (사각 square)  → ptn_loc=2
-#   O-* (타원형 oval)  → ptn_loc=3
-# 4-6번 위치는 사용 안 함 (확장 여유).
-_CATEGORY_PREFIX_TO_PTN_LOC: dict[str, int] = {
-    "R": 1,  # Round
-    "S": 2,  # Square
-    "O": 3,  # Oval
-}
-
-
-def derive_ptn_loc(product_id: str | None) -> int | None:
-    """frontend product_id ('R-D450', 'S-400', 'O-500' 등) → ptn_loc (1/2/3).
-
-    매핑 없는 ID 는 None 반환 → 호출자가 Pattern row 생성 스킵.
-    """
-    if not product_id:
-        return None
-    prefix = product_id.strip()[:1].upper()
-    return _CATEGORY_PREFIX_TO_PTN_LOC.get(prefix)
 
 
 @router.post("/customer", response_model=CustomerOrderResponse, status_code=201)
@@ -336,6 +361,10 @@ def create_customer_order(
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=safe_prod_id,
+        diameter=_parse_decimal_or_none(d0.diameter),
+        thickness=_parse_decimal_or_none(d0.thickness),
+        material=d0.material,
+        load_class=d0.load_class,
         qty=d0.quantity,
         final_price=payload.total_amount,
         due_date=due_date,
@@ -352,13 +381,11 @@ def create_customer_order(
         if pp:
             db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp.pp_id))
 
-    # 5. 자동 패턴 위치 등록 — 카테고리에서 ptn_loc 결정 (운영자 수동 입력 폐지).
-    # frontend product_id (예: 'R-D450') 첫 글자로 카테고리 판단:
-    #   R → ptn_loc 1 (원형), S → 2 (사각), O → 3 (타원형)
-    # 매핑 실패 시 Pattern row 생성 안 함 (Pattern 미등록 → 생산 시작 차단).
-    ptn_loc = derive_ptn_loc(d0.product_id)
-    if ptn_loc is not None:
-        db.add(Pattern(ptn_id=new_ord.ord_id, ptn_loc=ptn_loc))
+    # 5. 자동 패턴 등록 — 제품 형상 기준으로 pattern_master(1~3) 매핑.
+    # 매핑 실패 시 row 생성 안 함 → 생산 시작 전 운영자가 패턴을 보완 등록해야 한다.
+    pattern_id = _resolve_pattern_id(db, raw_product_id=d0.product_id, prod_id=safe_prod_id)
+    if pattern_id is not None:
+        db.add(OrdPattern(ord_id=new_ord.ord_id, ptn_id=pattern_id))
 
     # 6. 초기 상태 RCVD
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))

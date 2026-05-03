@@ -123,7 +123,8 @@ class MockStateManager:
             existing_item = db.query(self._item_model).filter(self._item_model.ord_id == ord_id).first()
             existing_txn = (
                 db.query(self._equip_task_txn_model)
-                .filter(self._equip_task_txn_model.ord_id == ord_id)
+                .join(self._item_model, self._item_model.item_stat_id == self._equip_task_txn_model.item_id)
+                .filter(self._item_model.ord_id == ord_id)
                 .first()
             )
             if existing_item is not None or existing_txn is not None:
@@ -155,27 +156,26 @@ class MockStateManager:
 
             new_item = self._item_model(
                 ord_id=ord_id,
-                flow_stat="CREATED",
-                zone_nm=None,
-                result=None,
+                cur_stat="CREATED",
+                cur_res="PAT",
+                is_defective=None,
             )
             db.add(new_item)
             db.flush()
 
             txn = self._equip_task_txn_model(
-                res_id="RA1",
+                res_id="PAT",
                 task_type="MM",
                 txn_stat="QUE",
-                item_stat_id=new_item.item_stat_id,
-                ord_id=ord_id,
+                item_id=new_item.item_id,
             )
             db.add(txn)
             db.commit()
             db.refresh(new_item)
             db.refresh(txn)
 
-            self._items[new_item.item_stat_id] = {
-                "item_id": new_item.item_stat_id,
+            self._items[new_item.item_id] = {
+                "item_id": new_item.item_id,
                 "ord_id": ord_id,
                 "flow_stat": new_item.flow_stat,
                 "zone_nm": new_item.zone_nm,
@@ -183,7 +183,7 @@ class MockStateManager:
             }
             self._tasks[f"task_{txn.txn_id}"] = {
                 "ord_id": ord_id,
-                "item_id": new_item.item_stat_id,
+                "item_id": new_item.item_id,
                 "txn_id": txn.txn_id,
                 "status": txn.txn_stat,
                 "res_id": txn.res_id,
@@ -192,8 +192,8 @@ class MockStateManager:
             return StartProductionOrderAckModel(
                 ord_id=ord_id,
                 accepted=True,
-                reason="Production started: item_stat and equip_task_txn created.",
-                item_id=new_item.item_stat_id,
+                reason="Production started: item and equip_task_txn created.",
+                item_id=new_item.item_id,
                 equip_task_txn_id=txn.txn_id,
             )
 
