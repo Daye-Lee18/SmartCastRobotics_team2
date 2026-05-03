@@ -3,12 +3,12 @@
 2026-04-27 통합 — 이전 '운영 관리' + '생산 모니터링' 두 페이지를 하나로 합쳤다.
 
 자동 패턴 매핑 (2026-04-27, v23):
-  발주 시 frontend product_id 첫 글자로 ptn_id 가 backend 에서 자동 결정·DB 등록.
+  발주 시 product_order_pattern_master 의 pattern_id 가 backend 에서 자동 결정·DB 등록.
   R-* (원형) → 1, S-* (사각) → 2, O-* (타원형) → 3.
   PyQt 운영자는 SpinBox 로 입력하지 않는다 — 표시 전용.
 
 레이아웃:
-  ┌─────── 상단: 발주 운영 (자동 ptn_id 표시 + 생산 시작) ───────┐
+  ┌─────── 상단: 발주 운영 (패턴 위치 표시 + 생산 시작) ───────┐
   ├─────── 본문 좌: 선택 발주 item 목록 + 설비 단계 진행 ────────┤
   ├─────── 본문 우: 검사 요약 (양품/불량/미검사) ─────────────────┤
   ├─────── 공정 단계 테이블 (실시간) ─────────────────────────────┤
@@ -131,7 +131,7 @@ class OperationsPage(QWidget):
     def __init__(self, api: ApiClient, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._api = api
-        self._patterns: dict[int, int] = {}  # ord_id → ptn_id (자동 등록 결과 표시용)
+        self._patterns: dict[int, int] = {}  # ord_id → ptn_loc_id
         self._item_stage_cache: dict[int, str] = {}  # item_id → stage_code (gRPC stream)
         # QThread 참조 보관 — GC 방지 + 중복 실행 방지
         self._refresh_thread: QThread | None = None
@@ -267,7 +267,7 @@ class OperationsPage(QWidget):
         title.setObjectName("pageTitle")
         root.addWidget(title)
 
-        # ---- 상단: 발주 선택 + 자동 ptn_id 표시 + 라인 투입 ----
+        # ---- 상단: 발주 선택 + 패턴 위치 표시 + 라인 투입 ----
         ctrl_box = QGroupBox("발주 운영 (패턴 자동 매핑 → 라인 투입)")
         grid = QGridLayout(ctrl_box)
         grid.setSpacing(8)
@@ -278,7 +278,7 @@ class OperationsPage(QWidget):
         self._ord_combo.currentIndexChanged.connect(self._on_ord_selected)
         grid.addWidget(self._ord_combo, 0, 1)
 
-        # 자동 매핑된 ptn_id 표시 (입력 불가 — 라벨 only)
+        # 등록된 ptn_loc_id 표시 (입력 불가 — 라벨 only)
         grid.addWidget(QLabel("패턴 위치 (자동):"), 0, 2)
         self._ptn_loc_display = QLabel("—")
         self._ptn_loc_display.setObjectName("ptnLocDisplay")
@@ -445,7 +445,11 @@ class OperationsPage(QWidget):
         hourly = data.get("hourly") or []
         err_trend = data.get("err_trend") or []
 
-        self._patterns = {int(p["ord_id"]): int(p["ptn_id"]) for p in patterns}
+        self._patterns = {
+            int(p["ord_id"]): int(p.get("ptn_loc_id", p.get("ptn_id")))
+            for p in patterns
+            if p.get("ord_id") is not None and p.get("ptn_loc_id", p.get("ptn_id")) is not None
+        }
 
         # 발주 콤보 갱신
         self._ord_combo.blockSignals(True)
@@ -559,12 +563,12 @@ class OperationsPage(QWidget):
 
     @pyqtSlot()
     def _on_ord_selected(self) -> None:
-        """발주 콤보 변경 시 ptn_id 즉시 표시, item 목록은 비동기 조회."""
+        """발주 콤보 변경 시 ptn_loc_id 즉시 표시, item 목록은 비동기 조회."""
         ord_id = self._current_ord_id()
         if ord_id is None:
             return
 
-        # ptn_id 는 캐시(_patterns)에 있으므로 동기 OK
+        # ptn_loc_id 는 캐시(_patterns)에 있으므로 동기 OK
         registered = ord_id in self._patterns
         pattern_label_map = {1: "1 (원형)", 2: "2 (사각)", 3: "3 (타원형)"}
         try:
@@ -575,14 +579,14 @@ class OperationsPage(QWidget):
                 _sp(self._ptn_loc_display, "tone", "ok")
                 self._btn_start.setEnabled(True)
                 self._status_label.setText(
-                    f"발주 {ord_id}: 패턴 {pattern_id} 자동 등록됨 → 라인 투입 가능. (item 목록 로딩 중…)"
+                    f"발주 {ord_id}: 패턴 위치 {pattern_id} 등록됨 → 라인 투입 가능. (item 목록 로딩 중…)"
                 )
             else:
                 self._ptn_loc_display.setText("미등록")
                 _sp(self._ptn_loc_display, "tone", "warn")
                 self._btn_start.setEnabled(False)
                 self._status_label.setText(
-                    f"발주 {ord_id}: Pattern 자동 등록 실패. product_id prefix(R/S/O) 인식 안 됨."
+                    f"발주 {ord_id}: 패턴 위치 미등록. 먼저 패턴 위치를 등록해 주세요."
                 )
         except Exception:  # noqa: BLE001
             pass

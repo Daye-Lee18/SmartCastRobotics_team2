@@ -78,10 +78,12 @@ class OrdPattern(Base):
     __table_args__ = ({"schema": SCHEMA},)
 
     ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
-    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"), nullable=False)
+    pattern_id = Column(Integer, ForeignKey(f"{SCHEMA}.product_order_pattern_master.pattern_id"))
+    ptn_loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"))
     assigned_at = Column(DateTime, server_default=func.now())
 
     ord = relationship("Ord", back_populates="pattern")
+    product_order_pattern = relationship("ProductOrderPatternMaster")
     pattern_master = relationship("PatternMaster")
 
 

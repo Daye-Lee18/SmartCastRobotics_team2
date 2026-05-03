@@ -93,7 +93,7 @@ class TaskManager:
 
         선행 조건:
             - ord_id 가 `ord` 테이블에 존재
-            - `pattern_stat` 테이블에 ord_id 키의 패턴 등록됨
+            - ord_pattern 에 product pattern 과 실제 패턴 위치(ptn_loc_id)가 등록됨
         효과 (atomic):
             - OrdStat INSERT (ord_stat='MFG')
             - ItemStat INSERT (flow_stat='CREATED', zone_nm='CAST')
@@ -106,9 +106,10 @@ class TaskManager:
             ord_obj = db.get(Ord, ord_id)
             if ord_obj is None:
                 raise TaskManagerError(f"ord_id={ord_id} not found")
-            if db.get(Pattern, ord_id) is None:
+            pattern_row = db.get(Pattern, ord_id)
+            if pattern_row is None or pattern_row.ptn_loc_id is None:
                 raise TaskManagerError(
-                    f"pattern for ord_id={ord_id} not registered",
+                    f"pattern location for ord_id={ord_id} not registered",
                 )
 
             ord_stat = db.query(OrdStat).filter(OrdStat.ord_id == ord_id).first()

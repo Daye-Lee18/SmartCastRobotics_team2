@@ -10,6 +10,7 @@ PyQt5 페이지 위젯 — 각 탭에 해당하는 화면.
 | File | Description |
 |------|-------------|
 | `dashboard.py` | 대시보드 개요 페이지 |
+| `pattern_control.py` | 패턴 위치 조작 및 생산 시작 페이지 |
 | `operations.py` | 운영 관리 (패턴, 생산 시작, 후처리, 검사) |
 | `map.py` | 팩토리 맵 시각화 페이지 |
 | `production.py` | 생산 모니터링 페이지 |

@@ -1,7 +1,4 @@
-"""Orders 도메인 mixin — 발주/패턴/최근주문/승인주문.
-
-Pink GUI #1, #3 (패턴 등록 — 자동 매핑 후 운영자 수동 호출 거의 없음).
-"""
+"""Orders 도메인 mixin — 발주/패턴 위치/최근주문/승인주문."""
 
 from __future__ import annotations
 
@@ -16,7 +13,7 @@ class OrdersMixin:
     # ===== smartcast schema =====
     def get_smartcast_orders(self) -> list[dict[str, Any]] | None:
         """모든 발주 (관리자용)."""
-        return self._get("/api/orders", mock_value=[])
+        return self._get("/api/orders", mock_value=mock_data.RECENT_ORDERS)
 
     def lookup_orders_by_email(self, email: str) -> list[dict[str, Any]] | None:
         """Pink GUI #1 — 이메일로 발주 조회 (없으면 빈 배열)."""
@@ -24,12 +21,9 @@ class OrdersMixin:
 
         return self._get(f"/api/orders/lookup?email={quote(email)}", mock_value=[])
 
-    def register_pattern(self, ord_id: int, ptn_id: int) -> dict[str, Any] | None:
-        """Pink GUI #3 — 발주↔패턴 등록 (1-3).
-
-        2026-04-27: 자동 매핑 (R/S/O→1/2/3) 도입 후 운영자 수동 호출 빈도 ↓.
-        """
-        return self._post("/api/production/patterns", {"ord_id": ord_id, "ptn_id": ptn_id})
+    def register_pattern(self, ord_id: int, ptn_loc_id: int) -> dict[str, Any] | None:
+        """Pink GUI #3 — 발주↔패턴 위치 등록 (1-3)."""
+        return self._post("/api/production/patterns", {"ord_id": ord_id, "ptn_loc_id": ptn_loc_id})
 
     def get_patterns(self) -> list[dict[str, Any]] | None:
         return self._get("/api/production/patterns", mock_value=[])

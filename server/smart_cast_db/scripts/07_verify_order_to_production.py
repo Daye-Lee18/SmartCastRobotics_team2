@@ -28,7 +28,7 @@ class Scenario:
     admin_id: int
     operator_id: int
     prod_id: int
-    ptn_id: int
+    ptn_loc_id: int
     pp_ids: list[int]
 
 
@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--due-date", type=str, default="2026-05-31", help="납기일 YYYY-MM-DD")
     p.add_argument("--ship-addr", type=str, default="서울특별시 강남구 테헤란로 123", help="배송지")
     p.add_argument("--pp-ids", type=int, nargs="*", default=[1, 2, 3, 4], help="후처리 옵션 ID 목록")
-    p.add_argument("--ptn-id", type=int, default=1, help="패턴 ID (기본: 1)")
+    p.add_argument("--ptn-loc-id", "--ptn-id", dest="ptn_loc_id", type=int, default=1, help="패턴 위치 ID (기본: 1)")
     return p.parse_args()
 
 
@@ -61,7 +61,7 @@ def main() -> int:
             _validate_actor(cur, args.admin_id, "admin")
             _validate_actor(cur, args.operator_id, "operator")
             product = _validate_product(cur, args.prod_id)
-            _validate_pattern(cur, args.ptn_id)
+            _validate_pattern_location(cur, args.ptn_loc_id)
             valid_pp = _validate_pp_options(cur, args.pp_ids)
 
             final_price = (int(product["base_price"]) + sum(int(pp["extra_cost"]) for pp in valid_pp)) * args.qty
@@ -74,7 +74,7 @@ def main() -> int:
                 due_date=args.due_date,
                 ship_addr=args.ship_addr,
                 final_price=final_price,
-                ptn_id=args.ptn_id,
+                ptn_loc_id=args.ptn_loc_id,
                 pp_ids=[pp["pp_id"] for pp in valid_pp],
             )
             _approve_order(cur=cur, ord_id=ord_id, admin_id=args.admin_id)
@@ -87,7 +87,7 @@ def main() -> int:
                 admin_id=args.admin_id,
                 operator_id=args.operator_id,
                 prod_id=args.prod_id,
-                ptn_id=args.ptn_id,
+                ptn_loc_id=args.ptn_loc_id,
                 pp_ids=[pp["pp_id"] for pp in valid_pp],
             )
             rows = _verify_records(cur, scenario)
@@ -126,13 +126,13 @@ def _validate_product(cur, prod_id: int) -> dict:
     return row
 
 
-def _validate_pattern(cur, ptn_id: int) -> None:
+def _validate_pattern_location(cur, ptn_loc_id: int) -> None:
     cur.execute(
         "SELECT ptn_id FROM pattern_master WHERE ptn_id = %s AND is_active = TRUE",
-        (ptn_id,),
+        (ptn_loc_id,),
     )
     if not cur.fetchone():
-        raise ValueError(f"ptn_id {ptn_id} not found or inactive")
+        raise ValueError(f"ptn_loc_id {ptn_loc_id} not found or inactive")
 
 
 def _validate_pp_options(cur, pp_ids: list[int]) -> list[dict]:
@@ -158,7 +158,7 @@ def _create_order(
     due_date: str,
     ship_addr: str,
     final_price: int,
-    ptn_id: int,
+    ptn_loc_id: int,
     pp_ids: list[int],
 ) -> int:
     cur.execute(
@@ -168,8 +168,8 @@ def _create_order(
     ord_id = cur.fetchone()["ord_id"]
 
     cur.execute(
-        "INSERT INTO ord_pattern (ord_id, ptn_id) VALUES (%s, %s)",
-        (ord_id, ptn_id),
+        "INSERT INTO ord_pattern (ord_id, ptn_loc_id) VALUES (%s, %s)",
+        (ord_id, ptn_loc_id),
     )
     cur.execute(
         """
@@ -250,7 +250,7 @@ def _verify_records(cur, scenario: Scenario) -> dict[str, object]:
     rows["ord_detail"] = cur.fetchone()
 
     cur.execute(
-        "SELECT ptn_id FROM ord_pattern WHERE ord_id = %s",
+        "SELECT ptn_loc_id FROM ord_pattern WHERE ord_id = %s",
         (scenario.ord_id,),
     )
     rows["ord_pattern"] = cur.fetchone()
@@ -316,8 +316,8 @@ def _print_report(scenario: Scenario, rows: dict[str, object]) -> None:
         ),
         (
             "ord_pattern",
-            pattern_row is not None and pattern_row["ptn_id"] == scenario.ptn_id,
-            f"ptn_id={pattern_row['ptn_id'] if pattern_row else None}",
+            pattern_row is not None and pattern_row["ptn_loc_id"] == scenario.ptn_loc_id,
+            f"ptn_loc_id={pattern_row['ptn_loc_id'] if pattern_row else None}",
         ),
         (
             "ord_pp_map",

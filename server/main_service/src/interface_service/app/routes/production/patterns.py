@@ -5,9 +5,8 @@ Endpoints:
     GET  /api/production/patterns          모든 패턴
     GET  /api/production/patterns/{ord_id} 특정 발주의 패턴
 
-2026-04-27: 자동 ptn_id 매핑 (R/S/O→1/2/3) 은 backend/app/routes/orders.py 의
-create_customer_order 가 발주 생성 시점에 처리. 본 엔드포인트는 운영자가 수동
-override 하거나 legacy 호출에 대한 응답용.
+발주 생성 시점에는 product_order_pattern_master 의 pattern_id 만 자동 매핑된다.
+본 엔드포인트는 운영자가 실제 패턴 위치(ptn_loc_id 1-3)를 등록할 때 사용한다.
 """
 
 from __future__ import annotations
@@ -24,14 +23,14 @@ router = APIRouter(prefix="/api/production", tags=["production"])
 
 @router.post("/patterns", response_model=OrdPatternOut, status_code=201)
 def register_pattern(payload: OrdPatternIn, db: Session = Depends(get_db)) -> OrdPatternOut:
-    """발주↔패턴 등록 (ptn_id 1-3). 발주 1:1 — 동일 ord_id 재등록 시 UPDATE."""
+    """발주↔패턴 위치 등록 (ptn_loc_id 1-3). 발주 1:1 — 동일 ord_id 재등록 시 UPDATE."""
     if not db.get(Ord, payload.ord_id):
         raise HTTPException(404, f"ord_id={payload.ord_id} not found")
     existing = db.get(OrdPattern, payload.ord_id)
     if existing:
-        existing.ptn_id = payload.ptn_id
+        existing.ptn_loc_id = payload.ptn_loc_id
     else:
-        existing = OrdPattern(ord_id=payload.ord_id, ptn_id=payload.ptn_id)
+        existing = OrdPattern(ord_id=payload.ord_id, ptn_loc_id=payload.ptn_loc_id)
         db.add(existing)
     db.commit()
     db.refresh(existing)

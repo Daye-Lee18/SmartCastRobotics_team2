@@ -121,6 +121,23 @@ ON CONFLICT (pp_id) DO UPDATE SET
     pp_nm = EXCLUDED.pp_nm,
     extra_cost = EXCLUDED.extra_cost;
 
+INSERT INTO product_order_pattern_master
+    (prod_id, diameter, thickness, material, load_class, pp_mask, pattern_nm, is_active)
+SELECT
+    po.prod_id,
+    po.diameter,
+    po.thickness,
+    po.material,
+    po.load_class,
+    pp_mask.mask AS pp_mask,
+    format('PAT-P%s-PP%s', po.prod_opt_id, pp_mask.mask) AS pattern_nm,
+    TRUE AS is_active
+FROM product_option po
+CROSS JOIN generate_series(0, 15) AS pp_mask(mask)
+ON CONFLICT (prod_id, diameter, thickness, material, load_class, pp_mask) DO UPDATE SET
+    pattern_nm = EXCLUDED.pattern_nm,
+    is_active = EXCLUDED.is_active;
+
 INSERT INTO pattern_master (ptn_id, ptn_nm, task_type, description, is_active) VALUES
 (1, 'MM pattern 1', 'MM', 'pattern_1(mc) 기준 모션 시퀀스', TRUE),
 (2, 'MM pattern 2', 'MM', 'pattern_2(mc) 기준 모션 시퀀스', TRUE),
@@ -463,6 +480,7 @@ SELECT setval('user_account_user_id_seq',        (SELECT MAX(user_id)      FROM 
 SELECT setval('product_prod_id_seq',             (SELECT MAX(prod_id)      FROM product));
 SELECT setval('product_option_prod_opt_id_seq',  (SELECT MAX(prod_opt_id)  FROM product_option));
 SELECT setval('pp_options_pp_id_seq',            (SELECT MAX(pp_id)        FROM pp_options));
+SELECT setval('product_order_pattern_master_pattern_id_seq', (SELECT MAX(pattern_id) FROM product_order_pattern_master));
 SELECT setval('zone_zone_id_seq',                (SELECT MAX(zone_id)      FROM zone));
 SELECT setval('equip_load_spec_load_spec_id_seq',(SELECT MAX(load_spec_id) FROM equip_load_spec));
 SELECT setval('chg_location_stat_loc_id_seq',    (SELECT MAX(loc_id)       FROM chg_location_stat));
@@ -480,6 +498,7 @@ UNION ALL SELECT 'category',             COUNT(*) FROM category
 UNION ALL SELECT 'product',              COUNT(*) FROM product
 UNION ALL SELECT 'product_option',       COUNT(*) FROM product_option
 UNION ALL SELECT 'pp_options',           COUNT(*) FROM pp_options
+UNION ALL SELECT 'product_order_pattern_master', COUNT(*) FROM product_order_pattern_master
 UNION ALL SELECT 'pattern_master',       COUNT(*) FROM pattern_master
 UNION ALL SELECT 'zone',                 COUNT(*) FROM zone
 UNION ALL SELECT 'res',                  COUNT(*) FROM res

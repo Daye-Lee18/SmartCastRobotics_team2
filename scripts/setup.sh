@@ -13,7 +13,7 @@ fail() { echo -e "${RED}  ✗${NC} $*"; exit 1; }
 
 # 1. 사전 도구 점검
 log "사전 도구 점검"
-command -v python3.11 >/dev/null || { python3 --version 2>&1 | grep -q "3.11" || fail "python3.11 필요 (brew install python@3.11)"; }
+# command -v python3.11 >/dev/null || { python3 --version 2>&1 | grep -q "3.11" || fail "python3.11 필요 (brew install python@3.11)"; }
 command -v python3.12 >/dev/null || { python3 --version 2>&1 | grep -q "3.12" || log "python3.12 권장 (PyQt). python3 으로 진행."; }
 command -v node >/dev/null || fail "node 필요 (https://nodejs.org)"
 command -v npm  >/dev/null || fail "npm 필요"

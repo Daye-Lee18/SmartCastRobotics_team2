@@ -35,6 +35,7 @@ from smart_cast_db.models import (
     OrdTxn,
     PpOption,
     Product,
+    ProductOrderPatternMaster,
     UserAccount,
 )
 from app.schemas.schemas import (
@@ -122,27 +123,42 @@ def _parse_decimal_or_none(raw_value: str | int | float | Decimal | None) -> Dec
         return None
 
 
-def _pattern_id_from_prefix(prefix: str | None) -> int | None:
-    if not prefix:
-        return None
-    return {"R": 1, "S": 2, "O": 3}.get(prefix[:1].upper())
+def _pp_mask_from_ids(pp_ids: set[int]) -> int:
+    mask = 0
+    for pp_id in pp_ids:
+        mask |= 1 << (pp_id - 1)
+    return mask
 
 
-def _resolve_pattern_id(
+def _find_product_order_pattern_or_400(
     db: Session,
     *,
-    raw_product_id: str | None = None,
-    prod_id: int | None = None,
-) -> int | None:
-    pattern_id = _pattern_id_from_prefix((raw_product_id or "").strip())
-    if pattern_id is not None:
-        return pattern_id
-    if prod_id is None:
-        return None
-    product = db.get(Product, prod_id)
-    if product is None:
-        return None
-    return {"CMH": 1, "RMH": 2, "EMH": 3}.get(product.cate_cd)
+    prod_id: int | None,
+    diameter: Decimal | None,
+    thickness: Decimal | None,
+    material: str | None,
+    load_class: str | None,
+    pp_ids: set[int],
+) -> ProductOrderPatternMaster:
+    if prod_id is None or diameter is None or thickness is None or not material or not load_class:
+        raise HTTPException(400, "product pattern mapping requires product/detail fields")
+
+    product_pattern = (
+        db.query(ProductOrderPatternMaster)
+        .filter(
+            ProductOrderPatternMaster.prod_id == prod_id,
+            ProductOrderPatternMaster.diameter == diameter,
+            ProductOrderPatternMaster.thickness == thickness,
+            ProductOrderPatternMaster.material == material,
+            ProductOrderPatternMaster.load_class == load_class,
+            ProductOrderPatternMaster.pp_mask == _pp_mask_from_ids(pp_ids),
+            ProductOrderPatternMaster.is_active.is_(True),
+        )
+        .first()
+    )
+    if product_pattern is None:
+        raise HTTPException(400, "matching product_order_pattern_master row not found")
+    return product_pattern
 
 
 def _parse_due_date_or_400(raw_due_date: str | None) -> date:
@@ -230,12 +246,20 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     )
     db.add(detail)
 
-    pattern_id = _resolve_pattern_id(db, prod_id=payload.detail.prod_id)
-    if pattern_id is not None:
-        db.add(OrdPattern(ord_id=new_ord.ord_id, ptn_id=pattern_id))
-
-    for pp_id in payload.pp_ids:
+    selected_pp_ids = set(payload.pp_ids)
+    for pp_id in selected_pp_ids:
         db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp_id))
+
+    product_pattern = _find_product_order_pattern_or_400(
+        db,
+        prod_id=payload.detail.prod_id,
+        diameter=payload.detail.diameter,
+        thickness=payload.detail.thickness,
+        material=payload.detail.material,
+        load_class=payload.detail.load_class,
+        pp_ids=selected_pp_ids,
+    )
+    db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
     # 초기 상태 RCVD (txn + stat 동시 INSERT)
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
@@ -357,12 +381,14 @@ def create_customer_order(
     due_date = _parse_due_date_or_400(payload.requested_delivery)
     ship_addr = _require_ship_addr_or_400(payload.shipping_address)
     safe_prod_id = _resolve_product_id(db, d0.product_id)
+    diameter = _parse_decimal_or_none(d0.diameter)
+    thickness = _parse_decimal_or_none(d0.thickness)
 
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=safe_prod_id,
-        diameter=_parse_decimal_or_none(d0.diameter),
-        thickness=_parse_decimal_or_none(d0.thickness),
+        diameter=diameter,
+        thickness=thickness,
         material=d0.material,
         load_class=d0.load_class,
         qty=d0.quantity,
@@ -373,19 +399,27 @@ def create_customer_order(
     db.add(detail)
 
     # 4. ord_pp_map (post_processing_ids → pp_id)
+    selected_pp_ids: set[int] = set()
     for pp_id_code in d0.post_processing_ids:
         pp_nm = _PP_ID_TO_NM.get(pp_id_code)
         if pp_nm is None:
             continue
         pp = db.query(PpOption).filter(PpOption.pp_nm == pp_nm).first()
-        if pp:
+        if pp and pp.pp_id not in selected_pp_ids:
+            selected_pp_ids.add(pp.pp_id)
             db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp.pp_id))
 
-    # 5. 자동 패턴 등록 — 제품 형상 기준으로 pattern_master(1~3) 매핑.
-    # 매핑 실패 시 row 생성 안 함 → 생산 시작 전 운영자가 패턴을 보완 등록해야 한다.
-    pattern_id = _resolve_pattern_id(db, raw_product_id=d0.product_id, prod_id=safe_prod_id)
-    if pattern_id is not None:
-        db.add(OrdPattern(ord_id=new_ord.ord_id, ptn_id=pattern_id))
+    # 5. 주문 사양 조합 master 에서 pattern_id 자동 매핑. ptn_loc_id(위치)는 operator 가 나중에 등록한다.
+    product_pattern = _find_product_order_pattern_or_400(
+        db,
+        prod_id=safe_prod_id,
+        diameter=diameter,
+        thickness=thickness,
+        material=d0.material,
+        load_class=d0.load_class,
+        pp_ids=selected_pp_ids,
+    )
+    db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
     # 6. 초기 상태 RCVD
     db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))

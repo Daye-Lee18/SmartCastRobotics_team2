@@ -67,6 +67,35 @@ class PpOption(Base):
     extra_cost = Column(Numeric, server_default="0")
 
 
+class ProductOrderPatternMaster(Base):
+    __tablename__ = "product_order_pattern_master"
+    __table_args__ = (
+        CheckConstraint("pp_mask >= 0", name="chk_product_order_pattern_pp_mask_nonneg"),
+        UniqueConstraint(
+            "prod_id",
+            "diameter",
+            "thickness",
+            "material",
+            "load_class",
+            "pp_mask",
+            name="uq_product_order_pattern_combination",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    pattern_id = Column(Integer, primary_key=True, autoincrement=True)
+    prod_id = Column(Integer, ForeignKey(f"{SCHEMA}.product.prod_id"), nullable=False)
+    diameter = Column(Numeric, nullable=False)
+    thickness = Column(Numeric, nullable=False)
+    material = Column(String(30), nullable=False)
+    load_class = Column(String(20), nullable=False)
+    pp_mask = Column(Integer, nullable=False, server_default="0")
+    pattern_nm = Column(String, nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
+
+    product = relationship("Product")
+
+
 class Res(Base):
     __tablename__ = "res"
     __table_args__ = (

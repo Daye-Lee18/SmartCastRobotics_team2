@@ -43,6 +43,8 @@ if DATABASE_URL.startswith("sqlite"):
 def _build_engine(url: str) -> Engine:
     return create_engine(
         url,
+        # 관리 서비스도 주문/상태 시간대를 KST 로 통일한다.
+        connect_args={"options": "-c timezone=Asia/Seoul"},
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 # =====================
 # Common
@@ -174,12 +174,17 @@ class OrdPatternIn(BaseModel):
     """발주↔패턴 1:1 등록 요청."""
 
     ord_id: int
-    ptn_id: int = Field(ge=1, le=3)
+    ptn_loc_id: int = Field(
+        ge=1,
+        le=3,
+        validation_alias=AliasChoices("ptn_loc_id", "ptn_id"),
+    )
 
 
 class OrdPatternOut(_ORM):
     ord_id: int
-    ptn_id: int
+    pattern_id: int | None = None
+    ptn_loc_id: int | None = None
 
 
 # =====================
