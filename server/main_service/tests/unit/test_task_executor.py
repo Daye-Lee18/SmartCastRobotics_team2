@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 import asyncio
 from datetime import datetime
 
-from main_service.task_executor import (
+from main_service.management.services.core.task_executor import (
     TaskExecutor,
     TaskExecutorInput,
     ExecutionResult,
@@ -132,12 +132,12 @@ async def test_s51_conv_sequence_structure(executor):
     assert seq[0].params["duration_sec"] == 4
 
 # ==========================================
-# [그룹 2] 상태 전이 검증 (S-52)
+# [그룹 2] Task 진행 상태 전이 검증 (S-52)
 # ==========================================
 
 @pytest.mark.asyncio
 async def test_s52_status_update_success_flow(executor, mock_state_manager, valid_input):
-    """[S-52] 정상 실행 시 상태 전이 (QUE → PROC → SUCC) 검증
+    """[S-52] 정상 실행 시 Task 진행 상태 전이 (QUE → PROC → SUCC) 검증
     
     실제 공정 시나리오:
     - 작업 할당 (QUE) → 로봇 시작 (PROC) → 작업 완료 (SUCC)
@@ -154,7 +154,7 @@ async def test_s52_status_update_success_flow(executor, mock_state_manager, vali
 
 @pytest.mark.asyncio
 async def test_s52_status_update_failure_flow(executor, mock_adapter, mock_state_manager, valid_input):
-    """[S-52] 실패 시 상태 전이 (QUE → PROC → FAIL) 검증
+    """[S-52] 실패 시 Task 진행 상태 전이 (QUE → PROC → FAIL) 검증
     
     실제 공정 시나리오:
     - 작업 중 그리퍼 오류 발생 시, 즉시 FAIL 상태로 전환

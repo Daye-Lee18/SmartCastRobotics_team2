@@ -1,7 +1,7 @@
 """
 task_executor.py
 - 역할: Orchestrator로부터 할당된 Task를 받아 Adapter를 통해 물리적으로 실행하고 결과를 State Manager에 보고함.
-- 핵심 로직: 시퀀스 분해 -> 순차 실행 -> 상태 전이 관리 (이벤트 발행은 State Manager 책임)
+- 핵심 로직: 시퀀스 분해 -> 순차 실행 -> Task 진행 상태 전이 관리 (이벤트 발행은 State Manager 책임)
 - Naming: Pydantic Naming Convention 가이드 준수 (Input/Result 접미사)
 """
 
@@ -79,7 +79,7 @@ class ExecutionResult(BaseModel):
     completed_at: datetime = Field(default_factory=datetime.now)
 
 class UpdateTaskStatusInput(BaseModel):
-    """State Manager 로 보낼 상태 업데이트 요청 ([동사][명사]Input 규칙)"""
+    """State Manager 로 보낼 Task 진행 상태 업데이트 요청 ([동사][명사]Input 규칙)"""
     task_id: str
     new_stat: TaskStat
     error_code: Optional[str] = None
@@ -105,8 +105,8 @@ class TaskExecutor:
     Task Executor
     
     [FB3 반영] 논리적 Task 를 물리적 시퀀스로 분해하여 실행
-    [FB4 반영] Task 단위(txn_stat) 상태 관리에 집중
-    [FB5 반영] 이벤트 발행은 State Manager 책임이므로 Executor 는 호출하지 않음
+    [FB4 반영] Task 단위(txn_stat) 진행 상태 관리에 집중
+    [FB5 반영] 이벤트 발행은 State Manager 담당이므로 Executor 는 호출하지 않음
     """
 
     def __init__(self, adapter: IAdapter, state_manager: IStateManager):
@@ -206,7 +206,7 @@ class TaskExecutor:
         """
         메인 실행 파이프라인
         
-        1. 전처리 및 상태 업데이트 (QUE -> PROC)
+        1. 전처리 및 Task 진행 상태 업데이트 (QUE -> PROC)
         2. 시퀀스 분해
         3. 단계별 Adapter 호출 및 모니터링
         4. 최종 결과 보고 (SUCC/FAIL) -> State Manager 업데이트 요청 후 종료
@@ -218,7 +218,7 @@ class TaskExecutor:
         if not await self._pre_check(input_data):
             return await self._handle_error(input_data, "PRECHECK_FAILED", 0)
 
-        # [FB4 반영] 상태 전이: QUE -> PROC
+        # [FB4 반영] Task 진행 상태 전이: QUE -> PROC
         await self.state_manager.update_task_status(
             UpdateTaskStatusInput(task_id=input_data.task_id, new_stat=TaskStat.PROC)
         )
@@ -242,7 +242,7 @@ class TaskExecutor:
                 executed_steps += 1
                 self.logger.info(f"[Executor] Step {step.step_id} completed")
             
-            # [FB4 반영] 성공 상태 전이: PROC -> SUCC
+            # [FB4 반영] Task 진행 상태가 성공한 경우 전이: PROC -> SUCC
             await self.state_manager.update_task_status(
                 UpdateTaskStatusInput(task_id=input_data.task_id, new_stat=TaskStat.SUCC)
             )
@@ -253,7 +253,7 @@ class TaskExecutor:
             )
 
         except Exception as e:
-            # [FB4 반영] 실패 상태 전이: PROC -> FAIL
+            # [FB4 반영] Task 진행 상태가 실패한 경우 전이: PROC -> FAIL
             return await self._handle_error(input_data, str(e), executed_steps)
 
     async def _pre_check(self, input_data: TaskExecutorInput) -> bool:
