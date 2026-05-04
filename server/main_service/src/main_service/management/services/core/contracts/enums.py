@@ -121,3 +121,38 @@ class EventType(str, Enum):
     TASK_COMPLETED = "TASK_COMPLETED"
     ITEM_STATUS_CHANGED = "ITEM_STATUS_CHANGED"
     TASK_ASSIGNED = "TASK_ASSIGNED"
+
+##
+class TaskType(str, Enum):
+    # 생산 및 장비 작업 [equip]
+    MM = "MM"
+    POUR = "POUR"
+    DM = "DM"
+    PP = "PP"
+    INSP = "INSP"
+    ToWaitPA = "ToWaitPA"
+    PA_GP = "PA_GP"
+    PA_DP = "PA_DP"
+    PICK = "PICK"
+    
+    # 이송 및 이동 작업 [trans]
+    ToPP = "ToPP"
+    ToINSP = "ToINSP"
+    ToSTRG = "ToSTRG"
+    ToSHIP = "ToSHIP"
+    ToCHG = "ToCHG"
+
+
+class FlowStatus(str, Enum):
+    CREATED = "CREATED"
+    CAST = "CAST"
+    WAIT_PP = "WAIT_PP"
+    PP = "PP"
+    WAIT_INSP = "WAIT_INSP"
+    INSP = "INSP"
+    WAIT_PA = "WAIT_PA"
+    PA = "PA"
+    STORED = "STORED"
+    DISCARDED = "DISCARDED"
+    PICK = "PICK"
+    READY_TO_SHIP = "READY_TO_SHIP"

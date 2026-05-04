@@ -2,7 +2,7 @@
 from typing import Optional, List
 from pydantic import BaseModel
 
-from .enums import EventType, EquipTaskType, TransTaskType, EquipStat, TransStat, OrdStat, TxnStat
+from .enums import EventType, EquipTaskType, TransTaskType, EquipStat, TransStat, OrdStat, TxnStat,TaskType
 
 # =======================
 # Event Payload Models
@@ -79,3 +79,26 @@ class StartProductionBatchAckModel(BaseModel):
     rejected_count: int
     orders: List[StartProductionOrderAckModel] = []
     message: Optional[str] = None
+
+##
+
+class ItemStatusRecord(BaseModel): #ok -> tm
+    item_id: int
+    order_id: int  # 어느 주문에 속한 아이tuple인지 추적하기 위해 추가
+    last_task_type: Optional[TaskType] = None
+    flow_stat: Optional[str] = None
+    is_defective: bool = False
+
+class CreateTaskInput(BaseModel): #tm -> sm
+    item_id: int
+    task_type: TaskType
+    rack_pos: Optional[str] = None
+    txn_stat: str = "que"
+    res_id : Optional[int] = None
+
+class NextTaskResult(BaseModel): # tm -> ok
+    item_id: int
+    txn_id: int
+    task_type: TaskType
+    priority: int = 5
+    rack_pos: Optional[str] = None

@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Any, List
+from typing import Protocol, Dict, Any, List, Optional
 from pydantic import BaseModel
 
 from .enums import EventType
@@ -8,6 +8,7 @@ from .models import (
     ExecuteTaskInput, ExecuteTaskResult,
     StartProductionOrderAckModel,
     StartProductionBatchAckModel,
+    ItemStatusRecord,NextTaskResult
 )
 
 class IOrchestrator(Protocol):
@@ -18,8 +19,18 @@ class IOrchestrator(Protocol):
         ...
 
 class ITaskManager(Protocol):
-    def create_next_tasks(self, input_data: CreateTaskInput) -> CreateTaskResult:
+    def reserve_rack_slots(self, order_id: int, start_pos: str): 
         ...
+    
+    def create_next_task(self, item_info: ItemStatusRecord ,eventMsg: Optional[str] = None) -> List[NextTaskResult]: 
+        ...
+
+    def reissue_task_on_error(self, item_info: ItemStatusRecord) -> List[NextTaskResult]: 
+        ...
+
+    def get_order_progress(self, order_id: int) : 
+        ...
+
 
 class ITaskAllocator(Protocol):
     def allocate(self, input_data: AllocateTaskInput) -> AllocateTaskResult:
