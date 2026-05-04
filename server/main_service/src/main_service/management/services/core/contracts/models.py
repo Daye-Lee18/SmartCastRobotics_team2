@@ -80,7 +80,7 @@ class StartProductionBatchAckModel(BaseModel):
     orders: List[StartProductionOrderAckModel] = []
     message: Optional[str] = None
 
-##
+## Task manager
 
 class ItemStatusRecord(BaseModel): #ok -> tm
     item_id: int
@@ -88,11 +88,13 @@ class ItemStatusRecord(BaseModel): #ok -> tm
     last_task_type: Optional[TaskType] = None
     flow_stat: Optional[str] = None
     is_defective: bool = False
+    ptn_id: Optional[int] = None
 
 class CreateTaskInput(BaseModel): #tm -> sm
     item_id: int
     task_type: TaskType
-    rack_pos: Optional[str] = None
+    strg_loc: Optional[str] = None
+    #ship_loc: Optional[str] = None
     txn_stat: str = "que"
     res_id : Optional[int] = None
 
@@ -101,4 +103,4 @@ class NextTaskResult(BaseModel): # tm -> ok
     txn_id: int
     task_type: TaskType
     priority: int = 5
-    rack_pos: Optional[str] = None
+    strg_loc: Optional[str] = None

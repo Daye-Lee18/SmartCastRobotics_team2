@@ -122,7 +122,7 @@ class EventType(str, Enum):
     ITEM_STATUS_CHANGED = "ITEM_STATUS_CHANGED"
     TASK_ASSIGNED = "TASK_ASSIGNED"
 
-##
+##task manager
 class TaskType(str, Enum):
     # 생산 및 장비 작업 [equip]
     MM = "MM"

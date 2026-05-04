@@ -167,16 +167,16 @@ class TaskManager(LegacyTaskManager,ITaskManager):
     # txn 생성 to state manager
     def _create_result(self, item_info, task_type):  #현재 진행된 아이템 정보 , 다은 공정 이름
         # 트랜잭션 DB 기록 로직 (sm.insert_task_txn 호출 등) 포함
-        rack_pos = self._calculate_rack_pos(task_type, item_info) #
-        curr_input = CreateTaskInput(item_id=item_info.item_id, task_type=task_type, rack_pos=rack_pos , txn_stat=TxnStat.QUE)
+        strg_loc = self._calculate_strg_loc(task_type, item_info) #
+        curr_input = CreateTaskInput(item_id=item_info.item_id, task_type=task_type, strg_loc=strg_loc , txn_stat=TxnStat.QUE , res_id =None )
         curr_txn_id = self.sm.insert_task_txn(curr_input)
 
     
-        return NextTaskResult(item_id=item_info.item_id, txn_id=curr_txn_id, task_type=task_type , rack_pos=rack_pos) #proority = 0 
+        return NextTaskResult(item_id=item_info.item_id, txn_id=curr_txn_id, task_type=task_type , strg_loc=strg_loc) #proority = 0 
     
     
     #적재위치계산 
-    def _calculate_rack_pos(self, task_type: TaskType, item_info: ItemStatusRecord) -> Optional[str]:
+    def _calculate_strg_loc(self, task_type: TaskType, item_info: ItemStatusRecord) -> Optional[str]:
         if item_info.is_defective:
             return "DEFECTIVE_ZONE"
         
