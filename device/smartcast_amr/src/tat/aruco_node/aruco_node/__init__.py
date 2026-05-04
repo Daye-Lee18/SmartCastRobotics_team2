@@ -1,0 +1,1 @@
+"""Standalone ArUco marker pose publisher package."""

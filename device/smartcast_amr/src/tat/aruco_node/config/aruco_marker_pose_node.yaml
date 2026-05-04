@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    target_pose_topic: /detected_dock_pose
+    camera_frame: front_camera_link
+    width: 640
+    height: 480
+    fps: 10.0
+    rotate_180: true
+    orientation_yaw_offset: 1.57
+    aruco_dictionary: DICT_4X4_100
+    marker_length: 0.05
+    target_marker_id: 0
+    camera_matrix_path: ~/tat/src/tat/aruco_node/config/calibration_matrix.npy
+    distortion_coeffs_path: ~/tat/src/tat/aruco_node/config/distortion_coefficients.npy

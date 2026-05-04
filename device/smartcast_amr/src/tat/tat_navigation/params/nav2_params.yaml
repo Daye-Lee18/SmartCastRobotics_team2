@@ -1,0 +1,506 @@
+amcl:
+  ros__parameters:
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+    base_frame_id: "base_footprint"
+    beam_skip_distance: 0.5
+    beam_skip_error_threshold: 0.9
+    beam_skip_threshold: 0.3
+    do_beamskip: false
+    global_frame_id: "map"
+    lambda_short: 0.1
+    laser_likelihood_max_dist: 2.0
+    laser_max_range: 100.0
+    laser_min_range: -1.0
+    laser_model_type: "likelihood_field"
+    max_beams: 60
+    max_particles: 2000
+    min_particles: 500
+    odom_frame_id: "odom"
+    pf_err: 0.05
+    pf_z: 0.99
+    recovery_alpha_fast: 0.0
+    recovery_alpha_slow: 0.0
+    resample_interval: 1
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    save_pose_rate: 0.5
+    sigma_hit: 0.2
+    tf_broadcast: true
+    transform_tolerance: 1.0
+    update_min_a: 0.02
+    update_min_d: 0.015
+    z_hit: 0.5
+    # z_max: 0.05  # beam 전용 param
+    z_rand: 0.5
+    # z_short: 0.05  # beam 전용 param
+    scan_topic: scan
+    set_initial_pose: true
+    initial_pose: [0, 0, 0]
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
+    # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
+    # nav2_bt_navigator/navigate_through_poses_w_replanning_and_recovery.xml
+    # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
+
+    # plugin_lib_names is used to add custom BT plugins to the executor (vector of strings).
+    # Built-in plugins are added automatically
+    # plugin_lib_names: []
+
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
+# planner_server:
+#   ros__parameters:
+#     expected_planner_frequency: 10.0
+#     planner_plugins: ["GridBased"]
+#     costmap_update_timeout: 1.0
+#     GridBased:
+#       plugin: "nav2_navfn_planner::NavfnPlanner"
+#       tolerance: 0.5
+#       use_astar: true
+#       allow_unknown: true
+
+planner_server:
+  ros__parameters:
+    planner_plugins: ["GridBased"]
+
+    GridBased:
+      plugin: "nav2_smac_planner::SmacPlanner2D" # In Iron and older versions, "/" was used instead of "::"
+      tolerance: 0.125                      # tolerance for planning if unable to reach exact pose, in meters
+      downsample_costmap: false             # whether or not to downsample the map
+      downsampling_factor: 1                # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
+      allow_unknown: true                   # allow traveling in unknown space
+      max_iterations: 1000000               # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
+      max_on_approach_iterations: 1000      # maximum number of iterations to attempt to reach goal once in tolerance
+      max_planning_time: 2.0                # max time in s for planner to plan, smooth
+      cost_travel_multiplier: 2.0           # Cost multiplier to apply to search to steer away from high cost areas. Larger values will place in the center of aisles more exactly (if non-`FREE` cost potential field exists) but take slightly longer to compute. To optimize for speed, a value of 1.0 is reasonable. A reasonable tradeoff value is 2.0. A value of 0.0 effective disables steering away from obstacles and acts like a naive binary search A*.
+      use_final_approach_orientation: false # Whether to set the final path pose at the goal's orientation to the requested orientation (false) or in line with the approach angle so the robot doesn't rotate to heading (true)
+      smoother:
+        max_iterations: 1000
+        w_smooth: 0.3
+        w_data: 0.2
+        tolerance: 1.0e-10
+
+controller_server:
+  ros__parameters:
+    controller_frequency: 20.0
+    costmap_update_timeout: 0.30
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"] # "precise_goal_checker"
+
+    # 단일 컨트롤러
+    controller_plugins: ["FollowPath"]
+    use_realtime_priority: false
+    enable_stamped_cmd_vel: false
+
+    # Progress checker
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    # Goal checker
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.03
+      yaw_goal_tolerance: 0.07
+
+    # Regulated Pure Pursuit 컨트롤러 설정
+    FollowPath:
+      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+
+      # ========= 기본 속도 =========
+      desired_linear_vel: 0.08           # 감속하지 않은 최대 속도
+
+      # ========= Lookahead 거리 =========
+      lookahead_dist: 0.1               # 고정 lookahead 거리      
+
+      use_velocity_scaled_lookahead_dist: false  # lookahead의 거리를 속도에 비례해서 동적으로 계산
+      lookahead_time: 1.0              # 속도에 곱할 시간
+      max_lookahead_dist: 0.05         # 최소 거리
+      min_lookahead_dist: 0.1          # 최대 거리
+
+      # ========= 곡률 기반 감속 =========
+      use_regulated_linear_velocity_scaling: false   # 곡선 진입 시 감속을 할 것인지
+      regulated_linear_scaling_min_radius: 0.5      # 감속 기준 커브 반경
+      regulated_linear_scaling_min_speed: 0.05      # 감속 시 최소 보장 속도
+
+      use_fixed_curvature_lookahead: false          # 곡률 계산에 고정된 dist을 사용할지
+      curvature_lookahead_dist: 0.6                 # use_fixed_curvature_lookahead=true 시 사용
+      interpolate_curvature_after_goal: false       # use_fixed_curvature_lookahead=true 필요
+
+      # ========= 장애물 근접 감속 =========
+      use_cost_regulated_linear_velocity_scaling: true  # 장애물 근접 감속을 할 것인지
+      inflation_cost_scaling_factor: 3.0                # local_costmap의 cost_scaling_factor와 일치시켜야 장애물까지의 거리를 정확하게 측정할 수 있다.
+      cost_scaling_dist: 0.1                          # 장애물 근접 감속 시작 거리
+      cost_scaling_gain: 2.0                            # 감속을 얼마나 할지에 대한 가중치, 줄이면 감속량이 커지고, 키우면 감속량이 줄어든다.
+      # 장애물까지의 거리가 0.04m, cost_scaling_dist가 0.06, gain이 0.7이면, (0.7 * 0.04) / 0.06 = 0.466배로 속도 감소
+      # 장애물까지의 거리가 0.04m, cost_scaling_dist가 0.06, gain이 1.0이면, (1.0 * 0.04) / 0.06 = 0.666배로 속도 감소
+      # 장애물까지의 거리가 0.04m, cost_scaling_dist가 0.06, gain이 2.0이면, (2.0 * 0.04) / 0.06 = 1.333배가 나오는데, 1이 넘어가면 그냥 1로 계산한다. 
+
+      # ========= 목표 접근 감속 =========
+      min_approach_linear_velocity: 0.03   # 목표 근처 최소 속도
+      approach_velocity_scaling_dist: 0.1  # 목표 접근 감속 시작 거리
+
+      # ========= 회전 관련 =========
+      use_rotate_to_heading: true             # 경로 추종 전에 회전할것인지
+      rotate_to_heading_min_angle: 0.7        # 약 40도
+      rotate_to_heading_angular_vel: 1.0      # 제자리 회전 시 각속도
+      max_angular_accel: 2.0                  # 회전 가감속 한계
+      allow_reversing: false                  # 경로 추종할 때 후진을 할 것인지
+
+      # ========= 경로 취소 감속 =========
+      use_cancel_deceleration: false   # 경로 취소 시 감속할 것인지
+      cancel_deceleration: 3.2         # 경로 취소 시 강제 감속
+
+      # ========= 충돌 감지 =========
+      use_collision_detection: true                      # 기본값: true
+      max_allowed_time_to_collision_up_to_carrot: 0.1    # 몇초까지 시뮬레이션을 돌릴 건지
+
+      # ========= 기타 =========
+      transform_tolerance: 0.1           # TF 타임스탬프 허용 오차
+      max_robot_pose_search_dist: 0.3    # 경로 위 로봇 위치 검색 반경
+      stateful: true                     # XY 도달 후 진동 방지
+
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      footprint_padding: 0.0
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: odom
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 1
+      height: 1
+      resolution: 0.01
+      #robot_radius: 0.22
+      footprint: '[[0.06, 0.06], [0.06, -0.06], [-0.06, -0.06], [-0.06, 0.06]]'
+      plugins: ["voxel_layer", "inflation_layer"]
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.2
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        enabled: True
+        publish_voxel_map: True
+        origin_z: 0.0
+        z_resolution: 0.05
+        z_voxels: 16
+        max_obstacle_height: 2.0
+        mark_threshold: 0
+        observation_sources: scan
+        scan:
+          topic: <robot_namespace>/scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      footprint_padding: 0.01
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_footprint
+      #robot_radius: 0.22
+      footprint: '[[0.06, 0.06], [0.06, -0.06], [-0.06, -0.06], [-0.06, 0.06]]'
+      resolution: 0.025
+      track_unknown_space: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      # voxel_layer:
+      #   plugin: "nav2_costmap_2d::VoxelLayer"
+      #   enabled: True
+      #   publish_voxel_map: True
+      #   origin_z: 0.0
+      #   z_resolution: 0.05
+      #   z_voxels: 16
+      #   max_obstacle_height: 2.0
+      #   mark_threshold: 0
+      #   observation_sources: scan
+      #   scan:
+      #     topic: /scan
+      #     max_obstacle_height: 2.0
+      #     clearing: True
+      #     marking: True
+      #     data_type: "LaserScan"
+      #     raytrace_max_range: 3.0
+      #     raytrace_min_range: 0.0
+      #     obstacle_max_range: 2.5
+      #     obstacle_min_range: 0.0
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: True
+        observation_sources: scan
+        scan:
+          topic: <robot_namespace>/scan
+          max_obstacle_height: 2.0
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          observation_persistance: 2.0
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.06
+      always_send_full_costmap: True
+
+# The yaml_filename does not need to be specified since it going to be set by defaults in launch.
+# If you'd rather set it in the yaml, remove the default "map" value in the tb3_simulation_launch.py
+# file & provide full path to map below. If CLI map configuration or launch default is provided, that will be used.
+# map_server:
+#   ros__parameters:
+#     yaml_filename: ""
+
+map_saver:
+  ros__parameters:
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
+
+smoother_server:
+  ros__parameters:
+    smoother_plugins: ["simple_smoother"]
+    simple_smoother:
+      plugin: "nav2_smoother::SimpleSmoother"
+      tolerance: 1.0e-10
+      max_its: 1000
+      do_refinement: True
+
+behavior_server:
+  ros__parameters:
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors::AssistedTeleop"
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_footprint
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.0
+    min_rotational_vel: 0.4
+    rotational_acc_lim: 3.2
+    enable_stamped_cmd_vel: false
+
+waypoint_follower:
+  ros__parameters:
+    loop_rate: 20
+    stop_on_failure: false
+    action_server_result_timeout: 900.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitatWaypoint"
+      enabled: True
+      waypoint_pause_duration: 200
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 20.0
+    scale_velocities: False
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.25, 0.0, 1.5]
+    min_velocity: [-0.25, 0.0, -1.5]
+    max_accel: [2.5, 0.0, 3.2]
+    max_decel: [-2.5, 0.0, -3.2]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 1.0
+    enable_stamped_cmd_vel: false
+
+docking_server:
+  ros__parameters:
+    controller_frequency: 20.0  # 도킹 제어 루프 주기(Hz)
+    initial_perception_timeout: 5.0  # 초기 도크 인식 대기 시간
+    wait_charge_timeout: 5.0  # 충전 시작 대기 시간, non-charging 테스트에서는 큰 의미 없음
+    dock_approach_timeout: 1000.0  # 근접 도킹 단계 최대 허용 시간
+    undock_linear_tolerance: 0.01  # 언도킹 시 staging pose 도달로 볼 선형 오차
+    undock_angular_tolerance: 0.05  # 언도킹 시 staging pose 도달로 볼 각도 오차
+    max_retries: 3  # 복구 가능한 실패 발생 시 재시도 횟수
+    base_frame: "base_footprint"  # 로봇 기준 프레임  
+    fixed_frame: "odom"  # 도크 pose를 추적하는 고정 프레임
+    dock_backwards: false  # true이면 후진 도킹 수행
+    dock_prestaging_tolerance: 0.5  # staging pose 근처면 네비게이션 생략하는 거리 기준
+
+    dock_plugins: ["aruco_dock"]  # 사용할 dock plugin 인스턴스 목록
+    # docks:
+    #   [
+    #     "ToINSP",
+    #     "ToSHIP",
+    #     "ToCAST1",
+    #     "ToCAST2",
+    #     "ToCHG1",
+    #     "ToCHG2",
+    #     "ToCHG3",
+    #     "ToSTRG1",
+    #     "ToSTRG2",
+    #     "ToPP1",
+    #     "ToPP2"
+    #   ]  # dock_id로 선택할 수 있는 dock 인스턴스 목록
+    docks:
+      [
+        "ToINSP",
+        "ToSHIP",
+        "ToCAST",
+        "ToCAST_WAIT",
+        "ToCHG1",
+        "ToCHG2",
+        "ToCHG3",
+        "ToSTRG",
+        "ToPICK",
+        "ToPP",
+        "ToPP_WAIT"
+      ]  # dock_id로 선택할 수 있는 dock 인스턴스 목록
+
+    aruco_dock:
+      plugin: "opennav_docking::SimpleNonChargingDock"
+      use_external_detection_pose: true  # 외부 detector pose 사용
+      external_detection_timeout: 30.0  # detection timeout
+      external_detection_translation_x: -0.04  # 마커 기준 최종 dock pose 오프셋
+      external_detection_translation_y: 0.0
+      external_detection_rotation_pitch: 0.0
+      external_detection_rotation_roll: 0.0
+      filter_coef: 0.3
+      use_stall_detection: false
+      docking_threshold: 0.05
+      staging_x_offset: -0.1  # 최종 dock pose 기준 staging pose
+      staging_yaw_offset: 0.0
+
+    ToINSP:
+      type: "aruco_dock"  # 이 dock 인스턴스가 사용할 dock plugin 타입
+      frame: "map"  # 이 dock pose가 표현된 기준 프레임
+      pose: [-0.67, -0.10, -1.57]  # [x, y, theta]
+      id: "ToINSP"  # plugin에서 필요 시 사용할 수 있는 선택적 식별자
+
+    ToSHIP:
+      type: "aruco_dock"  # 이 dock 인스턴스가 사용할 dock plugin 타입
+      frame: "map"  # 이 dock pose가 표현된 기준 프레임
+      pose: [-0.67, 0.45, 1.57]  # [x, y, theta]
+      id: "ToSHIP"  # plugin에서 필요 시 사용할 수 있는 선택적 식별자
+
+    ToCAST:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [-0.256, 0.2, 1.57]
+      id: "ToCAST"
+
+    ToCAST_WAIT:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [-0.413, 0.2, 1.57]
+      id: "ToCAST_WAIT"
+
+    ToCHG1:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [0.044, 0.095, 0.0]
+      id: "ToCHG1"
+
+    ToCHG2:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [0.044, -0.027, 0.0]
+      id: "ToCHG2"
+
+    ToCHG3:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [0.044, -0.179, 0.0]
+      id: "ToCHG3"
+
+    ToSTRG:
+      type: "STRG_dock"
+      frame: "map"
+      pose: [-0.1, -0.465, -1.57]
+      id: "ToSTRG"
+
+    ToPICK:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [-0.223, -0.465, -1.57]
+      id: "ToPICK"
+
+    ToPP:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [-0.447, -1.05, 3.14]
+      id: "ToPP"
+
+    ToPP_WAIT:
+      type: "aruco_dock"
+      frame: "map"
+      pose: [-0.447, -1.13, 3.14]
+      id: "ToPP_WAIT"
+
+    controller:
+      k_phi: 3.0  # heading 보정 gain
+      k_delta: 2.0  # 곡률/추종 특성 gain
+      beta: 0.4  # 제어기 수렴 특성 파라미터
+      lambda: 2.0  # 제어기 감쇠/공격성 파라미터
+      v_linear_min: 0.02  # 도킹 중 최소 선속도
+      v_linear_max: 0.04 # 도킹 중 최대 선속도
+      v_angular_max: 3.5  # 도킹 중 최대 각속도
+      slowdown_radius: 0.07  # 목표 근처에서 감속 시작하는 반경
+      use_collision_detection: true  # local costmap 기반 충돌 검사 사용 여부
+      costmap_topic: "local_costmap/costmap_raw"  # 충돌 검사에 사용할 costmap topic
+      footprint_topic: "local_costmap/published_footprint"  # 충돌 검사에 사용할 footprint topic
+      transform_tolerance: 0.8  # TF 조회 허용 오차
+      projection_time: 0.6  # 충돌 검사용 trajectory 예측 시간
+      simulation_time_step: 0.1  # trajectory 시뮬레이션 시간 간격
+      dock_collision_threshold: 0.3  # 도크 근처 충돌 검사 예외 거리 기준

@@ -1,0 +1,11 @@
+<?xml version='1.0' ?>
+
+<launch>
+    <arg name="namespace" default=""/>
+    <arg name="rviz_config_file" default="$(find-pkg-share tat_navigation)/rviz/nav2_view.rviz"/>
+
+    <group>
+        <push-ros-namespace namespace="$(var namespace)"/>
+        <node pkg="rviz2" exec="rviz2" output="screen" args="-d $(var rviz_config_file)"/>
+    </group>
+</launch>    

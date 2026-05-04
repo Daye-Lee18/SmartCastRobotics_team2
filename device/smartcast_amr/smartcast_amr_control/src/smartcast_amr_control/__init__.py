@@ -1,2 +1,0 @@
-"""SmartCast AMR control package."""
-

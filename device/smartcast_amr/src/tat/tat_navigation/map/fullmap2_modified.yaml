@@ -1,0 +1,7 @@
+image: fullmap2_modified.pgm
+mode: trinary
+resolution: 0.025
+origin: [-1.332, -0.898, 0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196

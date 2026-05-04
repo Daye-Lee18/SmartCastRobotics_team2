@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="tat">
+    <xacro:include filename="$(find tat_description)/urdf/tat.urdf.xacro"/>
+
+    <xacro:arg name="namespace" default=""/>
+    <xacro:arg name="is_sim" default="false"/>
+    <xacro:arg name="cam_tilt_deg" default="0"/>
+    <xacro:arg name="screen_tilt_deg" default="-25"/>
+
+    <xacro:insert_robot namespace="$(arg namespace)"
+                        is_sim="$(arg is_sim)"
+                        cam_tilt_deg="$(arg cam_tilt_deg)"
+                        screen_tilt_deg="$(arg screen_tilt_deg)"/>
+</robot>

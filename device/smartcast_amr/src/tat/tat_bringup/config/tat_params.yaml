@@ -1,0 +1,4 @@
+tat_bringup:
+  ros__parameters:
+    wheel_radius: 0.027
+    wheel_separation: 0.0961

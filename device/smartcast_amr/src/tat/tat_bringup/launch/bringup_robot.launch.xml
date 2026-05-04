@@ -1,0 +1,71 @@
+<?xml version='1.0' ?>
+
+<launch>
+    <arg name="namespace" default=""/>
+    <arg name="use_sim_time" default="False"/>
+    <arg name="frame_prefix" default=""/>
+    <arg name="wheel_radius" default="0.027"/>
+    <arg name="wheel_separation" default="0.0961"/>
+    <arg name="odom_frame_id" default=""/>
+    <arg name="base_frame_id" default=""/>
+    <arg name="lidar_frame_id" default=""/>
+    <arg name="left_joint_name" default=""/>
+    <arg name="right_joint_name" default=""/>
+
+    <let
+        name="frame_prefix_resolved"
+        value='$(eval "\"$(var frame_prefix)\" if \"$(var frame_prefix)\" else (\"$(var namespace)\" + \"/\" if \"$(var namespace)\" else \"\")")'
+    />
+    <let
+        name="odom_frame_id_resolved"
+        value='$(eval "\"$(var odom_frame_id)\" if \"$(var odom_frame_id)\" else \"$(var frame_prefix_resolved)odom\"")'
+    />
+    <let
+        name="base_frame_id_resolved"
+        value='$(eval "\"$(var base_frame_id)\" if \"$(var base_frame_id)\" else \"$(var frame_prefix_resolved)base_footprint\"")'
+    />
+    <let
+        name="lidar_frame_id_resolved"
+        value='$(eval "\"$(var lidar_frame_id)\" if \"$(var lidar_frame_id)\" else \"$(var frame_prefix_resolved)rplidar_link\"")'
+    />
+    <let
+        name="left_joint_name_resolved"
+        value='$(eval "\"$(var left_joint_name)\" if \"$(var left_joint_name)\" else \"$(var frame_prefix_resolved)l_wheel_joint\"")'
+    />
+    <let
+        name="right_joint_name_resolved"
+        value='$(eval "\"$(var right_joint_name)\" if \"$(var right_joint_name)\" else \"$(var frame_prefix_resolved)r_wheel_joint\"")'
+    />
+
+    <include file="$(find-pkg-share tat_description)/launch/upload_robot.launch.py">
+        <arg name="namespace" value="$(var namespace)"/>
+        <arg name="is_sim" value="$(var use_sim_time)"/>
+        <arg name="frame_prefix" value="$(var frame_prefix_resolved)"/>
+    </include>
+
+    <group>
+        <push-ros-namespace namespace="$(var namespace)"/>
+
+        <include file="$(find-pkg-share sllidar_ros2)/launch/sllidar_c1_launch.py">
+            <arg name="serial_port" value="/dev/ttyS0"/>
+            <arg name="frame_id" value="$(var lidar_frame_id_resolved)"/>
+            <arg name="inverted" value="false"/>
+            <arg name="angle_compensate" value="true"/>
+            <arg name="scan_mode" value="DenseBoost"/>
+        </include>
+
+        <node pkg="tat_bringup" exec="bringup">
+            <param from="$(find-pkg-share tat_bringup)/config/tat_params.yaml"/>
+            <param name="wheel_radius" value="$(var wheel_radius)"/>
+            <param name="wheel_separation" value="$(var wheel_separation)"/>
+            <param name="odom_frame_id" value="$(var odom_frame_id_resolved)"/>
+            <param name="base_frame_id" value="$(var base_frame_id_resolved)"/>
+            <param name="left_joint_name" value="$(var left_joint_name_resolved)"/>
+            <param name="right_joint_name" value="$(var right_joint_name_resolved)"/>
+        </node>
+
+        <node pkg="tat_bringup" exec="battery_publisher">
+        </node>
+    </group>
+
+</launch>

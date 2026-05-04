@@ -1,0 +1,3 @@
+# Robot-side bringup can use this value as-is after cloning.
+# Laptop-side launches can override it at runtime with: namespace:=robot1
+namespace: "TAT"
