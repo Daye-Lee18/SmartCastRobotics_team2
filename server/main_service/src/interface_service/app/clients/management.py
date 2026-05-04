@@ -159,7 +159,32 @@ class ManagementClient:
             raise ManagementUnavailable(
                 f"StartProduction failed ({code}): {exc.details() if hasattr(exc, 'details') else exc}"
             ) from exc
-        return resp.result
+        # Legacy result field may be empty while canonical ack is populated.
+        result = getattr(resp, "result", None)
+        if (
+            result is not None
+            and (
+                getattr(result, "ord_id", 0)
+                or getattr(result, "item_id", 0)
+                or getattr(result, "equip_task_txn_id", 0)
+                or getattr(result, "message", "")
+            )
+        ):
+            return result
+
+        ack = getattr(resp, "ack", None)
+        if ack is not None and getattr(ack, "orders", None):
+            first = ack.orders[0]
+
+            class _Result:
+                ord_id = first.ord_id
+                item_id = first.item_id
+                equip_task_txn_id = first.equip_task_txn_id
+                message = first.reason or ack.message or ""
+
+            return _Result()
+
+        raise ManagementUnavailable("StartProduction returned no result payload")
 
     def close(self) -> None:
         if self._channel is not None:

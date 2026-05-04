@@ -1,11 +1,9 @@
-"""Item 도메인 + 위치 상태 모델 — Item, ChgLocationStat, StrgLocationStat,
-ShipLocationStat.
-
-Item 은 발주에서 파생된 개별 제품. 12개 cur_stat 라벨로 공정 단계를 추적한다.
-위치 상태는 Item 이 어디에 있는지 (CHG=충전구역, STRG=적재, SHIP=출고) 를 표현.
-"""
+"""Item/location models aligned to create_tables.sql."""
 
 from __future__ import annotations
+
+from sqlalchemy import case
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from ._base import (
     SCHEMA,
@@ -15,23 +13,21 @@ from ._base import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     func,
     relationship,
+    synonym,
 )
 
 
 class Item(Base):
-    """생산된 모든 아이템의 실시간 공정 단계 + 불량 여부.
-
-    cur_stat: 12개 라벨 (MM/POUR/DM/PP/ToINSP/INSP/PA/PICK/SHIP/ToPP/ToSTRG/ToSHIP)
-    cur_res: 점유 자원 ID (PP 상태 시 NULL)
-    is_defective: NULL=미검사, TRUE=불량, FALSE=양품
-    """
-
     __tablename__ = "item"
-    __table_args__ = ({"schema": SCHEMA},)
+    __table_args__ = (
+        Index("idx_item_ord", "ord_id"),
+        {"schema": SCHEMA},
+    )
 
     item_id = Column(Integer, primary_key=True, autoincrement=True)
     ord_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), nullable=False)
@@ -42,23 +38,48 @@ class Item(Base):
     is_defective = Column(Boolean)
     updated_at = Column(DateTime, server_default=func.now())
 
+    # Compatibility for older v21 callers.
+    item_stat_id = synonym("item_id")
+    flow_stat = synonym("cur_stat")
+    zone_nm = synonym("cur_res")
+
     ord = relationship("Ord", back_populates="items")
-    res = relationship("Res")
 
+    @hybrid_property
+    def result(self) -> bool | None:
+        """Legacy v21 inspection result compatibility.
 
-# -----------------------------------------------------------------------------
-# Location State (chg / strg / ship)
-# -----------------------------------------------------------------------------
+        v21:  True=GP, False=DP, None=pending
+        v23:  is_defective False=GP, True=DP, None=pending
+        """
+        if self.is_defective is None:
+            return None
+        return not self.is_defective
+
+    @result.setter
+    def result(self, value: bool | None) -> None:
+        if value is None:
+            self.is_defective = None
+        else:
+            self.is_defective = not bool(value)
+
+    @result.expression
+    def result(cls):
+        return case(
+            (cls.is_defective.is_(None), None),
+            (cls.is_defective.is_(True), False),
+            else_=True,
+        )
 
 
 class ChgLocationStat(Base):
-    """충전 구역 (1x3) 위치 상태."""
-
     __tablename__ = "chg_location_stat"
     __table_args__ = (
+        CheckConstraint("status IN ('empty', 'occupied', 'reserved')", name="chk_chg_loc_status"),
         CheckConstraint(
-            "status IN ('empty', 'occupied', 'reserved')",
-            name="chk_chg_loc_status",
+            "(res_id IS NOT NULL AND status = 'occupied') OR "
+            "(res_id IS NULL AND status IN ('empty', 'reserved'))",
+            name="chk_chg_res_status",
         ),
         {"schema": SCHEMA},
     )
@@ -68,22 +89,17 @@ class ChgLocationStat(Base):
     res_id = Column(String, ForeignKey(f"{SCHEMA}.res.res_id"))
     loc_row = Column(Integer)
     loc_col = Column(Integer)
-    status = Column(String)
+    status = Column(String, nullable=False)
     stored_at = Column(DateTime, server_default=func.now())
 
 
 class StrgLocationStat(Base):
-    """적재 구역 (3x6, 18칸) 위치 상태."""
-
     __tablename__ = "strg_location_stat"
     __table_args__ = (
+        CheckConstraint("status IN ('empty', 'occupied', 'reserved')", name="chk_strg_loc_status"),
         CheckConstraint(
-            "status IN ('empty', 'occupied', 'reserved')",
-            name="chk_strg_loc_status",
-        ),
-        CheckConstraint(
-            "(item_id IS NOT NULL AND status = 'occupied') "
-            "OR (item_id IS NULL AND status IN ('empty', 'reserved'))",
+            "(item_id IS NOT NULL AND status = 'occupied') OR "
+            "(item_id IS NULL AND status IN ('empty', 'reserved'))",
             name="chk_strg_item_status",
         ),
         {"schema": SCHEMA},
@@ -94,19 +110,16 @@ class StrgLocationStat(Base):
     item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     loc_row = Column(Integer)
     loc_col = Column(Integer)
-    status = Column(String)
+    status = Column(String, nullable=False)
     stored_at = Column(DateTime, server_default=func.now())
+
+    item_stat_id = synonym("item_id")
 
 
 class ShipLocationStat(Base):
-    """출고 구역 (1x5) 위치 상태."""
-
     __tablename__ = "ship_location_stat"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('empty', 'occupied', 'reserved')",
-            name="chk_ship_loc_status",
-        ),
+        CheckConstraint("status IN ('empty', 'occupied', 'reserved')", name="chk_ship_loc_status"),
         {"schema": SCHEMA},
     )
 
@@ -116,5 +129,7 @@ class ShipLocationStat(Base):
     item_id = Column(Integer, ForeignKey(f"{SCHEMA}.item.item_id"))
     loc_row = Column(Integer)
     loc_col = Column(Integer)
-    status = Column(String)
+    status = Column(String, nullable=False)
     stored_at = Column(DateTime, server_default=func.now())
+
+    item_stat_id = synonym("item_id")

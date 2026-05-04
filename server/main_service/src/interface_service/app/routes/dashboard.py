@@ -15,8 +15,7 @@ from sqlalchemy.orm import Session
 from smart_cast_db.database import get_db
 from smart_cast_db.models import (
     EquipErrLog,
-    InspTaskTxn,
-    Item,
+    ItemStat,
     Ord,
     OrdStat,
     Res,
@@ -39,17 +38,16 @@ def dashboard_stats(db: Session = Depends(get_db)) -> dict:
     completed = sum(1 for v in latest_stats.values() if v in {"COMP", "SHIP", "DONE"})
     pending = sum(1 for v in latest_stats.values() if v == "RCVD")
 
-    total_items = db.query(func.count(Item.item_id)).scalar() or 0
+    total_items = db.query(func.count(ItemStat.item_stat_id)).scalar() or 0
     defective_items = (
-        db.query(func.count(Item.item_id)).filter(Item.is_defective.is_(True)).scalar() or 0
+        db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.is_(False)).scalar() or 0
     )
     good_items = (
-        db.query(func.count(Item.item_id)).filter(Item.is_defective.is_(False)).scalar() or 0
+        db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.is_(True)).scalar() or 0
     )
 
     inspected = (
-        db.query(func.count(InspTaskTxn.txn_id)).filter(InspTaskTxn.result.isnot(None)).scalar()
-        or 0
+        db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.isnot(None)).scalar() or 0
     )
     defect_rate = (defective_items / inspected * 100.0) if inspected else 0.0
 

@@ -15,8 +15,9 @@ import pytest
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _MGMT_DIR = os.path.dirname(_THIS_DIR)
 _BACKEND_DIR = os.path.dirname(_MGMT_DIR)
+_SERVER_DIR = os.path.dirname(os.path.dirname(os.path.dirname(_BACKEND_DIR)))
 
-for p in (_MGMT_DIR, _BACKEND_DIR):
+for p in (_MGMT_DIR, _BACKEND_DIR, _SERVER_DIR):
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -46,6 +47,7 @@ def _smartcast_schema() -> Iterator[None]:
     from smart_cast_db.database import Base, engine
 
     with engine.begin() as conn:
+        conn.execute(text("DROP SCHEMA IF EXISTS smartcast CASCADE"))
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS smartcast"))
     Base.metadata.create_all(engine)
     yield
@@ -65,9 +67,9 @@ def _truncate_all() -> None:
 
 
 def _seed_user_and_res() -> None:
-    """공통 시드: customer user_id=1 + RA1 res (Item.cur_res / EquipTaskTxn.res_id FK)."""
+    """공통 시드: customer user_id=1 + PAT res + pattern master."""
     from smart_cast_db.database import SessionLocal
-    from smart_cast_db.models import Res, UserAccount
+    from smart_cast_db.models import PatternMaster, Res, UserAccount
 
     with SessionLocal() as db:
         db.add(
@@ -77,9 +79,11 @@ def _seed_user_and_res() -> None:
                 user_nm="tester",
                 role="customer",
                 email="test@example.com",
+                password="pw",
             )
         )
-        db.add(Res(res_id="RA1", res_type="RA", model_nm="TEST-RA"))
+        db.add(Res(res_id="PAT", res_type="RA", model_nm="TEST-PAT"))
+        db.add(PatternMaster(ptn_id=1, ptn_nm="ROUND", task_type="MM"))
         db.commit()
 
 
@@ -93,16 +97,16 @@ def postgresql_smartcast_empty(_smartcast_schema):
 
 @pytest.fixture
 def postgresql_with_smartcast_seed(_smartcast_schema):
-    """ord_id=42 + Pattern(42, ptn_loc=1) 시드 (happy path)."""
+    """ord_id=42 + OrdPattern(42, ptn_loc_id=1) 시드 (happy path)."""
     from smart_cast_db.database import SessionLocal
-    from smart_cast_db.models import Ord, Pattern
+    from smart_cast_db.models import Ord, OrdPattern
 
     _truncate_all()
     _seed_user_and_res()
     with SessionLocal() as db:
         db.add(Ord(ord_id=42, user_id=1))
         db.flush()
-        db.add(Pattern(ptn_id=42, ptn_loc=1))
+        db.add(OrdPattern(ord_id=42, ptn_loc_id=1))
         db.commit()
     yield
 

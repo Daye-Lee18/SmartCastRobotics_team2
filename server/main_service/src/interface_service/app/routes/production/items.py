@@ -26,7 +26,7 @@ from smart_cast_db.models import (
     Equip,
     EquipStat,
     EquipTaskTxn,
-    Item,
+    ItemStat,
     Ord,
     OrdPpMap,
     PpOption,
@@ -45,6 +45,44 @@ from app.schemas.schemas import (
 
 router = APIRouter(prefix="/api/production", tags=["production"])
 
+_FLOW_TO_LEGACY_STAGE = {
+    "CREATED": "QUE",
+    "CAST": "MM",
+    "WAIT_PP": "TR_PP",
+    "PP": "PP",
+    "WAIT_INSP": "QUE",
+    "INSP": "IP",
+    "WAIT_PA": "QUE",
+    "PA": "PP",
+    "STORED": "TR_LD",
+    "PICK": "TR_LD",
+    "READY_TO_SHIP": "SH",
+    "DISCARDED": "SH",
+    "HOLD": "QUE",
+}
+
+
+def _legacy_stage_from_flow(flow_stat: str | None) -> str:
+    return _FLOW_TO_LEGACY_STAGE.get((flow_stat or "").upper(), "QUE")
+
+
+def _item_out(item: ItemStat) -> ItemOut:
+    return ItemOut.model_validate(
+        {
+            "item_id": item.item_stat_id,
+            "ord_id": item.ord_id,
+            "flow_stat": item.flow_stat,
+            "zone_nm": item.zone_nm,
+            "result": item.result,
+            "equip_task_type": None,
+            "trans_task_type": None,
+            "cur_stat": _legacy_stage_from_flow(item.flow_stat),
+            "cur_res": item.zone_nm,
+            "is_defective": None if item.result is None else (not item.result),
+            "updated_at": item.updated_at,
+        }
+    )
+
 
 # -----------------------------------------------------------------------------
 # Item / Equipment views
@@ -56,10 +94,10 @@ def list_items(
     ord_id: int | None = None,
     db: Session = Depends(get_db),
 ) -> list[ItemOut]:
-    q = db.query(Item)
+    q = db.query(ItemStat)
     if ord_id is not None:
-        q = q.filter(Item.ord_id == ord_id)
-    return [ItemOut.model_validate(i) for i in q.order_by(desc(Item.updated_at)).all()]
+        q = q.filter(ItemStat.ord_id == ord_id)
+    return [_item_out(i) for i in q.order_by(desc(ItemStat.updated_at)).all()]
 
 
 @router.get("/equip-tasks", response_model=list[EquipTaskTxnOut])
@@ -134,14 +172,11 @@ def list_stages(db: Session = Depends(get_db)) -> list[dict]:
     """legacy /api/production/stages 호환. zone 별 진행중 item 수."""
     out: list[dict] = []
     for z in db.query(Zone).order_by(Zone.zone_id).all():
-        # 단순화: 해당 zone 의 res 에 점유된 item 수
+        # v21 기준 zone_nm 점유 item 수. terminal 상태는 제외한다.
         in_progress = (
-            db.query(func.count(Item.item_id))
-            .filter(
-                Item.cur_stat.in_(
-                    ["MM", "POUR", "DM", "PP", "INSP", "PA", "PICK", "SHIP", "ToINSP"]
-                )
-            )
+            db.query(func.count(ItemStat.item_stat_id))
+            .filter(ItemStat.zone_nm == z.zone_nm)
+            .filter(ItemStat.flow_stat.notin_(["READY_TO_SHIP", "DISCARDED", "HOLD"]))
             .scalar()
             or 0
         )
@@ -164,8 +199,8 @@ def production_metrics(db: Session = Depends(get_db)) -> list[dict]:
         day = today - timedelta(days=d_offset)
         nxt = day + timedelta(days=1)
         produced = (
-            db.query(func.count(Item.item_id))
-            .filter(Item.updated_at >= day, Item.updated_at < nxt)
+            db.query(func.count(ItemStat.item_stat_id))
+            .filter(ItemStat.updated_at >= day, ItemStat.updated_at < nxt)
             .scalar()
             or 0
         )
@@ -183,10 +218,10 @@ def order_item_progress(db: Session = Depends(get_db)) -> list[dict]:
     """발주별 item 진행 상태 분포 (Next.js / PyQt 차트용)."""
     out: list[dict] = []
     for o in db.query(Ord).all():
-        items = db.query(Item).filter(Item.ord_id == o.ord_id).all()
+        items = db.query(ItemStat).filter(ItemStat.ord_id == o.ord_id).all()
         stat_counts: dict[str, int] = {}
         for it in items:
-            key = it.cur_stat or "UNKNOWN"
+            key = _legacy_stage_from_flow(it.flow_stat)
             stat_counts[key] = stat_counts.get(key, 0) + 1
         out.append(
             {
@@ -206,7 +241,7 @@ def order_item_progress(db: Session = Depends(get_db)) -> list[dict]:
 @router.get("/items/{item_id}/pp", response_model=ItemPpRequirements)
 def item_pp_requirements(item_id: int, db: Session = Depends(get_db)) -> ItemPpRequirements:
     """item 별 필요한 후처리 옵션 + pp_task_txn 진행상태."""
-    item = db.get(Item, item_id)
+    item = db.get(ItemStat, item_id)
     if not item:
         raise HTTPException(404, f"item_id={item_id} not found")
     pp_opts = (
@@ -217,7 +252,7 @@ def item_pp_requirements(item_id: int, db: Session = Depends(get_db)) -> ItemPpR
     )
     txns = (
         db.query(PpTaskTxn)
-        .filter(PpTaskTxn.item_id == item_id)
+        .filter(PpTaskTxn.item_stat_id == item_id)
         .order_by(desc(PpTaskTxn.req_at))
         .all()
     )
@@ -225,5 +260,21 @@ def item_pp_requirements(item_id: int, db: Session = Depends(get_db)) -> ItemPpR
         item_id=item_id,
         ord_id=item.ord_id,
         pp_options=[PpOptionOut.model_validate(p) for p in pp_opts],
-        pp_task_status=[PpTaskTxnOut.model_validate(t) for t in txns],
+        pp_task_status=[
+            PpTaskTxnOut.model_validate(
+                {
+                    "txn_id": txn.txn_id,
+                    "ord_id": txn.ord_id,
+                    "map_id": txn.map_id,
+                    "pp_nm": txn.pp_nm,
+                    "item_id": txn.item_stat_id,
+                    "operator_id": txn.operator_id,
+                    "txn_stat": txn.txn_stat,
+                    "req_at": txn.req_at,
+                    "start_at": txn.start_at,
+                    "end_at": txn.end_at,
+                }
+            )
+            for txn in txns
+        ],
     )

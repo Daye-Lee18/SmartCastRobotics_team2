@@ -4,13 +4,13 @@ V6 canonical: Management Service → ROS2 DDS → Manufacturing/Stacking/Transpo
 (Interface Service 잔재를 Phase B 에서 이관함)
 
 설계:
-- rclpy 가 설치되어 있으면 실 ROS2 publisher 로 메시지 발행 (RA / CONV / AMR 별 토픽).
+- rclpy 가 설치되어 있으면 실 ROS2 publisher 로 메시지 발행 (RA / CONV / TAT 별 토픽).
 - 미설치 시 print() 로 폴백 — 데모/테스트 시각적 확인 가능.
 
 토픽 매핑 (잠정 — 실 ROS2 노드와 통신 시 합의 필요):
   /smartcast/ra/{res_id}/cmd      std_msgs/String  (예: "MV_SRC", "GRASP", ...)
   /smartcast/conv/{res_id}/cmd    std_msgs/String  (예: "ON", "OFF")
-  /smartcast/amr/{res_id}/cmd     std_msgs/String  (예: "MV_SRC", "WAIT_HANDOFF", ...)
+  /smartcast/tat/{res_id}/cmd     std_msgs/String  (예: "MV_SRC", "WAIT_HANDOFF", ...)
 
 활성화: env MGMT_ROS2_ENABLED=1 (default 0). rclpy 미설치 시 자동 OFF.
 (구 FMS_ROS2 env 는 하위 호환 유지)
@@ -89,7 +89,7 @@ def shutdown_ros2() -> None:
 
 def _topic_for(res_type: str, res_id: str) -> str | None:
     """res_type 별 토픽 경로."""
-    mapping = {"RA": "ra", "CONV": "conv", "AMR": "amr"}
+    mapping = {"RA": "ra", "CONV": "conv", "TAT": "tat"}
     sub = mapping.get(res_type)
     if not sub:
         return None

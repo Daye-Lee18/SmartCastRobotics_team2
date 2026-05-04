@@ -37,6 +37,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["450mm"],
     thicknessOptions: ["25mm", "30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
   {
@@ -50,6 +51,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["500mm"],
     thicknessOptions: ["25mm", "30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
   {
@@ -63,6 +65,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["550mm"],
     thicknessOptions: ["30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
 
@@ -78,6 +81,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["400x400mm"],
     thicknessOptions: ["25mm", "30mm", "35mm"],
     materials: ["FC200", "FC250"],
+    loadClasses: ["EN124 A15", "EN124 B125", "EN124 C250"],
     loadClassRange: "A15 ~ C250",
   },
   {
@@ -91,6 +95,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["450x450mm"],
     thicknessOptions: ["25mm", "30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
   {
@@ -104,6 +109,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["500x500mm"],
     thicknessOptions: ["30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
 
@@ -119,6 +125,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["450x300mm"],
     thicknessOptions: ["25mm", "30mm", "35mm"],
     materials: ["FC200", "FC250"],
+    loadClasses: ["EN124 A15", "EN124 B125", "EN124 C250"],
     loadClassRange: "A15 ~ C250",
   },
   {
@@ -132,6 +139,7 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["500x350mm"],
     thicknessOptions: ["25mm", "30mm", "35mm"],
     materials: ["FC200", "FC250"],
+    loadClasses: ["EN124 A15", "EN124 B125", "EN124 C250"],
     loadClassRange: "A15 ~ C250",
   },
   {
@@ -145,11 +153,19 @@ export const PRODUCTS: Product[] = [
     diameterOptions: ["550x400mm"],
     thicknessOptions: ["30mm", "35mm", "40mm"],
     materials: ["FC200", "FC250", "GCD450"],
+    loadClasses: ["EN124 B125", "EN124 C250", "EN124 D400"],
     loadClassRange: "B125 ~ D400",
   },
 ];
 
-export const LOAD_CLASSES = ["EN124 B125", "EN124 C250", "EN124 D400", "EN124 E600", "EN124 F900"];
+export const LOAD_CLASSES = [
+  "EN124 A15",
+  "EN124 B125",
+  "EN124 C250",
+  "EN124 D400",
+  "EN124 E600",
+  "EN124 F900",
+];
 export const MATERIALS = ["FC200", "FC250", "GCD450", "GCD500"];
 
 export const POST_PROCESSING_OPTIONS: PostProcessingOption[] = [

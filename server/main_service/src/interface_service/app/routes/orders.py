@@ -1,11 +1,11 @@
 """Orders router — smartcast schema.
 
 엔드포인트:
-  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map + RCVD txn/stat)
+  POST   /api/orders                    발주 생성 (ord + ord_detail + ord_pp_map)
   GET    /api/orders                    발주 목록 (관리자 조회)
   GET    /api/orders/{ord_id}           발주 단건 (detail + pp_options + latest_stat)
   GET    /api/orders/lookup?email=...   고객 발주 조회 (핑크 GUI #1)
-  POST   /api/orders/{ord_id}/status    발주 상태 전이 (RCVD→APPR→...)
+  POST   /api/orders/{ord_id}/status    발주 상태 전이 (없음→RCVD→APPR→...)
 
   GET    /api/products                  표준 제품 목록 (카테고리/옵션 join)
   GET    /api/categories                카테고리 마스터
@@ -14,6 +14,10 @@
 """
 
 from __future__ import annotations
+
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc
@@ -25,12 +29,14 @@ from smart_cast_db.models import (
     EquipLoadSpec,
     Ord,
     OrdDetail,
+    OrdLog,
+    OrdPattern,
     OrdPpMap,
     OrdStat,
     OrdTxn,
-    Pattern,
     PpOption,
     Product,
+    ProductOrderPatternMaster,
     UserAccount,
 )
 from app.schemas.schemas import (
@@ -47,6 +53,18 @@ from app.schemas.schemas import (
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 products_router = APIRouter(prefix="/api", tags=["products"])
 load_classes_router = APIRouter(prefix="/api", tags=["load-classes"])
+
+_PRODUCT_CODE_TO_PROD_ID: dict[str, int] = {
+    "R-D450": 1,
+    "R-D500": 2,
+    "R-D550": 3,
+    "S-400": 4,
+    "S-450": 5,
+    "S-500": 6,
+    "O-450": 7,
+    "O-500": 8,
+    "O-550": 9,
+}
 
 
 # -------------------------------------------------------------------------
@@ -73,13 +91,163 @@ def _to_full(db: Session, ord_obj: Ord) -> OrdFull:
         created_at=ord_obj.created_at,
         detail=ord_obj.detail,
         pp_options=[PpOptionOut.model_validate(p) for p in pp_options],
-        latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+        latest_stat=latest_stat.ord_stat if latest_stat else None,
         stats=[OrdStatOut.model_validate(s) for s in stats_rows],
         user_co_nm=user.co_nm if user else None,
         user_nm=user.user_nm if user else None,
         user_phone=user.phone if user else None,
         user_email=user.email if user else None,
     )
+
+
+def _resolve_product_id(db: Session, raw_product_id: str | None) -> int | None:
+    """Best-effort frontend product id -> v21 product.prod_id."""
+    if not raw_product_id:
+        return None
+
+    text = raw_product_id.strip()
+    exact = _PRODUCT_CODE_TO_PROD_ID.get(text.upper())
+    if exact is not None:
+        return exact if db.get(Product, exact) is not None else None
+
+    if text.isdigit():
+        candidate = int(text)
+        return candidate if db.get(Product, candidate) is not None else None
+
+    prefix = text[:1].upper()
+    cate_cd = {"R": "CMH", "S": "RMH", "O": "EMH"}.get(prefix)
+    if cate_cd is None:
+        return None
+
+    row = db.query(Product).filter(Product.cate_cd == cate_cd).order_by(Product.prod_id.asc()).first()
+    return row.prod_id if row is not None else None
+
+
+def _parse_decimal_or_none(raw_value: str | int | float | Decimal | None) -> Decimal | None:
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, Decimal):
+        return raw_value
+    text = str(raw_value).strip()
+    if not text:
+        return None
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if match is None:
+        return None
+    try:
+        return Decimal(match.group(0))
+    except InvalidOperation:
+        return None
+
+
+def _normalize_load_class(raw_value: str | None) -> str | None:
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip().upper()
+    if not text:
+        return None
+    match = re.search(r"([A-Z]\d{2,3})$", text)
+    return match.group(1) if match else text
+
+
+def _normalize_material(raw_value: str | None) -> str | None:
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip().upper()
+    if not text:
+        return None
+    match = re.match(r"([A-Z]+\d+)", text)
+    return match.group(1) if match else text
+
+
+def _pp_mask_from_ids(pp_ids: set[int]) -> int:
+    mask = 0
+    for pp_id in pp_ids:
+        mask |= 1 << (pp_id - 1)
+    return mask
+
+
+def _find_product_order_pattern_or_400(
+    db: Session,
+    *,
+    prod_id: int | None,
+    diameter: Decimal | None,
+    thickness: Decimal | None,
+    material: str | None,
+    load_class: str | None,
+    pp_ids: set[int],
+) -> ProductOrderPatternMaster:
+    if prod_id is None or diameter is None or thickness is None or not material or not load_class:
+        raise HTTPException(400, "product pattern mapping requires product/detail fields")
+
+    product_pattern = (
+        db.query(ProductOrderPatternMaster)
+        .filter(
+            ProductOrderPatternMaster.prod_id == prod_id,
+            ProductOrderPatternMaster.diameter == diameter,
+            ProductOrderPatternMaster.thickness == thickness,
+            ProductOrderPatternMaster.material == material,
+            ProductOrderPatternMaster.load_class == load_class,
+            ProductOrderPatternMaster.pp_mask == _pp_mask_from_ids(pp_ids),
+            ProductOrderPatternMaster.is_active.is_(True),
+        )
+        .first()
+    )
+    if product_pattern is None:
+        raise HTTPException(400, "matching product_order_pattern_master row not found")
+    return product_pattern
+
+
+def _parse_due_date_or_400(raw_due_date: str | None) -> date:
+    if not raw_due_date:
+        raise HTTPException(400, "requested_delivery is required")
+    try:
+        return date.fromisoformat(raw_due_date[:10])
+    except ValueError as exc:
+        raise HTTPException(400, f"invalid requested_delivery: {raw_due_date}") from exc
+
+
+def _require_ship_addr_or_400(raw_ship_addr: str | None) -> str:
+    ship_addr = (raw_ship_addr or "").strip()
+    if not ship_addr:
+        raise HTTPException(400, "shipping_address is required")
+    return ship_addr
+
+
+def _normalize_ord_status(raw_status: str) -> str:
+    status = (raw_status or "").strip().upper()
+    if status == "SHIP":
+        return "SHIPPING"
+    return status
+
+
+def _append_ord_log(
+    db: Session,
+    *,
+    ord_id: int,
+    prev_stat: str | None,
+    new_stat: str,
+    changed_by: int | None,
+) -> None:
+    db.add(
+        OrdLog(
+            ord_id=ord_id,
+            prev_stat=prev_stat,
+            new_stat=new_stat,
+            changed_by=changed_by,
+        )
+    )
+
+
+def _append_ord_txn_if_supported(db: Session, *, ord_id: int, new_stat: str) -> None:
+    txn_type = {
+        "RCVD": "RCVD",
+        "APPR": "APPR",
+        "REJT": "REJT",
+        "CNCL": "CNCL",
+    }.get(new_stat)
+    if txn_type is not None:
+        db.add(OrdTxn(ord_id=ord_id, txn_type=txn_type))
 
 
 # -------------------------------------------------------------------------
@@ -101,15 +269,38 @@ def create_order(payload: OrdCreate, db: Session = Depends(get_db)) -> OrdFull:
     db.add(new_ord)
     db.flush()  # ord_id 확보
 
-    detail = OrdDetail(ord_id=new_ord.ord_id, **payload.detail.model_dump(exclude_none=True))
+    normalized_material = _normalize_material(payload.detail.material)
+    normalized_load_class = _normalize_load_class(payload.detail.load_class)
+
+    detail = OrdDetail(
+        ord_id=new_ord.ord_id,
+        prod_id=payload.detail.prod_id,
+        diameter=payload.detail.diameter,
+        thickness=payload.detail.thickness,
+        material=normalized_material,
+        load_class=normalized_load_class,
+        qty=payload.detail.qty,
+        final_price=payload.detail.final_price,
+        due_date=payload.detail.due_date,
+        ship_addr=payload.detail.ship_addr,
+    )
     db.add(detail)
 
-    for pp_id in payload.pp_ids:
+    selected_pp_ids = set(payload.pp_ids)
+    for pp_id in selected_pp_ids:
         db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp_id))
 
-    # 초기 상태 RCVD (txn + stat 동시 INSERT)
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=payload.user_id, ord_stat="RCVD"))
+    product_pattern = _find_product_order_pattern_or_400(
+        db,
+        prod_id=payload.detail.prod_id,
+        diameter=payload.detail.diameter,
+        thickness=payload.detail.thickness,
+        material=normalized_material,
+        load_class=normalized_load_class,
+        pp_ids=selected_pp_ids,
+    )
+    db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
+
     db.commit()
     db.refresh(new_ord)
     return _to_full(db, new_ord)
@@ -156,7 +347,7 @@ def list_orders(db: Session = Depends(get_db)) -> list[OrdFull]:
             created_at=o.created_at,
             detail=o.detail,
             pp_options=[PpOptionOut.model_validate(p) for p in pp_by_ord.get(o.ord_id, [])],
-            latest_stat=latest_stat.ord_stat if latest_stat else "RCVD",
+            latest_stat=latest_stat.ord_stat if latest_stat else None,
             stats=[OrdStatOut.model_validate(s) for s in stats_rows],
             user_co_nm=user.co_nm if user else None,
             user_nm=user.user_nm if user else None,
@@ -172,35 +363,11 @@ def list_orders(db: Session = Depends(get_db)) -> list[OrdFull]:
 
 # 폼의 post-processing id 와 pp_options.pp_nm 매핑 (id 가 영문 코드, DB 는 한글명)
 _PP_ID_TO_NM: dict[str, str] = {
-    "polish": "표면연마",
-    "coat": "방청코팅",
-    "zinc": "아연도금",
-    "logo": "로고문구삽입",
+    "polish": "표면 연마",
+    "rustProof": "방청 코팅",
+    "zinc": "아연 도금",
+    "logo": "로고/문구 삽입",
 }
-
-
-# 자동 패턴 위치 매핑 — frontend product_id 첫 글자 기준
-# CLAUDE.md (2026-04-27): 카테고리 → ptn_loc 자동 결정. 운영자 수동 입력 폐지.
-#   R-* (원형 round)   → ptn_loc=1
-#   S-* (사각 square)  → ptn_loc=2
-#   O-* (타원형 oval)  → ptn_loc=3
-# 4-6번 위치는 사용 안 함 (확장 여유).
-_CATEGORY_PREFIX_TO_PTN_LOC: dict[str, int] = {
-    "R": 1,  # Round
-    "S": 2,  # Square
-    "O": 3,  # Oval
-}
-
-
-def derive_ptn_loc(product_id: str | None) -> int | None:
-    """frontend product_id ('R-D450', 'S-400', 'O-500' 등) → ptn_loc (1/2/3).
-
-    매핑 없는 ID 는 None 반환 → 호출자가 Pattern row 생성 스킵.
-    """
-    if not product_id:
-        return None
-    prefix = product_id.strip()[:1].upper()
-    return _CATEGORY_PREFIX_TO_PTN_LOC.get(prefix)
 
 
 @router.post("/customer", response_model=CustomerOrderResponse, status_code=201)
@@ -220,7 +387,7 @@ def create_customer_order(
             role="customer",
             phone=payload.phone,
             email=payload.email,
-            password=None,
+            password="__customer_placeholder__",
         )
         db.add(user)
         db.flush()
@@ -241,75 +408,51 @@ def create_customer_order(
         raise HTTPException(400, "details 가 비어있습니다.")
     d0 = payload.details[0]
 
-    # 폼의 diameter/thickness 는 다양한 형식:
-    #   "600mm"      → 600.0 (원형맨홀)
-    #   "450x450mm"  → 450.0 (사각맨홀 — 첫 값만)
-    #   "450x300mm"  → 450.0 (타원맨홀 — 첫 값만)
-    #   "50"         → 50.0
-    # 첫 번째 숫자군만 추출하여 DECIMAL 에 저장.
-    import re
-
-    _NUM_RE = re.compile(r"\d+(?:\.\d+)?")
-
-    def _strip_unit(v: str | None) -> float | None:
-        if v is None:
-            return None
-        m = _NUM_RE.search(str(v))
-        return float(m.group()) if m else None
-
-    from datetime import date
-
-    due_date = None
-    if payload.requested_delivery:
-        try:
-            due_date = date.fromisoformat(payload.requested_delivery[:10])
-        except ValueError:
-            pass
-
-    # prod_id 는 product 테이블에 실제 존재할 때만 사용 (없으면 NULL → FK 위반 방지).
-    # 폼이 보내는 product_id 는 frontend mock-data 의 string id 이므로 즉시 매칭 어려움.
-    candidate_prod_id: int | None = (
-        int(d0.product_id) if (d0.product_id and d0.product_id.isdigit()) else None
-    )
-    safe_prod_id: int | None = None
-    if candidate_prod_id is not None:
-        if db.get(Product, candidate_prod_id) is not None:
-            safe_prod_id = candidate_prod_id
+    due_date = _parse_due_date_or_400(payload.requested_delivery)
+    ship_addr = _require_ship_addr_or_400(payload.shipping_address)
+    safe_prod_id = _resolve_product_id(db, d0.product_id)
+    diameter = _parse_decimal_or_none(d0.diameter)
+    thickness = _parse_decimal_or_none(d0.thickness)
+    material = _normalize_material(d0.material)
+    load_class = _normalize_load_class(d0.load_class)
 
     detail = OrdDetail(
         ord_id=new_ord.ord_id,
         prod_id=safe_prod_id,
-        diameter=_strip_unit(d0.diameter),
-        thickness=_strip_unit(d0.thickness),
-        material=d0.material,
-        load_class=d0.load_class,
+        diameter=diameter,
+        thickness=thickness,
+        material=material,
+        load_class=load_class,
         qty=d0.quantity,
         final_price=payload.total_amount,
         due_date=due_date,
-        ship_addr=payload.shipping_address,
+        ship_addr=ship_addr,
     )
     db.add(detail)
 
     # 4. ord_pp_map (post_processing_ids → pp_id)
+    selected_pp_ids: set[int] = set()
     for pp_id_code in d0.post_processing_ids:
         pp_nm = _PP_ID_TO_NM.get(pp_id_code)
         if pp_nm is None:
             continue
         pp = db.query(PpOption).filter(PpOption.pp_nm == pp_nm).first()
-        if pp:
+        if pp and pp.pp_id not in selected_pp_ids:
+            selected_pp_ids.add(pp.pp_id)
             db.add(OrdPpMap(ord_id=new_ord.ord_id, pp_id=pp.pp_id))
 
-    # 5. 자동 패턴 위치 등록 — 카테고리에서 ptn_loc 결정 (운영자 수동 입력 폐지).
-    # frontend product_id (예: 'R-D450') 첫 글자로 카테고리 판단:
-    #   R → ptn_loc 1 (원형), S → 2 (사각), O → 3 (타원형)
-    # 매핑 실패 시 Pattern row 생성 안 함 (Pattern 미등록 → 생산 시작 차단).
-    ptn_loc = derive_ptn_loc(d0.product_id)
-    if ptn_loc is not None:
-        db.add(Pattern(ptn_id=new_ord.ord_id, ptn_loc=ptn_loc))
+    # 5. 주문 사양 조합 master 에서 pattern_id 자동 매핑. ptn_loc_id(위치)는 operator 가 나중에 등록한다.
+    product_pattern = _find_product_order_pattern_or_400(
+        db,
+        prod_id=safe_prod_id,
+        diameter=diameter,
+        thickness=thickness,
+        material=material,
+        load_class=load_class,
+        pp_ids=selected_pp_ids,
+    )
+    db.add(OrdPattern(ord_id=new_ord.ord_id, pattern_id=product_pattern.pattern_id))
 
-    # 6. 초기 상태 RCVD
-    db.add(OrdTxn(ord_id=new_ord.ord_id, txn_type="RCVD"))
-    db.add(OrdStat(ord_id=new_ord.ord_id, user_id=user.user_id, ord_stat="RCVD"))
     db.commit()
     db.refresh(new_ord)
 
@@ -363,11 +506,28 @@ def update_order_status(
     o = db.get(Ord, ord_id)
     if not o:
         raise HTTPException(404, f"ord_id={ord_id} not found")
-    valid = {"RCVD", "APPR", "MFG", "DONE", "SHIP", "COMP", "REJT", "CNCL"}
-    if new_stat not in valid:
+    normalized_stat = _normalize_ord_status(new_stat)
+    valid = {"RCVD", "APPR", "MFG", "DONE", "SHIPPING", "COMP", "REJT", "CNCL"}
+    if normalized_stat not in valid:
         raise HTTPException(400, f"invalid status: {new_stat}")
-    stat = OrdStat(ord_id=ord_id, user_id=user_id, ord_stat=new_stat)
-    db.add(stat)
+    stat = db.query(OrdStat).filter(OrdStat.ord_id == ord_id).first()
+    prev_stat = stat.ord_stat if stat is not None else None
+    if stat is None:
+        stat = OrdStat(ord_id=ord_id, user_id=user_id, ord_stat=normalized_stat)
+        db.add(stat)
+    else:
+        stat.user_id = user_id
+        stat.ord_stat = normalized_stat
+        stat.updated_at = datetime.utcnow()
+    if prev_stat != normalized_stat:
+        _append_ord_txn_if_supported(db, ord_id=ord_id, new_stat=normalized_stat)
+        _append_ord_log(
+            db,
+            ord_id=ord_id,
+            prev_stat=prev_stat,
+            new_stat=normalized_stat,
+            changed_by=user_id,
+        )
     db.commit()
     db.refresh(stat)
     return OrdStatOut.model_validate(stat)
