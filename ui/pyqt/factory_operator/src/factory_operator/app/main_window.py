@@ -30,6 +30,7 @@ from app.api_client import ApiClient
 from app.pages.dashboard import DashboardPage
 from app.pages.logistics import LogisticsPage
 from app.pages.map import FactoryMapPage
+from app.pages.pattern_control import PatternControlPage
 from app.pages.operations import OperationsPage
 from app.pages.pp_worker import PpWorkerPage
 from app.pages.production import ProductionPage
@@ -41,6 +42,7 @@ from app.widgets.alert_widgets import ToastNotification, _normalize_level
 # 2026-04-27: '실시간 운영 모니터링' (operations) 은 발주/패턴/공정단계/Item 위치/핸드오프 통합 관리,
 # '생산 모니터링' (production) 은 제어 패널 + 실시간 게이지 + 차트 (HW 직결 시각화) 전담.
 NAV_ITEMS: list[tuple[str, str]] = [
+    ("pattern_control", "패턴 위치 조작 및 생산 시작"),
     ("operations", "실시간 운영 모니터링"),
     ("pp_worker", "후처리 작업자"),
     ("dashboard", "대시보드"),
@@ -142,17 +144,19 @@ class MainWindow(QMainWindow):
 
         # 우측 스택 (NAV_ITEMS 순서와 반드시 일치)
         self._stack = QStackedWidget()
-        self._operations = OperationsPage(self._api)  # NAV_ITEMS[0] — 실시간 운영 모니터링
-        self._pp_worker = PpWorkerPage(self._api)  # NAV_ITEMS[1]
+        self._pattern_control = PatternControlPage(self._api)  # NAV_ITEMS[0] — 수동 패턴/생산 시작
+        self._operations = OperationsPage(self._api)  # NAV_ITEMS[1] — 실시간 운영 모니터링
+        self._pp_worker = PpWorkerPage(self._api)  # NAV_ITEMS[2]
         self._dashboard = DashboardPage(self._api)
         self._map = FactoryMapPage(self._api)
-        self._production = ProductionPage(self._api)  # NAV_ITEMS[4] — 생산 모니터링 (게이지/차트)
+        self._production = ProductionPage(self._api)  # NAV_ITEMS[5] — 생산 모니터링 (게이지/차트)
         self._schedule = SchedulePage(self._api)
         self._quality = QualityPage(self._api)
         self._logistics = LogisticsPage(self._api)
         self._storage = StoragePage(self._api)
 
         for page in (
+            self._pattern_control,
             self._operations,
             self._pp_worker,
             self._dashboard,
@@ -254,6 +258,9 @@ class MainWindow(QMainWindow):
     def _on_nav_changed(self, row: int) -> None:
         if 0 <= row < self._stack.count():
             self._stack.setCurrentIndex(row)
+            page = self._stack.currentWidget()
+            if hasattr(page, "refresh"):
+                page.refresh()
 
     def _toggle_sidebar(self) -> None:
         """좌측 사이드바 표시/숨김 토글."""

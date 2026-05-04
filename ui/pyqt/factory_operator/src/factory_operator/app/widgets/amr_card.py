@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -35,20 +35,6 @@ TASK_STATE_LABEL: dict[int, tuple[str, str]] = {
     8: ("loading", "하차중"),
     9: ("done", "하차 완료"),
     10: ("failed", "실패"),
-}
-
-# 현재 상태 → (다음 상태 enum, 버튼 라벨)
-_NEXT_STATE: dict[int, tuple[int, str]] = {
-    1: (2, "출발"),
-    2: (3, "도착"),
-    3: (4, "상차"),
-    4: (5, "상차 완료"),
-    5: (6, "이동"),
-    6: (7, "도착"),
-    7: (8, "하차"),
-    8: (9, "하차 완료"),
-    9: (1, "완료"),
-    10: (1, "수리 완료"),
 }
 
 # fallback: connectivity status (online/offline 용)
@@ -80,15 +66,7 @@ def _battery_level_key(level: int) -> str:
 
 
 class AmrStatusCard(QFrame):
-    """AMR 한 대의 상태 카드.
-
-    Signals:
-      transition_requested(str, int): (robot_id, new_state_enum)
-      repair_requested(str): (robot_id)
-    """
-
-    transition_requested = pyqtSignal(str, int)
-    repair_requested = pyqtSignal(str)
+    """AMR 한 대의 상태 카드."""
 
     def __init__(self, amr_id: str = "-") -> None:
         super().__init__()
@@ -160,27 +138,6 @@ class AmrStatusCard(QFrame):
         self._task_label.setWordWrap(True)
         layout.addWidget(self._task_label)
 
-        # 다음 상태 버튼 + 수리 완료 버튼
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(6)
-
-        self._next_btn = QPushButton("출발")
-        self._next_btn.setFixedHeight(28)
-        self._next_btn.setCursor(Qt.PointingHandCursor)
-        self._next_btn.setProperty("size", "sm")
-        self._next_btn.clicked.connect(self._on_next_clicked)
-        btn_row.addWidget(self._next_btn, stretch=3)
-
-        self._repair_btn = QPushButton("수리 완료")
-        self._repair_btn.setFixedHeight(28)
-        self._repair_btn.setCursor(Qt.PointingHandCursor)
-        self._repair_btn.setProperty("variant", "warn")
-        self._repair_btn.setProperty("size", "sm")
-        self._repair_btn.clicked.connect(self._on_repair_clicked)
-        btn_row.addWidget(self._repair_btn, stretch=2)
-
-        layout.addLayout(btn_row)
-
         self.update_from_dict({"id": amr_id})
 
     def _info_label(self, title: str, value: str) -> QWidget:
@@ -200,14 +157,6 @@ class AmrStatusCard(QFrame):
 
         return box
 
-    def _on_next_clicked(self) -> None:
-        next_info = _NEXT_STATE.get(self._current_task_state)
-        if next_info:
-            self.transition_requested.emit(self._amr_id, next_info[0])
-
-    def _on_repair_clicked(self) -> None:
-        self.repair_requested.emit(self._amr_id)
-
     def update_from_dict(self, data: dict[str, Any]) -> None:
         amr_id = str(data.get("id", "-"))
         self._amr_id = amr_id
@@ -224,20 +173,6 @@ class AmrStatusCard(QFrame):
             self._current_task_state = 1
         self._status_badge.setText(label)
         set_property(self._status_badge, "severity", severity)
-
-        # 다음 상태 버튼
-        next_info = _NEXT_STATE.get(self._current_task_state)
-        if next_info:
-            self._next_btn.setText(f">> {next_info[1]}")
-            self._next_btn.setEnabled(True)
-            # FAILED → 수리 완료 (warn variant), 그 외는 primary (variant 없음)
-            if self._current_task_state == 10:
-                set_property(self._next_btn, "variant", "warn")
-            else:
-                set_property(self._next_btn, "variant", None)
-        else:
-            self._next_btn.setText("-")
-            self._next_btn.setEnabled(False)
 
         # 배터리
         try:

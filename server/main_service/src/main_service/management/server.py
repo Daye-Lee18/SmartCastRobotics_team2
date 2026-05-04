@@ -46,24 +46,8 @@ from rpc.production_rpc import ProductionRpcMixin  # noqa: E402
 from rpc.robot_rpc import RobotRpcMixin  # noqa: E402
 from rpc.task_rpc import TaskRpcMixin  # noqa: E402
 from rpc.traffic_rpc import TrafficRpcMixin  # noqa: E402
-from services.adapters.vision.ai_client import AIServerConfig, AIUploader  # noqa: E402
-from services.adapters.robotics.amr_battery import AmrBatteryService  # noqa: E402
-from services.core.amr_state_machine import AmrStateMachine  # noqa: E402
-from services.core.execution_monitor import ExecutionMonitor  # noqa: E402
-
-# Phase B: Interface 로부터 이관된 FMS 자동 진행 시퀀서 + ROS2 publisher
-from services.core.fms_sequencer import (
-    is_enabled as fms_is_enabled,  # noqa: E402
-    run_sequencer as run_fms_sequencer,  # noqa: E402
-)
-from services.adapters.vision.image_forwarder import ForwarderConfig, ImageForwarder  # noqa: E402
-from services.adapters.vision.image_sink import sink as image_sink  # noqa: E402
-from services.adapters.sensors.rfid_service import RfidService  # noqa: E402
-from services.core.robot_executor import RobotExecutor  # noqa: E402
+from container import container  # noqa: E402
 from services.adapters.robotics.ros2_publisher import init_ros2, is_real_ros2, shutdown_ros2  # noqa: E402
-from services.core.task_allocator import TaskAllocator  # noqa: E402
-from services.core.task_manager import TaskManager  # noqa: E402
-from services.core.traffic_manager import TrafficManager  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -84,45 +68,24 @@ class ManagementServicer(
     """gRPC servicer wiring for Management RPC mixins."""
 
     def __init__(self) -> None:
-        self.task_manager = TaskManager()
-        self.rfid_service = RfidService()
-        self.task_allocator = TaskAllocator()
-        self.traffic_manager = TrafficManager()
-        # V6 AI 학습 데이터 브리지: Jetson -> image_sink -> forwarder -> AI Server SSH 업로드
-        self.image_forwarder = _build_image_forwarder()
-        self.execution_monitor = ExecutionMonitor(
-            image_forwarder=self.image_forwarder,
-        )
-        # AMR 배터리 폴링 (SSH -> pinkylib)
-        self.amr_battery = AmrBatteryService()
-        self.amr_battery.start()
-        # AMR 운송 상태 머신
-        self.amr_state_machine = AmrStateMachine()
-        for s in self.amr_battery.get_all():
-            self.amr_state_machine.register(s.id)
-        # RobotExecutor 에 state_machine 주입
-        self.robot_executor = RobotExecutor(state_machine=self.amr_state_machine)
+        # Container에서 조립 완료된 의존성 객체들을 참조
+        self.task_manager = container.task_manager
+        self.rfid_service = container.rfid_service
+        self.task_allocator = container.task_allocator
+        self.traffic_manager = container.traffic_manager
+
+        self.event_bridge = container.event_bridge
+        self.state_manager = container.state_manager
+        self.orchestrator = container.orchestrator
+
+        self.image_forwarder = container.image_forwarder
+        self.execution_monitor = container.execution_monitor
+
+        self.amr_battery = container.amr_battery
+        self.robot_executor = container.robot_executor
 
     def Health(self, request, context):
         return management_pb2.Empty()
-
-
-def _build_image_forwarder():
-    """ImageForwarder 를 구성. AI Server 설정이 없으면 None 반환 → 훅 비활성."""
-    ai_cfg = AIServerConfig.from_env()
-    if not ai_cfg.enabled:
-        logger.info("image_forwarder 비활성: AI Server 환경변수 미설정")
-        return None
-    fwd = ImageForwarder(
-        config=ForwarderConfig.from_env(),
-        sink_latest=image_sink.latest,
-        uploader=AIUploader(ai_cfg),
-    )
-    fwd.start()
-    logger.info(
-        "image_forwarder 활성: spool=%s batch=%.1fs", fwd.cfg.spool_dir, fwd.cfg.batch_interval_sec
-    )
-    return fwd
 
 
 def _load_tls_credentials():
@@ -172,49 +135,6 @@ def _load_tls_credentials():
     )
     return creds
 
-
-def _start_fms_sequencer_thread():
-    """FMS 자동 진행 시퀀서를 daemon thread + asyncio loop 로 기동.
-
-    V6 canonical (Phase B): Interface Service 로부터 이관됨.
-    FMS_AUTOPLAY=1 일 때만 가동. 실기 연동 시 OFF.
-    ROS2 publisher 는 MGMT_ROS2_ENABLED=1 + rclpy 설치 시 실 publish, 아니면 print 폴백.
-    gRPC 서버는 ThreadPoolExecutor 기반이라 별도 이벤트 루프 스레드 필요.
-    """
-    import asyncio
-    import threading
-
-    if not fms_is_enabled():
-        logger.info("FMS_AUTOPLAY 비활성 — 시퀀서 미가동 (실기 연동 모드)")
-        print("[FMS] FMS_AUTOPLAY 비활성 — sequencer 미가동", flush=True)
-        return None
-
-    init_ros2()
-    ros2_mode = "real" if is_real_ros2() else "mock-print"
-    print(f"[FMS] FMS_AUTOPLAY=1 — sequencer 백그라운드 시작 (ROS2={ros2_mode})", flush=True)
-    logger.info("FMS sequencer 백그라운드 시작 (ROS2 %s)", ros2_mode)
-
-    def _run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(run_fms_sequencer())
-        except asyncio.CancelledError:
-            pass
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("FMS sequencer 스레드 오류: %s", exc)
-        finally:
-            try:
-                shutdown_ros2()
-            except Exception:  # noqa: BLE001
-                pass
-            loop.close()
-
-    t = threading.Thread(target=_run, daemon=True, name="fms-sequencer")
-    t.start()
-    return t
-
-
 def serve() -> None:
     # WatchItems + WatchAlerts + WatchCameraFrames 등 스트리밍이 워커 점유.
     # 다중 PyQt 클라이언트 + 내부 모니터링 대비 여유있게 32로 확장.
@@ -229,7 +149,8 @@ def serve() -> None:
             ("grpc.http2.max_pings_without_data", 0),
         ],
     )
-    management_pb2_grpc.add_ManagementServiceServicer_to_server(ManagementServicer(), server)
+    servicer = ManagementServicer()
+    management_pb2_grpc.add_ManagementServiceServicer_to_server(servicer, server)
     management_pb2_grpc.add_ImagePublisherServiceServicer_to_server(
         ImagePublisherServicer(), server
     )
@@ -246,8 +167,22 @@ def serve() -> None:
     server.start()
     logger.info("Management Service listening on %s [%s]", bind_addr, scheme)
 
-    # Phase B: FMS 자동 진행 시퀀서 (Interface 로부터 이관)
-    _start_fms_sequencer_thread()
+    # [NEW] Phase B: Event-Driven Orchestrator 루프 스레드 가동
+    def _start_orchestrator():
+        import asyncio
+        import threading
+        def _run():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            logger.info("Orchestrator Thread & Event Loop Started.")
+            try:
+                loop.run_until_complete(servicer.orchestrator.run_loop())
+            finally:
+                loop.close()
+        t = threading.Thread(target=_run, daemon=True, name="OrchestratorThread")
+        t.start()
+
+    _start_orchestrator()
 
     # Graceful shutdown
     def _stop(_signum, _frame):

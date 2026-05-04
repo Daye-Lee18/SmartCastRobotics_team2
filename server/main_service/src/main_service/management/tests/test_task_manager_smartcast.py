@@ -48,14 +48,14 @@ def test_start_production_batch_all_invalid_skipped(task_manager):
 
 
 def test_start_production_single_happy(task_manager, postgresql_with_smartcast_seed):
-    """정상 흐름: Ord+Pattern 등록 후 task_manager 호출 → OrdStat/Item/EquipTaskTxn 3건 INSERT."""
+    """정상 흐름: Ord+OrdPattern 등록 후 task_manager 호출 → OrdStat/Item/EquipTaskTxn 3건 INSERT."""
     ord_id = 42
     result = task_manager.start_production_single(ord_id)
     assert isinstance(result, StartProductionResult)
     assert result.ord_id == ord_id
     assert result.item_id > 0
     assert result.equip_task_txn_id > 0
-    assert "RA1/MM" in result.message
+    assert "PAT/MM" in result.message
 
 
 def test_start_production_single_ord_not_found(task_manager, postgresql_smartcast_empty):

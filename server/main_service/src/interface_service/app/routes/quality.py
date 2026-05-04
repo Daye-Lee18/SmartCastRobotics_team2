@@ -16,7 +16,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from smart_cast_db.database import get_db
-from smart_cast_db.models import InspTaskTxn, Item, Ord
+from smart_cast_db.models import InspStat, InspTaskTxn, ItemStat, Ord
 from app.schemas.schemas import InspectionSummary, InspTaskTxnOut
 
 router = APIRouter(prefix="/api/quality", tags=["quality"])
@@ -28,15 +28,33 @@ def list_inspections(
     item_id: int | None = None,
     db: Session = Depends(get_db),
 ) -> list[InspTaskTxnOut]:
-    q = db.query(InspTaskTxn)
+    q = db.query(InspTaskTxn, InspStat).outerjoin(InspStat, InspStat.insp_txn_id == InspTaskTxn.txn_id)
     if item_id is not None:
-        q = q.filter(InspTaskTxn.item_id == item_id)
+        q = q.filter(InspTaskTxn.item_stat_id == item_id)
     if ord_id is not None:
-        q = q.join(Item, Item.item_id == InspTaskTxn.item_id).filter(Item.ord_id == ord_id)
-    return [
-        InspTaskTxnOut.model_validate(t)
-        for t in q.order_by(desc(InspTaskTxn.req_at)).limit(200).all()
-    ]
+        q = q.join(ItemStat, ItemStat.item_stat_id == InspTaskTxn.item_stat_id).filter(ItemStat.ord_id == ord_id)
+    out: list[InspTaskTxnOut] = []
+    for txn, stat in q.order_by(desc(InspTaskTxn.req_at)).limit(200).all():
+        result = None
+        if stat and stat.final_result == "GP":
+            result = True
+        elif stat and stat.final_result == "DP":
+            result = False
+        out.append(
+            InspTaskTxnOut.model_validate(
+                {
+                    "txn_id": txn.txn_id,
+                    "item_id": txn.item_stat_id,
+                    "res_id": txn.res_id,
+                    "txn_stat": txn.txn_stat,
+                    "result": result,
+                    "req_at": txn.req_at,
+                    "start_at": txn.start_at,
+                    "end_at": txn.end_at,
+                }
+            )
+        )
+    return out
 
 
 @router.get("/summary", response_model=list[InspectionSummary])
@@ -66,24 +84,19 @@ def inspection_summary_one(ord_id: int, db: Session = Depends(get_db)) -> Inspec
 
 
 def _build_summaries(db: Session, ord_id: int | None) -> list[InspectionSummary]:
-    """Item count + inspection result count grouped by ord_id."""
+    """v21 item_stat.result 기준 발주별 검사 요약."""
     base = (
         db.query(
-            Item.ord_id.label("ord_id"),
-            func.count(Item.item_id).label("total_items"),
-            func.count(InspTaskTxn.txn_id)
-            .filter(InspTaskTxn.result.isnot(None))
-            .label("inspected"),
-            func.count(InspTaskTxn.txn_id).filter(InspTaskTxn.result.is_(True)).label("good_count"),
-            func.count(InspTaskTxn.txn_id)
-            .filter(InspTaskTxn.result.is_(False))
-            .label("defective_count"),
+            ItemStat.ord_id.label("ord_id"),
+            func.count(ItemStat.item_stat_id).label("total_items"),
+            func.count(ItemStat.item_stat_id).filter(ItemStat.result.isnot(None)).label("inspected"),
+            func.count(ItemStat.item_stat_id).filter(ItemStat.result.is_(True)).label("good_count"),
+            func.count(ItemStat.item_stat_id).filter(ItemStat.result.is_(False)).label("defective_count"),
         )
-        .outerjoin(InspTaskTxn, InspTaskTxn.item_id == Item.item_id)
-        .group_by(Item.ord_id)
+        .group_by(ItemStat.ord_id)
     )
     if ord_id is not None:
-        base = base.filter(Item.ord_id == ord_id)
+        base = base.filter(ItemStat.ord_id == ord_id)
     out: list[InspectionSummary] = []
     for r in base.all():
         pending = max(0, (r.total_items or 0) - (r.inspected or 0))
@@ -108,19 +121,10 @@ def _build_summaries(db: Session, ord_id: int | None) -> list[InspectionSummary]
 @router.get("/stats")
 def quality_stats_summary(db: Session = Depends(get_db)) -> dict:
     """legacy /api/quality/stats — 전체 검사 누적 합계."""
-    inspected = (
-        db.query(func.count(InspTaskTxn.txn_id)).filter(InspTaskTxn.result.isnot(None)).scalar()
-        or 0
-    )
-    good = (
-        db.query(func.count(InspTaskTxn.txn_id)).filter(InspTaskTxn.result.is_(True)).scalar() or 0
-    )
-    defective = (
-        db.query(func.count(InspTaskTxn.txn_id)).filter(InspTaskTxn.result.is_(False)).scalar() or 0
-    )
-    pending = (
-        db.query(func.count(InspTaskTxn.txn_id)).filter(InspTaskTxn.result.is_(None)).scalar() or 0
-    )
+    inspected = db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.isnot(None)).scalar() or 0
+    good = db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.is_(True)).scalar() or 0
+    defective = db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.is_(False)).scalar() or 0
+    pending = db.query(func.count(ItemStat.item_stat_id)).filter(ItemStat.result.is_(None)).scalar() or 0
     rate = (good / inspected * 100.0) if inspected else 0.0
     return {
         "inspected": inspected,
@@ -181,17 +185,33 @@ def update_inspection_result(
     result: bool = Query(..., description="True=GP, False=DP"),
     db: Session = Depends(get_db),
 ) -> InspTaskTxnOut:
-    """AI 검사 결과 업데이트. item.is_defective 도 동시 갱신."""
+    """AI 검사 결과 업데이트. v21 insp_stat.final_result + item_stat.result 를 갱신한다."""
     txn = db.get(InspTaskTxn, txn_id)
     if not txn:
         raise HTTPException(404, f"insp_task_txn={txn_id} not found")
-    txn.result = result
     txn.txn_stat = "SUCC"
     txn.end_at = datetime.utcnow()
-    if txn.item_id:
-        item = db.get(Item, txn.item_id)
+    stat = db.get(InspStat, txn_id)
+    if stat is None:
+        stat = InspStat(insp_txn_id=txn_id, item_stat_id=txn.item_stat_id)
+        db.add(stat)
+    stat.item_stat_id = txn.item_stat_id
+    stat.final_result = "GP" if result else "DP"
+    if txn.item_stat_id:
+        item = db.get(ItemStat, txn.item_stat_id)
         if item:
-            item.is_defective = not result  # GP=False (불량 아님), DP=True (불량)
+            item.result = result
     db.commit()
     db.refresh(txn)
-    return InspTaskTxnOut.model_validate(txn)
+    return InspTaskTxnOut.model_validate(
+        {
+            "txn_id": txn.txn_id,
+            "item_id": txn.item_stat_id,
+            "res_id": txn.res_id,
+            "txn_stat": txn.txn_stat,
+            "result": result,
+            "req_at": txn.req_at,
+            "start_at": txn.start_at,
+            "end_at": txn.end_at,
+        }
+    )

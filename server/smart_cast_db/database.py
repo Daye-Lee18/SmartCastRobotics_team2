@@ -57,7 +57,9 @@ if DATABASE_URL.startswith("sqlite"):
 def _build_engine(url: str) -> Engine:
     return create_engine(
         url,
-        connect_args={"options": "-c timezone=UTC"},
+        # 모든 timestamp default(now()) 를 KST 기준으로 저장/조회하기 위해
+        # 세션 타임존을 Asia/Seoul 로 고정한다.
+        connect_args={"options": "-c timezone=Asia/Seoul"},
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,

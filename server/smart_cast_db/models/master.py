@@ -1,31 +1,25 @@
-"""Master 데이터 모델 — Category, Product, ProductOption, PpOption,
-Zone, Pattern, Res, Equip, EquipLoadSpec, Trans.
-
-마스터 데이터 = 트랜잭션이 참조하는 정적 정의. seed 로 채워지고 자주 바뀌지 않음.
-"""
+"""Master/resource models aligned to create_tables.sql."""
 
 from __future__ import annotations
+
+from sqlalchemy import text
 
 from ._base import (
     SCHEMA,
     Base,
+    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     relationship,
 )
 
-# -----------------------------------------------------------------------------
-# 표준 제품 (Category / Product / ProductOption / PpOption)
-# -----------------------------------------------------------------------------
-
 
 class Category(Base):
-    """제품 카테고리 (CMH/RMH/EMH)."""
-
     __tablename__ = "category"
     __table_args__ = (
         CheckConstraint("cate_cd IN ('CMH', 'RMH', 'EMH')", name="chk_cate_cd"),
@@ -37,8 +31,6 @@ class Category(Base):
 
 
 class Product(Base):
-    """표준 주조 제품."""
-
     __tablename__ = "product"
     __table_args__ = ({"schema": SCHEMA},)
 
@@ -52,86 +44,85 @@ class Product(Base):
 
 
 class ProductOption(Base):
-    """제품별 옵션 (재질/하중등급)."""
-
     __tablename__ = "product_option"
     __table_args__ = ({"schema": SCHEMA},)
 
     prod_opt_id = Column(Integer, primary_key=True, autoincrement=True)
-    prod_id = Column(Integer, ForeignKey(f"{SCHEMA}.product.prod_id"))
-    mat_type = Column(String(20))
-    load_class = Column(String(20))
+    prod_id = Column(Integer, ForeignKey(f"{SCHEMA}.product.prod_id"), nullable=False)
+    mat_type = Column(String(20), nullable=False)
+    diameter = Column(Numeric, nullable=False)
+    thickness = Column(Numeric, nullable=False)
+    material = Column(String(30), nullable=False)
+    load_class = Column(String(20), nullable=False)
 
     product = relationship("Product", back_populates="options")
 
 
 class PpOption(Base):
-    """후처리 옵션 마스터."""
-
     __tablename__ = "pp_options"
     __table_args__ = ({"schema": SCHEMA},)
 
     pp_id = Column(Integer, primary_key=True, autoincrement=True)
-    pp_nm = Column(String, unique=True)
-    extra_cost = Column(Numeric)
+    pp_nm = Column(String, nullable=False, unique=True)
+    extra_cost = Column(Numeric, server_default="0")
 
 
-# -----------------------------------------------------------------------------
-# Operator (zone, pattern)
-# -----------------------------------------------------------------------------
+class ProductOrderPatternMaster(Base):
+    __tablename__ = "product_order_pattern_master"
+    __table_args__ = (
+        CheckConstraint("pp_mask >= 0", name="chk_product_order_pattern_pp_mask_nonneg"),
+        UniqueConstraint(
+            "prod_id",
+            "diameter",
+            "thickness",
+            "material",
+            "load_class",
+            "pp_mask",
+            name="uq_product_order_pattern_combination",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    pattern_id = Column(Integer, primary_key=True, autoincrement=True)
+    prod_id = Column(Integer, ForeignKey(f"{SCHEMA}.product.prod_id"), nullable=False)
+    diameter = Column(Numeric, nullable=False)
+    thickness = Column(Numeric, nullable=False)
+    material = Column(String(30), nullable=False)
+    load_class = Column(String(20), nullable=False)
+    pp_mask = Column(Integer, nullable=False, server_default="0")
+    pattern_nm = Column(String, nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
+
+    product = relationship("Product")
+
+
+class Res(Base):
+    __tablename__ = "res"
+    __table_args__ = (
+        CheckConstraint("res_type IN ('RA', 'CONV', 'TAT')", name="chk_res_type"),
+        {"schema": SCHEMA},
+    )
+
+    res_id = Column(String(10), primary_key=True)
+    res_type = Column(String, nullable=False)
+    model_nm = Column(String, nullable=False)
 
 
 class Zone(Base):
-    """공정 6구역 (CAST/PP/INSP/STRG/SHIP/CHG)."""
-
     __tablename__ = "zone"
     __table_args__ = (
         CheckConstraint(
-            "zone_nm IN ('CAST', 'PP', 'INSP', 'STRG', 'SHIP', 'CHG')",
+            "zone_nm IN ('CAST', 'PP', 'INSP', 'STRG', 'PICK', 'SHIP', 'CHG')",
             name="chk_zone_nm",
         ),
         {"schema": SCHEMA},
     )
 
     zone_id = Column(Integer, primary_key=True, autoincrement=True)
-    zone_nm = Column(String, unique=True)
-
-
-class Pattern(Base):
-    """패턴 위치 (1-6번, 발주 1:1)."""
-
-    __tablename__ = "pattern"
-    __table_args__ = (
-        CheckConstraint("ptn_loc BETWEEN 1 AND 6", name="chk_ptn_loc_range"),
-        {"schema": SCHEMA},
-    )
-
-    ptn_id = Column(Integer, ForeignKey(f"{SCHEMA}.ord.ord_id"), primary_key=True)
-    ptn_loc = Column(Integer)
-
-
-# -----------------------------------------------------------------------------
-# 설비 마스터 (res, equip, trans)
-# -----------------------------------------------------------------------------
-
-
-class Res(Base):
-    """전체 설비 마스터 (RA/CONV/AMR)."""
-
-    __tablename__ = "res"
-    __table_args__ = (
-        CheckConstraint("res_type IN ('RA', 'CONV', 'AMR')", name="chk_res_type"),
-        {"schema": SCHEMA},
-    )
-
-    res_id = Column(String(10), primary_key=True)
-    res_type = Column(String)
-    model_nm = Column(String, nullable=False)
+    zone_nm = Column(String, nullable=False, unique=True)
 
 
 class Equip(Base):
-    """생산 설비 (RA, CONV) — zone에 배치."""
-
     __tablename__ = "equip"
     __table_args__ = ({"schema": SCHEMA},)
 
@@ -143,8 +134,6 @@ class Equip(Base):
 
 
 class EquipLoadSpec(Base):
-    """하중 등급별 정밀 제어 수치."""
-
     __tablename__ = "equip_load_spec"
     __table_args__ = ({"schema": SCHEMA},)
 
@@ -156,13 +145,104 @@ class EquipLoadSpec(Base):
 
 
 class Trans(Base):
-    """이송 자원 (AMR)."""
-
     __tablename__ = "trans"
-    __table_args__ = ({"schema": SCHEMA},)
+    __table_args__ = (
+        CheckConstraint("slot_count > 0", name="chk_trans_slot_count_gt_zero"),
+        {"schema": SCHEMA},
+    )
 
     res_id = Column(String(10), ForeignKey(f"{SCHEMA}.res.res_id"), primary_key=True)
     slot_count = Column(Integer)
     max_load_kg = Column(Numeric)
 
     res = relationship("Res")
+
+
+class TransTaskBatThreshold(Base):
+    __tablename__ = "trans_task_bat_threshold"
+    __table_args__ = (
+        CheckConstraint("task_type IN ('ToPP', 'ToSTRG', 'ToSHIP', 'ToCHG')", name="chk_trans_bat_task"),
+        CheckConstraint("bat_low_threshold BETWEEN 0 AND 100", name="chk_bat_low_threshold"),
+        {"schema": SCHEMA},
+    )
+
+    res_id = Column(String(10), ForeignKey(f"{SCHEMA}.trans.res_id"), primary_key=True)
+    task_type = Column(String(10), primary_key=True)
+    bat_low_threshold = Column(Integer)
+
+
+class PatternMaster(Base):
+    __tablename__ = "pattern_master"
+    __table_args__ = (
+        CheckConstraint("ptn_id BETWEEN 1 AND 3", name="chk_ptn_id_range"),
+        CheckConstraint("task_type IN ('MM')", name="chk_pattern_task_type"),
+        {"schema": SCHEMA},
+    )
+
+    ptn_id = Column(Integer, primary_key=True)
+    ptn_nm = Column(String, nullable=False, unique=True)
+    task_type = Column(String, nullable=False)
+    description = Column(String)
+    is_active = Column(Boolean, nullable=False, server_default=text("TRUE"))
+
+
+class RaMotionStep(Base):
+    __tablename__ = "ra_motion_step"
+    __table_args__ = (
+        CheckConstraint(
+            "task_type IN ('MM', 'POUR', 'DM', 'PA_GP', 'PA_DP', 'PICK', 'SHIP')",
+            name="chk_ra_motion_task_type",
+        ),
+        CheckConstraint("tool_type IN ('PAT', 'MAT')", name="chk_ra_motion_tool_type"),
+        CheckConstraint(
+            "pose_nm IS NULL OR pose_nm IN ('HOME', 'TAT_HANDOFF', 'DEFECT_HOVER', 'DEFECT_DROP', 'SLOT_PATH')",
+            name="chk_ra_motion_pose_nm",
+        ),
+        CheckConstraint(
+            "command_type IN ('MOVE_ANGLES', 'MOVE_Z', 'GRIP_OPEN', 'GRIP_CLOSE', 'WAIT')",
+            name="chk_ra_motion_command_type",
+        ),
+        CheckConstraint(
+            "("
+            "(command_type = 'MOVE_ANGLES' AND "
+            "j1 IS NOT NULL AND j2 IS NOT NULL AND j3 IS NOT NULL AND "
+            "j4 IS NOT NULL AND j5 IS NOT NULL AND j6 IS NOT NULL AND delta_z IS NULL) OR "
+            "(command_type = 'MOVE_Z' AND "
+            "delta_z IS NOT NULL AND "
+            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
+            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL) OR "
+            "(command_type IN ('GRIP_OPEN', 'GRIP_CLOSE', 'WAIT') AND "
+            "delta_z IS NULL AND "
+            "j1 IS NULL AND j2 IS NULL AND j3 IS NULL AND "
+            "j4 IS NULL AND j5 IS NULL AND j6 IS NULL)"
+            ")",
+            name="chk_ra_step_payload",
+        ),
+        UniqueConstraint(
+            "task_type",
+            "pattern_no",
+            "loc_id",
+            "pose_nm",
+            "step_ord",
+            name="uq_ra_motion_step_order",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    step_id = Column(Integer, primary_key=True, autoincrement=True)
+    task_type = Column(String, nullable=False)
+    tool_type = Column(String, nullable=False, server_default=text("'MAT'"))
+    pattern_no = Column(Integer, ForeignKey(f"{SCHEMA}.pattern_master.ptn_id"))
+    loc_id = Column(Integer, ForeignKey(f"{SCHEMA}.strg_location_stat.loc_id"))
+    pose_nm = Column(String)
+    step_ord = Column(Integer, nullable=False)
+    command_type = Column(String, nullable=False)
+    j1 = Column(Numeric)
+    j2 = Column(Numeric)
+    j3 = Column(Numeric)
+    j4 = Column(Numeric)
+    j5 = Column(Numeric)
+    j6 = Column(Numeric)
+    delta_z = Column(Numeric)
+    speed = Column(Integer)
+    delay_sec = Column(Numeric)

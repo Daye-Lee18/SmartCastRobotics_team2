@@ -34,6 +34,7 @@ function getStepState(
     "shipping_ready",
     "completed",
   ];
+  if (currentStatus === "submitted") return "future";
   const currentIdx = ORDER.indexOf(currentStatus);
   const stepIdx = ORDER.indexOf(stepKey);
 

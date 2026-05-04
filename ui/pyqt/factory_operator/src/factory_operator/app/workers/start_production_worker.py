@@ -22,7 +22,7 @@ class StartProductionWorker(QObject):
     """1회용 RPC 워커.
 
     signals:
-        succeeded(list[WorkOrderInfo]): 성공 — DTO 리스트
+        succeeded(list[ProductionStartOrderAck]): 성공 — DTO 리스트
         failed(str, str): 실패 — (kind, message). kind = 'grpc' | 'value' | 'other'
         finished(): 성공/실패 무관 종료 알림 (버튼 재활성용)
     """
@@ -47,8 +47,8 @@ class StartProductionWorker(QObject):
             return
         try:
             client = ManagementClient()
-            wos = client.start_production(self._order_ids)
-            self.succeeded.emit(wos)
+            acks = client.start_production(self._order_ids)
+            self.succeeded.emit(acks)
         except ValueError as exc:
             self.failed.emit("value", str(exc))
         except grpc.RpcError as exc:

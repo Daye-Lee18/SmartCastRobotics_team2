@@ -18,7 +18,6 @@
 | `FactoryMap3D.tsx` | 3D 팩토리 맵 (Three.js) |
 | `FactoryMap3DCanvas.tsx` | 3D 캔버스 렌더러 |
 | `FactoryMapEditor.tsx` | 팩토리 맵 편집기 |
-| `DevHandoffAckButton.tsx` | 개발용 핸드오프 ACK 버튼 |
 
 ## Subdirectories
 
