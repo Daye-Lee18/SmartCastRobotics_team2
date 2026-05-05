@@ -1,6 +1,7 @@
 """Pydantic Models 정의 (Interface Contracts Guide 기준)."""
-from typing import Optional, List
-from pydantic import BaseModel
+from datetime import UTC, datetime
+from typing import Any, Dict, Optional, List
+from pydantic import BaseModel, Field
 
 from .enums import EventType, EquipTaskType, TransTaskType, EquipStat, TransStat, OrdStat, TxnStat
 
@@ -22,6 +23,31 @@ class TaskAssignedEvent(BaseModel):
     task_id: str
     robot_id: str
     item_id: int
+
+
+# ---- 일반 Event / PublishResult (EventBridge 가 사용) ----
+class Event(BaseModel):
+    """EventBridge 가 라우팅하는 일반 이벤트 메시지.
+
+    구체 *Event (TaskCompletedEvent 등) 는 payload 안에 dict 로 들어가거나,
+    EventType 만으로 충분한 경우 payload 가 비어있을 수 있다.
+    """
+    event_type: EventType
+    txn_id: Optional[int] = None
+    ord_id: Optional[int] = None
+    item_id: Optional[int] = None
+    resource_id: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PublishResult(BaseModel):
+    """EventBridgeImpl.publish 의 반환 — 호출/성공/실패 카운트."""
+    event_type: EventType
+    handlers_invoked: int
+    handlers_success: int
+    handlers_failed: int
+    occurred_at: datetime
 
 # =======================
 # Input / Output Models
