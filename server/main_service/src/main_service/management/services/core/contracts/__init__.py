@@ -1,43 +1,7 @@
-"""Contracts definitions (Models and Protocols)."""
-from .models import (
-    TaskCompletedEvent,
-    ItemStatusChangedEvent,
-    TaskAssignedEvent,
-    CreateTaskInput,
-    TaskInfo,
-    CreateTaskResult,
-    AllocateTaskInput,
-    AllocateTaskResult,
-    ExecuteTaskInput,
-    ExecuteTaskResult,
-)
+"""Contracts package.
 
-from .protocols import (
-    IEventBridge,
-    IStateManager,
-    ITaskManager,
-    ITaskAllocator,
-    IOrchestrator,
-    ITaskExecutor,
-    IAdapter,
-)
+Keep this module side-effect free so submodule imports do not require optional
+runtime dependencies during test collection.
+"""
 
-__all__ = [
-    "TaskCompletedEvent",
-    "ItemStatusChangedEvent",
-    "TaskAssignedEvent",
-    "CreateTaskInput",
-    "TaskInfo",
-    "CreateTaskResult",
-    "AllocateTaskInput",
-    "AllocateTaskResult",
-    "ExecuteTaskInput",
-    "ExecuteTaskResult",
-    "IEventBridge",
-    "IStateManager",
-    "ITaskManager",
-    "ITaskAllocator",
-    "IOrchestrator",
-    "ITaskExecutor",
-    "IAdapter",
-]
+__all__: list[str] = []
